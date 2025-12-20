@@ -1,0 +1,163 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db { 
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  account   Account?
+  profile   Profile?
+
+  following  Follow[] @relation("follower")
+  followers  Follow[] @relation("following")
+  posts      Post[]
+  likes      Like[]
+  comments   Comment[]
+  chats      Chat[]
+  sentMessages Message[]
+  recievedNotifications  Notification[] @relation("recipient")
+  triggeredNotifications Notification[] @relation("actor") 
+
+  @@map("users")
+}
+
+model Account {
+  id           String    @id @default(uuid())
+  userId       String    @unique @map("user_id")
+  username     String    @unique
+  email        String?   @unique
+  phoneNumber  String?   @unique @map("phone_number")
+  passwordHash String?   @map("password_hash")
+  updatedAt    DateTime? @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@map("accounts")
+}
+
+model Profile {
+  id         String    @id @default(uuid())
+  userId     String    @unique @map("user_id")
+  firstName  String    @map("first_name")
+  secondName String?   @map("second_name")
+  avatarUrl  String?   @map("avatar_url")
+  bio        String? 
+  birthday   DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@map("profiles")
+}
+
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String   @map("follower_id")
+  followingId String   @map("following_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  follower    User     @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+  
+  @@unique([followerId, followingId])
+  @@map("follows")
+}
+
+model Post {
+  id          String   @id @default(uuid())
+  authorId    String   @map("author_id")
+  description String?  @db.Text
+
+  assets      Asset[]
+  comments    Comment[]
+  likes       Like[]
+
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  @@map("posts")
+}
+
+model Asset {
+  id     String    @id @default(uuid())
+  url    String
+  type   AssetType @default(IMAGE)
+  postId String?   @map("post_id")
+
+  post   Post?     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  @@map("assets")
+}
+  
+model Comment {
+  id        String   @id @default(uuid())
+  authorId  String   @map("author_id")
+  postId    String   @map("post_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  @@map("comments")
+}
+
+model Like {
+  id        String   @id @default(uuid())
+  authorId  String   @map("author_id")
+  postId    String   @map("post_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  @@map("likes")
+}
+
+model Chat {
+  id       String    @id @default(uuid())
+  
+  members  User[]
+  messages Message[]
+
+  @@map("chats")
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  content   String   @db.Text
+  isRead    Boolean  @default(false) @map("is_read")
+  chatId    String   @map("chat_id")
+  senderId  String   @map("sender_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  @@map("messages")
+}
+
+model Notification {
+  id          String           @id @default(uuid())
+  type        NotificationType
+  recipientId String           @map("recipient_id")
+  actorId     String           @map("actor_id")
+  itemId      String?          @map("item_id")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  recipient   User             @relation("recipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor       User             @relation("actor", fields: [actorId], references: [id], onDelete: Cascade)
+  @@map("notifications")
+}
+
+enum NotificationType {
+  LIKE
+  COMMENT
+  FOLLOW
+  SYSTEM
+}
+
+enum AssetType {
+  IMAGE
+  VIDEO
+}
