@@ -7,7 +7,7 @@ import {
 } from '@nestjs/swagger';
 
 import { UsersService } from './users.service';
-import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../decorators/current-user.decorator';
 
 @ApiTags('Users')

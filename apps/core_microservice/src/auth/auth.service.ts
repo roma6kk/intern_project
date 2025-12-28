@@ -10,13 +10,14 @@ import { firstValueFrom, catchError } from 'rxjs';
 import { AxiosError } from 'axios';
 import { LoginDto } from './dto/login.dto';
 import { SignUpDto } from './dto/signup.dto';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   private readonly authServiceUrl =
-    process.env.AUTH_MICROSERVICE_URL || 'http://localhost:3001/auth';
+    process.env.AUTH_MICROSERVICE_URL;
 
   constructor(private readonly httpService: HttpService) {}
 
