@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../src/prisma/prisma.service';
+import { PrismaService } from '../database/prisma.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 
@@ -42,7 +42,7 @@ export class PostService {
 
       return newPost;
     } catch (error) {
-      this.logger.error('Failed to create post', error.stack);
+      this.logger.error('Failed to create post', (error as Error).stack);
       throw error;
     }
   }
@@ -133,7 +133,7 @@ export class PostService {
       this.logger.log(`Post ${updatedPost.id} updated`);
       return updatedPost;
     } catch (error) {
-      this.logger.error(`Failed to update post ${id}`, error.stack);
+      this.logger.error(`Failed to update post ${id}`, (error as Error).stack);
       throw error;
     }
   }
@@ -149,7 +149,7 @@ export class PostService {
       this.logger.log(`Post ${id} deleted`);
       return { id, deleted: true };
     } catch (error) {
-      this.logger.error(`Failed to delete post ${id}`, error.stack);
+      this.logger.error(`Failed to delete post ${id}`, (error as Error).stack);
       throw error;
     }
   }

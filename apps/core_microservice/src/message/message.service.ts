@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { UpdateMessageDto } from './dto/update-message.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class MessageService {
@@ -47,7 +47,10 @@ export class MessageService {
 
       return newMessage;
     } catch (error) {
-      this.logger.error(`Failed to create new message in DB`, error.stack);
+      this.logger.error(
+        `Failed to create new message in DB`,
+        (error as Error).stack,
+      );
       throw error;
     }
   }
@@ -111,7 +114,10 @@ export class MessageService {
       this.logger.log(`Message ${id} updated successfully.`);
       return updatedMessage;
     } catch (error) {
-      this.logger.error(`Failed to update message ${id}`, error.stack);
+      this.logger.error(
+        `Failed to update message ${id}`,
+        (error as Error).stack,
+      );
       throw error;
     }
   }
@@ -127,7 +133,10 @@ export class MessageService {
       this.logger.log(`Message ${id} deleted successfully.`);
       return { id, deleted: true };
     } catch (error) {
-      this.logger.error(`Failed to delete message ${id}`, error.stack);
+      this.logger.error(
+        `Failed to delete message ${id}`,
+        (error as Error).stack,
+      );
       throw error;
     }
   }

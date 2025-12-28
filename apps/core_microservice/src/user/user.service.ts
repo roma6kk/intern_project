@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class UserService {
@@ -68,7 +68,10 @@ export class UserService {
       );
       return newUser;
     } catch (error) {
-      this.logger.error(`Failed to create new user in DB`, error.stack);
+      this.logger.error(
+        `Failed to create new user in DB`,
+        (error as Error).stack,
+      );
       throw error;
     }
   }

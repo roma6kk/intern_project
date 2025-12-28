@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateChatDto } from './dto/create-chat.dto';
 import { UpdateChatDto } from './dto/update-chat.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class ChatService {
@@ -39,7 +39,7 @@ export class ChatService {
       this.logger.log(`Chat created successfully. ID: ${chat.id}`);
       return chat;
     } catch (error) {
-      this.logger.error('Failed to create chat', error.stack);
+      this.logger.error('Failed to create chat', (error as Error).stack);
       throw error;
     }
   }
@@ -84,7 +84,7 @@ export class ChatService {
     } catch (error) {
       this.logger.error(
         `Failed to fetch chats for user ${userId}`,
-        error.stack,
+        (error as Error).stack,
       );
       throw error;
     }
@@ -159,7 +159,7 @@ export class ChatService {
       this.logger.log(`Chat ${id} updated successfully`);
       return updatedChat;
     } catch (error) {
-      this.logger.error(`Failed to update chat ${id}`, error.stack);
+      this.logger.error(`Failed to update chat ${id}`, (error as Error).stack);
       throw error;
     }
   }
@@ -175,7 +175,7 @@ export class ChatService {
       this.logger.log(`Chat ${id} removed successfully`);
       return { id, deleted: true };
     } catch (error) {
-      this.logger.error(`Failed to remove chat ${id}`, error.stack);
+      this.logger.error(`Failed to remove chat ${id}`, (error as Error).stack);
       throw error;
     }
   }

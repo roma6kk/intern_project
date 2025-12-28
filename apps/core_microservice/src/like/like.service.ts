@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateLikeDto } from './dto/create-like.dto';
 import { UpdateLikeDto } from './dto/update-like.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class LikeService {
@@ -36,7 +36,7 @@ export class LikeService {
       );
       return newLike;
     } catch (error) {
-      this.logger.error(`Failed to create like in DB`, error.stack);
+      this.logger.error(`Failed to create like in DB`, (error as Error).stack);
       throw error;
     }
   }
@@ -89,7 +89,7 @@ export class LikeService {
       this.logger.log(`Like ${id} updated successfully.`);
       return updatedLike;
     } catch (error) {
-      this.logger.error(`Failed to update like ${id}`, error.stack);
+      this.logger.error(`Failed to update like ${id}`, (error as Error).stack);
       throw error;
     }
   }
@@ -104,7 +104,7 @@ export class LikeService {
       this.logger.log(`Like ${id} deleted successfully.`);
       return { id, deleted: true };
     } catch (error) {
-      this.logger.error(`Failed to delete like ${id}`, error.stack);
+      this.logger.error(`Failed to delete like ${id}`, (error as Error).stack);
       throw error;
     }
   }

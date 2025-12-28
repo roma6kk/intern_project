@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { UpdateAccountDto } from './dto/update-account.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from 'src/database/prisma.service';
 
 @Injectable()
 export class AccountService {
@@ -57,7 +57,7 @@ export class AccountService {
     } catch (error) {
       this.logger.error(
         `Failed to update account for user ${userId}`,
-        error.stack,
+        (error as Error).stack,
       );
       throw error;
     }
@@ -78,7 +78,7 @@ export class AccountService {
     } catch (error) {
       this.logger.error(
         `Failed to remove account for user ${userId}`,
-        error.stack,
+        (error as Error).stack,
       );
       throw error;
     }

@@ -12,7 +12,7 @@ import { LikeModule } from './like/like.module';
 import { ChatModule } from './chat/chat.module';
 import { MessageModule } from './message/message.module';
 import { NotificationModule } from './notification/notification.module';
-
+import { AuthModule } from './auth/auth.module';
 @Module({
   imports: [
     PostModule,
@@ -26,6 +26,7 @@ import { NotificationModule } from './notification/notification.module';
     ChatModule,
     MessageModule,
     NotificationModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

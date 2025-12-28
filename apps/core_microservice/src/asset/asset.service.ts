@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class AssetService {
@@ -28,7 +28,7 @@ export class AssetService {
       this.logger.log(`Asset created successfully. ID: ${asset.id}`);
       return asset;
     } catch (error) {
-      this.logger.error('Failed to create asset', error.stack);
+      this.logger.error('Failed to create asset', (error as Error).stack);
       throw error;
     }
   }
@@ -71,7 +71,7 @@ export class AssetService {
       this.logger.log(`Asset ${id} updated successfully`);
       return updatedAsset;
     } catch (error) {
-      this.logger.error(`Failed to update asset ${id}`, error.stack);
+      this.logger.error(`Failed to update asset ${id}`, (error as Error).stack);
       throw error;
     }
   }
@@ -87,7 +87,7 @@ export class AssetService {
       this.logger.log(`Asset ${id} removed successfully`);
       return deletedAsset;
     } catch (error) {
-      this.logger.error(`Failed to remove asset ${id}`, error.stack);
+      this.logger.error(`Failed to remove asset ${id}`, (error as Error).stack);
       throw error;
     }
   }

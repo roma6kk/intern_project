@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class CommentService {
@@ -36,7 +36,7 @@ export class CommentService {
       this.logger.log(`Comment created successfully. ID: ${comment.id}`);
       return comment;
     } catch (error) {
-      this.logger.error('Failed to create comment', error.stack);
+      this.logger.error('Failed to create comment', (error as Error).stack);
       throw error;
     }
   }
@@ -103,7 +103,10 @@ export class CommentService {
       this.logger.log(`Comment ${commentId} updated successfully`);
       return updatedComment;
     } catch (error) {
-      this.logger.error(`Failed to update comment ${commentId}`, error.stack);
+      this.logger.error(
+        `Failed to update comment ${commentId}`,
+        (error as Error).stack,
+      );
       throw error;
     }
   }
@@ -119,7 +122,10 @@ export class CommentService {
       this.logger.log(`Comment ${commentId} removed successfully`);
       return deletedComment;
     } catch (error) {
-      this.logger.error(`Failed to remove comment ${commentId}`, error.stack);
+      this.logger.error(
+        `Failed to remove comment ${commentId}`,
+        (error as Error).stack,
+      );
       throw error;
     }
   }
