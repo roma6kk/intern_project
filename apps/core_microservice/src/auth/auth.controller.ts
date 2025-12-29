@@ -13,7 +13,6 @@ import {
 } from '@nestjs/common';
 import {
   ApiOperation,
-  ApiResponse,
   ApiTags,
   ApiBody,
   ApiQuery,
@@ -55,7 +54,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const refreshTokenId = req.cookies['refreshToken'];
+    const refreshTokenId = req.cookies['refreshToken'] as string | undefined;
 
     if (!refreshTokenId) {
       throw new UnauthorizedException('Refresh token not found in cookies');
@@ -74,7 +73,7 @@ export class AuthController {
   @Get('login/:provider')
   @ApiOperation({ summary: 'Initiate OAuth 2.0 login' })
   @ApiParam({ name: 'provider', example: 'google' })
-  async handleOAuthLogin(@Param('provider') provider: string) {
+  handleOAuthLogin(@Param('provider') provider: string) {
     return this.authService.handleOAuthInit(provider);
   }
 
@@ -100,7 +99,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Logout' })
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const refreshTokenId = req.cookies['refreshToken'];
+    const refreshTokenId = req.cookies['refreshToken'] as string | undefined;
 
     if (refreshTokenId) {
       await this.authService.handleLogout(refreshTokenId);

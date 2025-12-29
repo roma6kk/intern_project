@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { AuthService } from '../auth.service';
-
+import { ICurrentUser } from '../interfaces/ICurrentUser';
 @Injectable()
 export class AuthGuard implements CanActivate {
   private readonly logger = new Logger(AuthGuard.name);
@@ -15,7 +15,7 @@ export class AuthGuard implements CanActivate {
   constructor(private readonly authService: AuthService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<Request>();
 
     const token = this.extractTokenFromHeader(request);
 
@@ -27,7 +27,7 @@ export class AuthGuard implements CanActivate {
     try {
       const user = await this.authService.validateToken(token);
 
-      request['user'] = user;
+      (request as Request & { user: ICurrentUser }).user = user;
 
       return true;
     } catch (error) {

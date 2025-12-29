@@ -10,8 +10,8 @@ class AuthController {
       
       res.cookie('refreshToken', result.refreshToken, { httpOnly: true, maxAge: 604800000 });
       res.json(result);
-    } catch (e: any) {
-      res.status(401).json({ message: e.message });
+    } catch (error) {
+      res.status(401).json({ message: (error as Error).message });
     }
   }
 
@@ -19,8 +19,8 @@ class AuthController {
     try {
       const result = await authService.registerUser(req.body);
       res.status(201).json(result);
-    } catch (e: any) {
-      res.status(400).json({ message: e.message });
+    } catch (error) {
+      res.status(400).json({ message: (error as Error).message });
     }
   }
 
@@ -33,7 +33,7 @@ class AuthController {
       
       res.cookie('refreshToken', result.refreshToken, { httpOnly: true, maxAge: 604800000 });
       res.json(result);
-    } catch (e: any) {
+    } catch {
       res.status(403).json({ message: 'Refresh failed' });
     }
   }
@@ -48,7 +48,7 @@ class AuthController {
 
       const payload = await authService.validateToken(accessToken);
       res.json(payload);
-    } catch (e) {
+    } catch {
       res.status(401).json({ valid: false });
     }
   }
@@ -61,7 +61,7 @@ class AuthController {
       }
       res.clearCookie('refreshToken');
       res.json({ message: 'Logged out' });
-    } catch (e) {
+    } catch {
       res.status(200).json({ message: 'Logged out' });
     }
   }
@@ -70,8 +70,8 @@ class AuthController {
     try {
       const url = authService.getGoogleOAuthURL();
       res.json({ url });
-    } catch (e: any) {
-      res.status(500).json({ message: e.message });
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
     }
   }
 
@@ -84,8 +84,9 @@ class AuthController {
       
       res.cookie('refreshToken', result.refreshToken, { httpOnly: true, maxAge: 604800000 });
       res.json(result);
-    } catch (e: any) {
-      console.error('OAuth Exchange Error:', e.response?.data || e.message);
+    } catch (error) {
+      const err = error as { response?: { data?: unknown }; message?: string };
+      console.error('OAuth Exchange Error:', err.response?.data || err.message);
       res.status(400).json({ message: 'OAuth failed' });
     }
   }

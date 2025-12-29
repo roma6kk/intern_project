@@ -1,10 +1,10 @@
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
-
+import {ITokenPayload} from './interfaces/ITokenPayload'
 const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'secret';
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'refresh_secret';
 
-export const generateTokens = (payload: any) => {
+export const generateTokens = (payload: ITokenPayload) => {
   const accessJti = uuidv4();
   const refreshJti = uuidv4();
 

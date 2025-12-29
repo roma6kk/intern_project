@@ -8,6 +8,10 @@ import {
   decodeToken 
 } from './token.service';
 import axios from 'axios';
+import {IGoogleUserResult} from './interfaces/IGoogleUserResult'
+import { IRegisterUserDto } from './interfaces/IRegisterUserDto';
+
+
 
 export class AuthService {
 
@@ -27,7 +31,7 @@ export class AuthService {
     };
   }
 
-  async registerUser(signUpDto: any) {
+  async registerUser(signUpDto: IRegisterUserDto) {
     const existing = await prisma.account.findFirst({
       where: { OR: [{ email: signUpDto.email }, { username: signUpDto.username }] }
     });
@@ -176,15 +180,18 @@ export class AuthService {
 
   async exchangeCodeForTokens(code: string) {
     const { id_token, access_token } = await this.getGoogleTokens(code);
-
     const googleUser = await this.getGoogleUser(id_token, access_token);
+
+    if (!googleUser.email) {
+      throw new Error('Google account has no email');
+    }
 
     return this.handleOAuthLogin({
       email: googleUser.email,
-      username: googleUser.email.split('@')[0],
-      firstName: googleUser.given_name,
-      secondName: googleUser.family_name,
-      photo: googleUser.picture,
+      username: googleUser.email.split('@')[0] ?? 'user',
+      firstName: googleUser.given_name ?? 'User',
+      secondName: googleUser.family_name ?? '',
+      photo: googleUser.picture ?? '',
     });
   }
 
@@ -192,33 +199,35 @@ export class AuthService {
     const url = 'https://oauth2.googleapis.com/token';
     const values = {
       code,
-      client_id: process.env.GOOGLE_CLIENT_ID,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET,
-      redirect_uri: process.env.GOOGLE_CALLBACK_URL,
+      client_id: process.env.GOOGLE_CLIENT_ID || '',
+      client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+      redirect_uri: process.env.GOOGLE_CALLBACK_URL || '',
       grant_type: 'authorization_code',
     };
 
     try {
-      const res = await axios.post(url, new URLSearchParams(values as any).toString(), {
+      const res = await axios.post(url, new URLSearchParams(values as Record<string, string>).toString(), {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
       return res.data;
-    } catch (error: any) {
-      throw new Error(`Google Token Exchange Failed: ${error.message}`);
+    } catch (error) {
+      const err = error as {message?: string};
+      throw new Error(`Google Token Exchange Failed: ${err.message || 'Unknown error'}`);
     }
   }
 
-  private async getGoogleUser(id_token: string, access_token: string): Promise<any> {
+  private async getGoogleUser(id_token: string, access_token: string): Promise<IGoogleUserResult> {
     try {
-      const res = await axios.get(
+      const res = await axios.get<IGoogleUserResult>(
         `https://www.googleapis.com/oauth2/v1/userinfo?alt=json&access_token=${access_token}`,
         {
           headers: { Authorization: `Bearer ${id_token}` },
         }
       );
       return res.data;
-    } catch (error: any) {
-      throw new Error(`Google User Info Failed: ${error.message}`);
+    } catch (error) {
+      const err = error as {message? : string};
+      throw new Error(`Google User Info Failed: ${err.message || 'Unknown error'}`);
     }
   }
 }

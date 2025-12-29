@@ -10,6 +10,7 @@ import { ProfilesService } from './profiles.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../decorators/current-user.decorator';
+import type { ICurrentUser } from '../auth/interfaces/ICurrentUser';
 
 @ApiTags('Profiles')
 @ApiBearerAuth()
@@ -21,20 +22,17 @@ export class ProfilesController {
   @Get('me')
   @ApiOperation({ summary: 'Get current user profile' })
   @ApiResponse({ status: 200, description: 'Return profile data' })
-  async getMyProfile(@CurrentUser() user: any) {
-    return this.profilesService.getMyProfile(user.userId || user.id);
+  async getMyProfile(@CurrentUser() user: ICurrentUser) {
+    return this.profilesService.getMyProfile(user.userId);
   }
 
   @Put('me')
   @ApiOperation({ summary: 'Update current user profile' })
   @ApiResponse({ status: 200, description: 'Profile updated' })
   async updateProfile(
-    @CurrentUser() user: any,
+    @CurrentUser() user: ICurrentUser,
     @Body() updateProfileDto: UpdateProfileDto,
   ) {
-    return this.profilesService.updateProfile(
-      user.userId || user.id,
-      updateProfileDto,
-    );
+    return this.profilesService.updateProfile(user.userId, updateProfileDto);
   }
 }

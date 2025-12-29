@@ -10,49 +10,53 @@ import { firstValueFrom, catchError } from 'rxjs';
 import { AxiosError } from 'axios';
 import { LoginDto } from './dto/login.dto';
 import { SignUpDto } from './dto/signup.dto';
+import { AuthResponse } from './interfaces/IAuthResponse';
 import * as dotenv from 'dotenv';
+import { ICurrentUser } from './interfaces/ICurrentUser';
 dotenv.config();
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-  private readonly authServiceUrl =
-    process.env.AUTH_MICROSERVICE_URL;
-
+  private readonly authServiceUrl = process.env.AUTH_MICROSERVICE_URL;
   constructor(private readonly httpService: HttpService) {}
 
-  async handleSignUp(signUpDto: SignUpDto) {
+  async handleSignUp(signUpDto: SignUpDto): Promise<AuthResponse> {
     this.logger.log(`Proxying Sign-Up for: ${signUpDto.email}`);
     const { data } = await firstValueFrom(
-      this.httpService.post(`${this.authServiceUrl}/register`, signUpDto).pipe(
-        catchError((error: AxiosError) => {
-          this.handleAxiosError(error);
-          throw error;
-        }),
-      ),
-    );
-    return data;
-  }
-
-  async handleLogin(credentials: LoginDto) {
-    this.logger.log(`Proxying Login for: ${credentials.email}`);
-    const { data } = await firstValueFrom(
-      this.httpService.post(`${this.authServiceUrl}/login`, credentials).pipe(
-        catchError((error: AxiosError) => {
-          this.handleAxiosError(error);
-          throw error;
-        }),
-      ),
-    );
-    return data;
-  }
-
-  async handleRefresh(refreshToken: string) {
-    const { data } = await firstValueFrom(
       this.httpService
-        .post(`${this.authServiceUrl}/refresh`, { refreshToken })
+        .post<AuthResponse>(`${this.authServiceUrl}/register`, signUpDto)
         .pipe(
           catchError((error: AxiosError) => {
+            this.handleAxiosError(error);
+            throw error;
+          }),
+        ),
+    );
+    return data;
+  }
+
+  async handleLogin(credentials: LoginDto): Promise<AuthResponse> {
+    this.logger.log(`Proxying Login for: ${credentials.email}`);
+    const { data } = await firstValueFrom(
+      this.httpService
+        .post<AuthResponse>(`${this.authServiceUrl}/login`, credentials)
+        .pipe(
+          catchError((error: AxiosError) => {
+            this.handleAxiosError(error);
+            throw error;
+          }),
+        ),
+    );
+    return data;
+  }
+
+  async handleRefresh(refreshToken: string): Promise<AuthResponse> {
+    const { data } = await firstValueFrom(
+      this.httpService
+        .post<AuthResponse>(`${this.authServiceUrl}/refresh`, { refreshToken })
+        .pipe(
+          catchError(() => {
             throw new UnauthorizedException('Refresh failed');
           }),
         ),
@@ -60,7 +64,7 @@ export class AuthService {
     return data;
   }
 
-  async handleLogout(refreshToken: string) {
+  async handleLogout(refreshToken: string): Promise<void> {
     await firstValueFrom(
       this.httpService
         .post(`${this.authServiceUrl}/logout`, { refreshToken })
@@ -72,30 +76,33 @@ export class AuthService {
     );
   }
 
-  async validateToken(token: string) {
+  async validateToken(token: string): Promise<ICurrentUser> {
     try {
       const { data } = await firstValueFrom(
-        this.httpService.get(`${this.authServiceUrl}/validate`, {
+        this.httpService.get<ICurrentUser>(`${this.authServiceUrl}/validate`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       );
       return data;
-    } catch (error) {
+    } catch {
       throw new UnauthorizedException('Token validation failed');
     }
   }
 
-  async handleOAuthInit(provider: string) {
+  handleOAuthInit(provider: string): { url: string } {
     return { url: `${this.authServiceUrl}/${provider}` };
   }
 
-  async handleOAuthCallback(provider: string, code: string) {
+  async handleOAuthCallback(
+    provider: string,
+    code: string,
+  ): Promise<AuthResponse> {
     this.logger.log(`Proxying OAuth callback for provider: ${provider}`);
 
     const { data } = await firstValueFrom(
       this.httpService
-        .get(`${this.authServiceUrl}/${provider}/callback`, {
-          params: { code },
+        .post<AuthResponse>(`${this.authServiceUrl}/oauth/exchange-code`, {
+          code,
         })
         .pipe(
           catchError((error: AxiosError) => {
