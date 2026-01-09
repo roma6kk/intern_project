@@ -79,8 +79,8 @@ export class AuthService {
   async validateToken(token: string): Promise<ICurrentUser> {
     try {
       const { data } = await firstValueFrom(
-        this.httpService.get<ICurrentUser>(`${this.authServiceUrl}/validate`, {
-          headers: { Authorization: `Bearer ${token}` },
+        this.httpService.post<ICurrentUser>(`${this.authServiceUrl}/validate`, {
+          access_token: token 
         }),
       );
       return data;
