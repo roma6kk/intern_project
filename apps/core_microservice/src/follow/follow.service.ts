@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateFollowDto } from './dto/create-follow.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class FollowService {
@@ -22,7 +22,7 @@ export class FollowService {
       );
       return follow;
     } catch (error) {
-      this.logger.error('Failed to create follow', error.stack);
+      this.logger.error('Failed to create follow', (error as Error).stack);
       throw error;
     }
   }
@@ -57,7 +57,10 @@ export class FollowService {
       this.logger.log(`Follow record ${id} removed successfully`);
       return deletedFollow;
     } catch (error) {
-      this.logger.error(`Failed to remove follow record ${id}`, error.stack);
+      this.logger.error(
+        `Failed to remove follow record ${id}`,
+        (error as Error).stack,
+      );
       throw error;
     }
   }

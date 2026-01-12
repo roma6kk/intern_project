@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateProfileDto } from './dto/create-profile.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class ProfileService {
@@ -27,7 +27,7 @@ export class ProfileService {
       );
       return profile;
     } catch (error) {
-      this.logger.error(`Failed to create profile`, error.stack);
+      this.logger.error(`Failed to create profile`, (error as Error).stack);
       throw error;
     }
   }
@@ -95,7 +95,7 @@ export class ProfileService {
     } catch (error) {
       this.logger.error(
         `Failed to update profile for user ${userId}`,
-        error.stack,
+        (error as Error).stack,
       );
       throw error;
     }
@@ -117,7 +117,7 @@ export class ProfileService {
     } catch (error) {
       this.logger.error(
         `Failed to remove profile for user ${userId}`,
-        error.stack,
+        (error as Error).stack,
       );
       throw error;
     }

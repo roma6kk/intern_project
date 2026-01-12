@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class NotificationService {
@@ -29,7 +29,10 @@ export class NotificationService {
       );
       return notification;
     } catch (error) {
-      this.logger.error('Failed to create notification', error.stack);
+      this.logger.error(
+        'Failed to create notification',
+        (error as Error).stack,
+      );
       throw error;
     }
   }
@@ -89,7 +92,10 @@ export class NotificationService {
       this.logger.log(`Notification ${id} updated successfully`);
       return updatedNotification;
     } catch (error) {
-      this.logger.error(`Failed to update notification ${id}`, error.stack);
+      this.logger.error(
+        `Failed to update notification ${id}`,
+        (error as Error).stack,
+      );
       throw error;
     }
   }
@@ -105,7 +111,10 @@ export class NotificationService {
       this.logger.log(`Notification ${id} removed successfully`);
       return deletedNotification;
     } catch (error) {
-      this.logger.error(`Failed to remove notification ${id}`, error.stack);
+      this.logger.error(
+        `Failed to remove notification ${id}`,
+        (error as Error).stack,
+      );
       throw error;
     }
   }
