@@ -1,47 +1,51 @@
+import { Controller, Post, Param, Get, UseGuards } from '@nestjs/common';
 import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-} from '@nestjs/common';
+  ApiBearerAuth,
+  ApiOperation,
+  ApiTags,
+  ApiParam,
+} from '@nestjs/swagger';
 import { LikeService } from './like.service';
-import { CreateLikeDto } from './dto/create-like.dto';
-import { UpdateLikeDto } from './dto/update-like.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../decorators/current-user.decorator';
+import type { ICurrentUser } from '../auth/interfaces/ICurrentUser';
 
-@Controller('like')
+@ApiTags('Likes')
+@ApiBearerAuth('JWT-auth')
+@UseGuards(JwtAuthGuard)
+@Controller('likes')
 export class LikeController {
   constructor(private readonly likeService: LikeService) {}
 
-  @Post()
-  create(@Body() createLikeDto: CreateLikeDto) {
-    return this.likeService.create(createLikeDto);
+  @Post('post/:id')
+  @ApiOperation({ summary: 'Toggle like on a Post' })
+  @ApiParam({ name: 'id', description: 'Post ID' })
+  async togglePostLike(
+    @CurrentUser() user: ICurrentUser,
+    @Param('id') postId: string,
+  ) {
+    return this.likeService.toggleLike(user.userId, postId, 'POST');
   }
 
-  @Get(':postId')
-  findByPostId(@Param('postId') postId: string) {
-    return this.likeService.findByPostId(postId);
+  @Post('comment/:id')
+  @ApiOperation({ summary: 'Toggle like on a Comment' })
+  @ApiParam({ name: 'id', description: 'Comment ID' })
+  async toggleCommentLike(
+    @CurrentUser() user: ICurrentUser,
+    @Param('id') commentId: string,
+  ) {
+    return this.likeService.toggleLike(user.userId, commentId, 'COMMENT');
   }
 
-  @Get()
-  findAll() {
-    return this.likeService.findAll();
+  @Get('post/:id')
+  @ApiOperation({ summary: 'Get users who liked a Post' })
+  async getPostLikes(@Param('id') postId: string) {
+    return this.likeService.getLikes(postId, 'POST');
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.likeService.findOne(id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateLikeDto: UpdateLikeDto) {
-    return this.likeService.update(id, updateLikeDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.likeService.remove(id);
+  @Get('comment/:id')
+  @ApiOperation({ summary: 'Get users who liked a Comment' })
+  async getCommentLikes(@Param('id') commentId: string) {
+    return this.likeService.getLikes(commentId, 'COMMENT');
   }
 }

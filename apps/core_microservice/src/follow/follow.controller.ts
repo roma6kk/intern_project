@@ -1,33 +1,70 @@
-import { Controller, Get, Post, Body, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Delete,
+  Param,
+  Get,
+  UseGuards,
+  Patch,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { FollowService } from './follow.service';
-import { CreateFollowDto } from './dto/create-follow.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../decorators/current-user.decorator';
+import type { ICurrentUser } from '../auth/interfaces/ICurrentUser';
 
-@Controller('follow')
+@ApiTags('Follows')
+@ApiBearerAuth('JWT-auth')
+@UseGuards(JwtAuthGuard)
+@Controller('follows')
 export class FollowController {
   constructor(private readonly followService: FollowService) {}
 
-  @Post()
-  create(@Body() createFollowDto: CreateFollowDto) {
-    return this.followService.create(createFollowDto);
+  @Post(':id')
+  @ApiOperation({ summary: 'Follow a user' })
+  follow(@CurrentUser() user: ICurrentUser, @Param('id') targetId: string) {
+    return this.followService.follow(user.userId, targetId);
   }
-
-  @Get()
-  findAll() {
-    return this.followService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.followService.findOne(id);
-  }
-
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateFollowDto: UpdateFollowDto) {
-  //   return this.followService.update(id, updateFollowDto);
-  // }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.followService.remove(id);
+  @ApiOperation({ summary: 'Unfollow a user' })
+  unfollow(@CurrentUser() user: ICurrentUser, @Param('id') targetId: string) {
+    return this.followService.unfollow(user.userId, targetId);
+  }
+
+  @Get('followers/me')
+  @ApiOperation({ summary: 'Get my followers' })
+  getMyFollowers(@CurrentUser() user: ICurrentUser) {
+    return this.followService.getFollowers(user.userId);
+  }
+
+  @Get('following/me')
+  @ApiOperation({ summary: 'Get who I follow' })
+  getMyFollowing(@CurrentUser() user: ICurrentUser) {
+    return this.followService.getFollowing(user.userId);
+  }
+
+  @Get('requests/me')
+  @ApiOperation({ summary: 'Get pending follow requests' })
+  getRequests(@CurrentUser() user: ICurrentUser) {
+    return this.followService.getPendingRequests(user.userId);
+  }
+
+  @Patch('requests/:id/accept')
+  @ApiOperation({ summary: 'Accept follow request' })
+  acceptRequest(
+    @CurrentUser() user: ICurrentUser,
+    @Param('id') followerId: string,
+  ) {
+    return this.followService.acceptRequest(user.userId, followerId);
+  }
+
+  @Patch('requests/:id/decline')
+  @ApiOperation({ summary: 'Decline follow request' })
+  declineRequest(
+    @CurrentUser() user: ICurrentUser,
+    @Param('id') followerId: string,
+  ) {
+    return this.followService.removeFollower(user.userId, followerId);
   }
 }

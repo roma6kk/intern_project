@@ -47,6 +47,7 @@ export class ProfilesService {
           secondName: dto.secondName,
           bio: dto.bio,
           avatarUrl: dto.avatarUrl,
+          isPrivate: dto.isPrivate,
         },
       });
 

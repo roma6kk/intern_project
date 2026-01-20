@@ -80,7 +80,7 @@ export class AuthService {
     try {
       const { data } = await firstValueFrom(
         this.httpService.post<ICurrentUser>(`${this.authServiceUrl}/validate`, {
-          access_token: token 
+          access_token: token,
         }),
       );
       return data;

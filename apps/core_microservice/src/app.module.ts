@@ -4,7 +4,7 @@ import { AppService } from './app.service';
 import { PostModule } from './post/post.module';
 import { UserModule } from './user/user.module';
 import { AccountModule } from './account/account.module';
-import { ProfileModule } from './profile/profile.module';
+import { ProfilesModule } from './profiles/profiles.module';
 import { FollowModule } from './follow/follow.module';
 import { AssetModule } from './asset/asset.module';
 import { CommentModule } from './comment/comment.module';
@@ -21,7 +21,7 @@ import { ConfigModule } from '@nestjs/config';
     PostModule,
     UserModule,
     AccountModule,
-    ProfileModule,
+    ProfilesModule,
     FollowModule,
     AssetModule,
     CommentModule,
@@ -34,7 +34,8 @@ import { ConfigModule } from '@nestjs/config';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
-    }),  ],
+    }),
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

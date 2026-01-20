@@ -13,7 +13,7 @@ import { CurrentUser } from '../decorators/current-user.decorator';
 import type { ICurrentUser } from '../auth/interfaces/ICurrentUser';
 
 @ApiTags('Profiles')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard)
 @Controller('profiles')
 export class ProfilesController {

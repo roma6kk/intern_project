@@ -8,7 +8,8 @@ import { PrismaService } from '../database/prisma.service';
 import { FilesService } from '../files/files.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
-import { PaginationDto } from './dto/pagination.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class PostService {
@@ -65,7 +66,6 @@ export class PostService {
     }
   }
 
-
   async getFeed(userId: string, pagination: PaginationDto) {
     const { page = 1, limit = 10 } = pagination;
     const skip = (page - 1) * limit;
@@ -111,8 +111,8 @@ export class PostService {
     const { page = 1, limit = 10, search } = pagination;
     const skip = (page - 1) * limit;
 
-    const whereClause: any = { isArchived: false };
-    
+    const whereClause: Prisma.PostWhereInput = { isArchived: false };
+
     if (search) {
       whereClause.description = { contains: search, mode: 'insensitive' };
     }
