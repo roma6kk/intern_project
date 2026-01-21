@@ -73,7 +73,10 @@ model Post {
   id          String   @id @default(uuid())
   authorId    String   @map("author_id")
   description String?  @db.Text
-
+  isArchived  Boolean  @default(false) @map("is_archived")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime? @updatedAt @map("updated_at")
+  
   assets      Asset[]
   comments    Comment[]
   likes       Like[]

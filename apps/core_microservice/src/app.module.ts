@@ -13,6 +13,8 @@ import { ChatModule } from './chat/chat.module';
 import { MessageModule } from './message/message.module';
 import { NotificationModule } from './notification/notification.module';
 import { AuthModule } from './auth/auth.module';
+import { FilesModule } from './files/file.module';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
@@ -28,7 +30,11 @@ import { AuthModule } from './auth/auth.module';
     MessageModule,
     NotificationModule,
     AuthModule,
-  ],
+    FilesModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),  ],
   controllers: [AppController],
   providers: [AppService],
 })
