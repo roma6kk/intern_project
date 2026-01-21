@@ -11,13 +11,15 @@ export class FilesService {
 
   constructor(private readonly configService: ConfigService) {
     this.bucketName = this.configService.getOrThrow<string>('AWS_BUCKET_NAME');
-    
+
     this.s3Client = new S3Client({
       region: this.configService.getOrThrow<string>('AWS_REGION'),
       endpoint: this.configService.getOrThrow<string>('AWS_ENDPOINT'),
       credentials: {
         accessKeyId: this.configService.getOrThrow<string>('AWS_ACCESS_KEY_ID'),
-        secretAccessKey: this.configService.getOrThrow<string>('AWS_SECRET_ACCESS_KEY'),
+        secretAccessKey: this.configService.getOrThrow<string>(
+          'AWS_SECRET_ACCESS_KEY',
+        ),
       },
       forcePathStyle: true,
     });

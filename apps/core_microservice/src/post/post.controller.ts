@@ -1,9 +1,21 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, UseInterceptors, UploadedFiles, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  UseInterceptors,
+  UploadedFiles,
+  Query,
+} from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { PostService } from './post.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
-import { PaginationDto } from './dto/pagination.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import type { ICurrentUser } from 'src/auth/interfaces/ICurrentUser';
@@ -28,7 +40,10 @@ export class PostController {
   }
 
   @Get('feed')
-  getFeed(@CurrentUser() user: ICurrentUser, @Query() pagination: PaginationDto) {
+  getFeed(
+    @CurrentUser() user: ICurrentUser,
+    @Query() pagination: PaginationDto,
+  ) {
     return this.postService.getFeed(user.userId, pagination);
   }
 
@@ -37,13 +52,22 @@ export class PostController {
     return this.postService.findAll(pagination);
   }
 
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.postService.findOne(id);
+  }
+
   @Patch(':id/archive')
   archive(@Param('id') id: string, @CurrentUser() user: ICurrentUser) {
     return this.postService.archive(id, user.userId);
   }
 
   @Patch(':id')
-  update(@CurrentUser() user: ICurrentUser, @Param('id') id: string, @Body() updatePostDto: UpdatePostDto) {
+  update(
+    @CurrentUser() user: ICurrentUser,
+    @Param('id') id: string,
+    @Body() updatePostDto: UpdatePostDto,
+  ) {
     return this.postService.update(id, user.userId, updatePostDto);
   }
 

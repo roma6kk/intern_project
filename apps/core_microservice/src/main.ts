@@ -8,15 +8,18 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(cookieParser());
   app.enableCors({ credentials: true, origin: true });
-  app.useGlobalPipes(new ValidationPipe({
-    transform: true,
-  }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+    }),
+  );
 
   const config = new DocumentBuilder()
     .setTitle('Innogram API')
     .setDescription('The API description')
     .setVersion('1.0')
-    .addBearerAuth(      {
+    .addBearerAuth(
+      {
         type: 'http',
         scheme: 'bearer',
         bearerFormat: 'JWT',
@@ -24,7 +27,8 @@ async function bootstrap() {
         description: 'Enter JWT token',
         in: 'header',
       },
-      'JWT-auth',)
+      'JWT-auth',
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

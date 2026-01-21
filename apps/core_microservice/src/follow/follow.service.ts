@@ -1,6 +1,11 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { CreateFollowDto } from './dto/create-follow.dto';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import { FollowStatus } from '@prisma/client';
 
 @Injectable()
 export class FollowService {
@@ -8,60 +13,188 @@ export class FollowService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createFollowDto: CreateFollowDto) {
+  async follow(followerId: string, targetUserId: string) {
+    if (followerId === targetUserId) {
+      throw new BadRequestException('You cannot follow yourself');
+    }
+
     try {
-      const follow = await this.prisma.follow.create({
-        data: {
-          followerId: createFollowDto.followerId,
-          followingId: createFollowDto.followingId,
+      const targetUser = await this.prisma.user.findUnique({
+        where: { id: targetUserId },
+        include: { profile: true },
+      });
+
+      if (!targetUser) {
+        throw new NotFoundException('User not found');
+      }
+
+      const existingFollow = await this.prisma.follow.findUnique({
+        where: {
+          followerId_followingId: {
+            followerId,
+            followingId: targetUserId,
+          },
         },
       });
 
-      this.logger.log(
-        `Follow created successfully. User ${follow.followerId} is now following ${follow.followingId}`,
-      );
-      return follow;
-    } catch (error) {
-      this.logger.error('Failed to create follow', (error as Error).stack);
-      throw error;
-    }
-  }
+      if (existingFollow) {
+        throw new BadRequestException(
+          existingFollow.status === 'PENDING'
+            ? 'Request already sent'
+            : 'Already following',
+        );
+      }
 
-  async findAll() {
-    const follows = await this.prisma.follow.findMany();
-    this.logger.log(`Retrieved ${follows.length} follow records`);
-    return follows;
-  }
+      const isPrivate = targetUser.profile?.isPrivate ?? false;
+      const status: FollowStatus = isPrivate ? 'PENDING' : 'ACCEPTED';
 
-  async findOne(id: string) {
-    const follow = await this.prisma.follow.findUnique({
-      where: { id },
-    });
-
-    if (!follow) {
-      this.logger.warn(`Follow record with ID ${id} not found`);
-      throw new NotFoundException('Follow record not found');
-    }
-
-    return follow;
-  }
-
-  async remove(id: string) {
-    await this.findOne(id);
-
-    try {
-      const deletedFollow = await this.prisma.follow.delete({
-        where: { id },
+      await this.prisma.follow.create({
+        data: {
+          followerId,
+          followingId: targetUserId,
+          status,
+        },
       });
 
-      this.logger.log(`Follow record ${id} removed successfully`);
-      return deletedFollow;
+      // TODO: Отправить уведомление (NOTIFICATION)
+
+      const message =
+        status === 'PENDING' ? 'Follow request sent' : 'Successfully followed';
+
+      this.logger.log(`User ${followerId} -> ${targetUserId}: ${status}`);
+
+      return { status, message };
     } catch (error) {
-      this.logger.error(
-        `Failed to remove follow record ${id}`,
-        (error as Error).stack,
-      );
+      this.logger.error('Failed to follow user', (error as Error).stack);
       throw error;
     }
+  }
+
+  async unfollow(followerId: string, targetUserId: string) {
+    try {
+      await this.prisma.follow.delete({
+        where: {
+          followerId_followingId: {
+            followerId,
+            followingId: targetUserId,
+          },
+        },
+      });
+
+      this.logger.log(`User ${followerId} unfollowed ${targetUserId}`);
+      return { message: 'Unfollowed successfully' };
+    } catch (error) {
+      this.logger.error('Failed to unfollow', (error as Error).stack);
+      throw new NotFoundException('Follow relationship not found');
+    }
+  }
+
+  async acceptRequest(currentUserId: string, followerId: string) {
+    try {
+      const request = await this.prisma.follow.findUnique({
+        where: {
+          followerId_followingId: {
+            followerId,
+            followingId: currentUserId,
+          },
+        },
+      });
+
+      if (!request || request.status !== 'PENDING') {
+        throw new NotFoundException('No pending request found');
+      }
+
+      await this.prisma.follow.update({
+        where: { id: request.id },
+        data: { status: 'ACCEPTED' },
+      });
+
+      // TODO: Уведомление фолловеру, что его приняли
+
+      this.logger.log(`User ${currentUserId} accepted follower ${followerId}`);
+      return { message: 'Request accepted' };
+    } catch (error) {
+      this.logger.error('Failed to accept request', (error as Error).stack);
+      throw error;
+    }
+  }
+
+  async removeFollower(currentUserId: string, followerId: string) {
+    try {
+      await this.prisma.follow.delete({
+        where: {
+          followerId_followingId: {
+            followerId,
+            followingId: currentUserId,
+          },
+        },
+      });
+
+      this.logger.log(`User ${currentUserId} removed follower ${followerId}`);
+      return { message: 'Follower removed' };
+    } catch (error) {
+      this.logger.error('Failed to remove follower', (error as Error).stack);
+      throw new NotFoundException('Follower not found');
+    }
+  }
+
+  async getFollowers(userId: string) {
+    return this.prisma.follow.findMany({
+      where: {
+        followingId: userId,
+        status: 'ACCEPTED',
+      },
+      select: {
+        follower: {
+          select: {
+            id: true,
+            account: { select: { username: true } },
+            profile: {
+              select: { firstName: true, secondName: true, avatarUrl: true },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async getFollowing(userId: string) {
+    return this.prisma.follow.findMany({
+      where: {
+        followerId: userId,
+        status: 'ACCEPTED',
+      },
+      select: {
+        following: {
+          select: {
+            id: true,
+            account: { select: { username: true } },
+            profile: {
+              select: { firstName: true, secondName: true, avatarUrl: true },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async getPendingRequests(userId: string) {
+    return this.prisma.follow.findMany({
+      where: {
+        followingId: userId,
+        status: 'PENDING',
+      },
+      select: {
+        follower: {
+          select: {
+            id: true,
+            account: { select: { username: true } },
+            profile: {
+              select: { firstName: true, secondName: true, avatarUrl: true },
+            },
+          },
+        },
+      },
+    });
   }
 }

@@ -1,111 +1,79 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { CreateLikeDto } from './dto/create-like.dto';
-import { UpdateLikeDto } from './dto/update-like.dto';
 import { PrismaService } from '../database/prisma.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class LikeService {
-  constructor(private readonly prisma: PrismaService) {}
   private readonly logger = new Logger(LikeService.name);
 
-  async create(createLikeDto: CreateLikeDto) {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async toggleLike(userId: string, targetId: string, type: 'POST' | 'COMMENT') {
     try {
-      const newLike = await this.prisma.like.create({
-        data: {
-          postId: createLikeDto.postId,
-          authorId: createLikeDto.authorId,
-        },
-        include: {
-          author: {
-            select: {
-              id: true,
-              account: {
-                select: {
-                  username: true,
-                },
-              },
-            },
-          },
-        },
+      const whereCondition =
+        type === 'POST'
+          ? { postId: targetId, authorId: userId }
+          : { commentId: targetId, authorId: userId };
+
+      const existingLike = await this.prisma.like.findFirst({
+        where: whereCondition,
       });
 
-      const username = newLike.author.account?.username || newLike.authorId;
+      if (existingLike) {
+        await this.prisma.like.delete({
+          where: { id: existingLike.id },
+        });
 
-      this.logger.log(
-        `Like ${newLike.id} created successfully by ${username}.`,
-      );
-      return newLike;
+        this.logger.log(`User ${userId} unliked ${type} ${targetId}`);
+        return { liked: false, message: 'Unliked' };
+      } else {
+        await this.prisma.like.create({
+          data: {
+            authorId: userId,
+            postId: type === 'POST' ? targetId : null,
+            commentId: type === 'COMMENT' ? targetId : null,
+          },
+        });
+
+        // TODO: Отправить уведомление автору контента (NotificationService)
+
+        this.logger.log(`User ${userId} liked ${type} ${targetId}`);
+        return { liked: true, message: 'Liked' };
+      }
     } catch (error) {
-      this.logger.error(`Failed to create like in DB`, (error as Error).stack);
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2003') {
+          throw new NotFoundException(`${type} with ID ${targetId} not found`);
+        }
+      }
+
+      this.logger.error(
+        `Failed to toggle like for ${type}`,
+        (error as Error).stack,
+      );
       throw error;
     }
   }
 
-  async findAll() {
-    return this.prisma.like.findMany();
-  }
+  async getLikes(targetId: string, type: 'POST' | 'COMMENT') {
+    const whereCondition =
+      type === 'POST' ? { postId: targetId } : { commentId: targetId };
 
-  async findByPostId(postId: string) {
     return this.prisma.like.findMany({
-      where: {
-        postId: postId,
-      },
-      include: {
+      where: whereCondition,
+      select: {
+        createdAt: true,
         author: {
           select: {
             id: true,
+            account: { select: { username: true } },
             profile: {
               select: { firstName: true, avatarUrl: true },
             },
           },
         },
       },
+      orderBy: { createdAt: 'desc' },
     });
-  }
-
-  async findOne(id: string) {
-    const like = await this.prisma.like.findUnique({
-      where: { id },
-    });
-
-    if (!like) {
-      this.logger.warn(`Like ${id} not found`);
-      throw new NotFoundException('Like not found');
-    }
-    return like;
-  }
-
-  async update(id: string, updateLikeDto: UpdateLikeDto) {
-    await this.findOne(id);
-
-    try {
-      const updatedLike = await this.prisma.like.update({
-        where: { id },
-        data: {
-          authorId: updateLikeDto.authorId,
-          postId: updateLikeDto.postId,
-        },
-      });
-      this.logger.log(`Like ${id} updated successfully.`);
-      return updatedLike;
-    } catch (error) {
-      this.logger.error(`Failed to update like ${id}`, (error as Error).stack);
-      throw error;
-    }
-  }
-
-  async remove(id: string) {
-    await this.findOne(id);
-
-    try {
-      await this.prisma.like.delete({
-        where: { id },
-      });
-      this.logger.log(`Like ${id} deleted successfully.`);
-      return { id, deleted: true };
-    } catch (error) {
-      this.logger.error(`Failed to delete like ${id}`, (error as Error).stack);
-      throw error;
-    }
   }
 }
