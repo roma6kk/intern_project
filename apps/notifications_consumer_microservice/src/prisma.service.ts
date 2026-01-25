@@ -9,11 +9,6 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   constructor(private configService: ConfigService) {
     const url = configService.get<string>('DATABASE_URL');
 
-    if (!url) {
-      console.error('DATABASE_URL is required but not found in environment variables');
-      throw new Error('DATABASE_URL is required but not found in environment variables');
-    }
-
     if (!process.env.DATABASE_URL) {
       process.env.DATABASE_URL = url;
     }

@@ -48,15 +48,14 @@ export class NotificationsService extends PrismaClient implements OnModuleInit, 
 
       const email = savedNotification.recipient.account?.email;
       if (email) {
-        this.logger.log(`Sending email notification to ${email} for notification type ${data.type}`);
-        await this.mailerService.sendEmail(
-            email, 
-            'New Notification', 
-            `You have a new notification of type ${data.type}`
-        );
-        this.logger.log(`Email sent successfully to ${email}`);
+          await this.mailerService.sendEmail(
+              email, 
+              'New Notification', 
+              `Type: ${data.type}`
+          );
+          this.logger.log(`Email sent successfully to ${email}`);
       } else {
-        this.logger.warn(`No email found for recipient ${data.recipientId}, skipping email notification`);
+          this.logger.warn(`User has no email, skipping sending.`);
       }
     } catch (error) {
       this.logger.error(

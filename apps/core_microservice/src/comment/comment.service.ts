@@ -69,14 +69,12 @@ export class CommentService {
           itemId: comment.id,
         });
       }
-
-      // Отправляем уведомления упомянутым пользователям
+      
       if (mentionedUsernames.length > 0) {
         this.logger.log(
           `User ${userId} mentioned: ${mentionedUsernames.join(', ')}`,
         );
 
-        // Находим пользователей по username
         const mentionedUsers = await this.prisma.account.findMany({
           where: {
             username: { in: mentionedUsernames },
@@ -86,9 +84,8 @@ export class CommentService {
           },
         });
 
-        // Отправляем уведомления каждому упомянутому пользователю
         const notificationPromises = mentionedUsers
-          .filter((account) => account.userId !== userId) // Не отправляем себе
+          .filter((account) => account.userId !== userId)
           .map((account) =>
             this.notificationService.create({
               type: NotificationType.COMMENT,

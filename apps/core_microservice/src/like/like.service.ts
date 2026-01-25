@@ -40,7 +40,6 @@ export class LikeService {
           },
         });
 
-        // Получаем автора поста или комментария для отправки уведомления
         let recipientId: string;
         if (type === 'POST') {
           const post = await this.prisma.post.findUnique({
@@ -62,7 +61,8 @@ export class LikeService {
           recipientId = comment.authorId;
         }
 
-        // Отправляем уведомление автору контента
+        this.logger.log(`User ${userId} liked ${type} ${targetId}`);
+
         await this.notificationService.create({
           type: NotificationType.LIKE,
           recipientId,
@@ -70,7 +70,6 @@ export class LikeService {
           itemId: targetId,
         });
 
-        this.logger.log(`User ${userId} liked ${type} ${targetId}`);
         return { liked: true, message: 'Liked' };
       }
     } catch (error) {
