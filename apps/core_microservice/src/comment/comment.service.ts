@@ -8,21 +8,21 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { PrismaService } from '../database/prisma.service';
 import { PaginationDto } from '../common/dto/pagination.dto';
+import { NotificationService } from '../notification/notification.service';
+import { NotificationType } from '@prisma/client';
+
 @Injectable()
 export class CommentService {
   private readonly logger = new Logger(CommentService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async create(userId: string, createCommentDto: CreateCommentDto) {
     try {
       const mentionedUsernames = this.extractMentions(createCommentDto.content);
-      if (mentionedUsernames.length > 0) {
-        this.logger.log(
-          `User ${userId} mentioned: ${mentionedUsernames.join(', ')}`,
-        );
-        // TODO: NotificationService.notifyMentions(...)
-      }
 
       const comment = await this.prisma.comment.create({
         data: {
@@ -41,6 +41,65 @@ export class CommentService {
           },
         },
       });
+
+      let recipientId: string | undefined = undefined;
+      if (createCommentDto.parentId) {
+        const parentComment = await this.prisma.comment.findUnique({
+          where: { id: createCommentDto.parentId },
+          select: { authorId: true },
+        });
+        if (parentComment) {
+          recipientId = parentComment.authorId;
+        }
+      } else {
+        const post = await this.prisma.post.findUnique({
+          where: { id: createCommentDto.postId },
+          select: { authorId: true },
+        });
+        if (post) {
+          recipientId = post.authorId;
+        }
+      }
+
+      if (recipientId && recipientId !== userId) {
+        await this.notificationService.create({
+          type: NotificationType.COMMENT,
+          recipientId,
+          actorId: userId,
+          itemId: comment.id,
+        });
+      }
+
+      // Отправляем уведомления упомянутым пользователям
+      if (mentionedUsernames.length > 0) {
+        this.logger.log(
+          `User ${userId} mentioned: ${mentionedUsernames.join(', ')}`,
+        );
+
+        // Находим пользователей по username
+        const mentionedUsers = await this.prisma.account.findMany({
+          where: {
+            username: { in: mentionedUsernames },
+          },
+          select: {
+            userId: true,
+          },
+        });
+
+        // Отправляем уведомления каждому упомянутому пользователю
+        const notificationPromises = mentionedUsers
+          .filter((account) => account.userId !== userId) // Не отправляем себе
+          .map((account) =>
+            this.notificationService.create({
+              type: NotificationType.COMMENT,
+              recipientId: account.userId,
+              actorId: userId,
+              itemId: comment.id,
+            }),
+          );
+
+        await Promise.all(notificationPromises);
+      }
 
       this.logger.log(`Comment created. ID: ${comment.id}`);
       return comment;

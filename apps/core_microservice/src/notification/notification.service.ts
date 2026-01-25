@@ -1,39 +1,43 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
+import { ClientProxy } from '@nestjs/microservices';
 import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
-export class NotificationService {
+export class NotificationService implements OnModuleInit {
   private readonly logger = new Logger(NotificationService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, 
+    @Inject('NOTIFICATIONS_SERVICE') private readonly client: ClientProxy) {}
 
-  async create(createNotificationDto: CreateNotificationDto) {
+  async onModuleInit() {
     try {
-      const notification = await this.prisma.notification.create({
-        data: {
-          type: createNotificationDto.type,
-          itemId: createNotificationDto.itemId,
-          recipient: {
-            connect: { id: createNotificationDto.recipientId },
-          },
-          actor: {
-            connect: { id: createNotificationDto.actorId },
-          },
+      await this.client.connect();
+      this.logger.log('NotificationService: RabbitMQ client connected successfully');
+    } catch (error) {
+      this.logger.error('NotificationService: Failed to connect RabbitMQ client', (error as Error).stack);
+    }
+  }
+
+  async create(dto: CreateNotificationDto) {
+    if (dto.actorId === dto.recipientId) {
+      this.logger.debug(`Skipping notification: actor and recipient are the same (${dto.actorId})`);
+      return;
+    }
+    
+    try {
+      this.logger.log(`Sending notification event to queue: type=${dto.type}, recipientId=${dto.recipientId}, actorId=${dto.actorId}, itemId=${dto.itemId}`);
+      this.client.emit('notification_created', dto).subscribe({
+        next: () => {
+          this.logger.log(`Notification event sent successfully: type=${dto.type}`);
+        },
+        error: (error) => {
+          this.logger.error(`Failed to send notification event: type=${dto.type}`, (error as Error).stack);
         },
       });
-
-      this.logger.log(
-        `Notification created successfully. ID: ${notification.id}`,
-      );
-      return notification;
     } catch (error) {
-      this.logger.error(
-        'Failed to create notification',
-        (error as Error).stack,
-      );
-      throw error;
+      this.logger.error(`Error emitting notification event: type=${dto.type}`, (error as Error).stack);
     }
   }
 

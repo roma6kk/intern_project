@@ -6,21 +6,42 @@ import {
   Patch,
   Param,
   Delete,
+  UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import type { ICurrentUser } from 'src/auth/interfaces/ICurrentUser';
 import { ChatService } from './chat.service';
 import { CreateChatDto } from './dto/create-chat.dto';
 import { UpdateChatDto } from './dto/update-chat.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ChatGateway } from './chat.gateway';
+import { CurrentUser } from '../decorators/current-user.decorator';
 
-@Controller('chat')
+@ApiTags('Chats')
+@ApiBearerAuth('JWT-auth')
+@UseGuards(JwtAuthGuard)
+@Controller('chats')
 export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly chatGateway: ChatGateway,
+  ) {}
 
   @Post()
-  create(@Body() createChatDto: CreateChatDto) {
-    return this.chatService.create(createChatDto);
+  @ApiOperation({ summary: 'Create a private or group chat' })
+  create(
+    @CurrentUser() user: ICurrentUser,
+    @Body() createChatDto: CreateChatDto,
+  ) {
+    return this.chatService.create(user.userId, createChatDto);
   }
 
-  @Get(':userId')
+  @Get('online')
+  async getOnlineUsers() {
+    return await this.chatGateway.getOnlineUsers();
+  }
+
+  @Get('user/:userId')
   findAllByUserId(@Param('userId') userId: string) {
     return this.chatService.findAllByUser(userId);
   }

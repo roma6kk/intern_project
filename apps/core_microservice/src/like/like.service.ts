@@ -1,12 +1,17 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { Prisma } from '@prisma/client';
+import { NotificationService } from '../notification/notification.service';
+import { NotificationType } from '@prisma/client';
 
 @Injectable()
 export class LikeService {
   private readonly logger = new Logger(LikeService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async toggleLike(userId: string, targetId: string, type: 'POST' | 'COMMENT') {
     try {
@@ -35,7 +40,35 @@ export class LikeService {
           },
         });
 
-        // TODO: Отправить уведомление автору контента (NotificationService)
+        // Получаем автора поста или комментария для отправки уведомления
+        let recipientId: string;
+        if (type === 'POST') {
+          const post = await this.prisma.post.findUnique({
+            where: { id: targetId },
+            select: { authorId: true },
+          });
+          if (!post) {
+            throw new NotFoundException(`Post with ID ${targetId} not found`);
+          }
+          recipientId = post.authorId;
+        } else {
+          const comment = await this.prisma.comment.findUnique({
+            where: { id: targetId },
+            select: { authorId: true },
+          });
+          if (!comment) {
+            throw new NotFoundException(`Comment with ID ${targetId} not found`);
+          }
+          recipientId = comment.authorId;
+        }
+
+        // Отправляем уведомление автору контента
+        await this.notificationService.create({
+          type: NotificationType.LIKE,
+          recipientId,
+          actorId: userId,
+          itemId: targetId,
+        });
 
         this.logger.log(`User ${userId} liked ${type} ${targetId}`);
         return { liked: true, message: 'Liked' };

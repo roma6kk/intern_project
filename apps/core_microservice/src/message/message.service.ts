@@ -1,56 +1,75 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { UpdateMessageDto } from './dto/update-message.dto';
 import { PrismaService } from '../database/prisma.service';
+import { ChatGateway } from '../chat/chat.gateway';
+import { FilesService } from '../files/files.service';
 
 @Injectable()
 export class MessageService {
-  constructor(private readonly prisma: PrismaService) {}
   private readonly logger = new Logger(MessageService.name);
 
-  async create(createMessageDto: CreateMessageDto) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly chatGateway: ChatGateway,
+    private readonly filesService: FilesService,
+  ) {}
+
+  async create(
+    senderId: string,
+    createMessageDto: CreateMessageDto,
+    files?: Array<Express.Multer.File>,
+  ) {
+    if (!createMessageDto.content && (!files || files.length === 0)) {
+      throw new BadRequestException('Message must have content or attachments');
+    }
+
     try {
+      const assetUrls: string[] = [];
+      if (files && files.length > 0) {
+        const uploadPromises = files.map((file) =>
+          this.filesService.uploadFile(file),
+        );
+        assetUrls.push(...(await Promise.all(uploadPromises)));
+      }
+
       const newMessage = await this.prisma.message.create({
         data: {
           content: createMessageDto.content,
-          chat: {
-            connect: { id: createMessageDto.chatId },
-          },
-          sender: {
-            connect: { id: createMessageDto.senderId },
+          chat: { connect: { id: createMessageDto.chatId } },
+          sender: { connect: { id: senderId } },
+
+          assets: {
+            create: assetUrls.map((url) => ({
+              url,
+              type: 'IMAGE',
+            })),
           },
         },
         include: {
           sender: {
             select: {
               id: true,
-              account: {
-                select: { username: true },
-              },
-              profile: {
-                select: {
-                  firstName: true,
-                  avatarUrl: true,
-                },
-              },
+              profile: { select: { firstName: true, avatarUrl: true } },
             },
           },
+          assets: true,
         },
       });
 
-      const username =
-        newMessage.sender.account?.username || newMessage.sender.id;
+      this.chatGateway.sendNewMessage(createMessageDto.chatId, newMessage);
 
       this.logger.log(
-        `Message ${newMessage.id} created successfully by ${username}`,
+        `Message ${newMessage.id} sent to chat ${createMessageDto.chatId}`,
       );
-
       return newMessage;
     } catch (error) {
-      this.logger.error(
-        `Failed to create new message in DB`,
-        (error as Error).stack,
-      );
+      this.logger.error(`Failed to create message`, (error as Error).stack);
       throw error;
     }
   }
@@ -103,15 +122,28 @@ export class MessageService {
   }
 
   async update(id: string, updateMessageDto: UpdateMessageDto) {
-    await this.findOne(id);
+    const oldMessage = await this.findOne(id);
 
     try {
       const updatedMessage = await this.prisma.message.update({
         where: { id },
-        data: updateMessageDto,
+        data: {
+          ...updateMessageDto,
+          isEdited: true,
+        },
+        include: {
+          sender: {
+            select: {
+              id: true,
+              profile: { select: { firstName: true, avatarUrl: true } },
+            },
+          },
+        },
       });
 
-      this.logger.log(`Message ${id} updated successfully.`);
+      this.chatGateway.sendMessageUpdate(oldMessage.chatId, updatedMessage);
+
+      this.logger.log(`Message ${id} updated`);
       return updatedMessage;
     } catch (error) {
       this.logger.error(
@@ -123,14 +155,16 @@ export class MessageService {
   }
 
   async remove(id: string) {
-    await this.findOne(id);
+    const message = await this.findOne(id);
 
     try {
       await this.prisma.message.delete({
         where: { id },
       });
 
-      this.logger.log(`Message ${id} deleted successfully.`);
+      this.chatGateway.sendMessageDelete(message.chatId, id);
+
+      this.logger.log(`Message ${id} deleted`);
       return { id, deleted: true };
     } catch (error) {
       this.logger.error(
