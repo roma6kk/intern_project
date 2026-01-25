@@ -5,13 +5,17 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
-import { FollowStatus } from '@prisma/client';
+import { FollowStatus, NotificationType } from '@prisma/client';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class FollowService {
   private readonly logger = new Logger(FollowService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async follow(followerId: string, targetUserId: string) {
     if (followerId === targetUserId) {
@@ -56,7 +60,11 @@ export class FollowService {
         },
       });
 
-      // TODO: Отправить уведомление (NOTIFICATION)
+      await this.notificationService.create({
+        type: NotificationType.FOLLOW,
+        recipientId: targetUserId,
+        actorId: followerId,
+      });
 
       const message =
         status === 'PENDING' ? 'Follow request sent' : 'Successfully followed';
@@ -109,7 +117,12 @@ export class FollowService {
         data: { status: 'ACCEPTED' },
       });
 
-      // TODO: Уведомление фолловеру, что его приняли
+      // Отправляем уведомление фолловеру, что его запрос принят
+      await this.notificationService.create({
+        type: NotificationType.FOLLOW,
+        recipientId: followerId,
+        actorId: currentUserId,
+      });
 
       this.logger.log(`User ${currentUserId} accepted follower ${followerId}`);
       return { message: 'Request accepted' };

@@ -1,17 +1,26 @@
-import { IsString, IsNotEmpty, MaxLength, IsUUID } from 'class-validator';
-export class CreateMessageDto {
-  @IsString({ message: 'Content must be a string' })
-  @IsNotEmpty({ message: 'Content can not be empty' })
-  @MaxLength(255, {
-    message: 'Content length can not be larger than 255 symbols',
-  })
-  content: string;
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 
+export class CreateMessageDto {
+  @ApiProperty({ description: 'ID of the chat' })
   @IsUUID()
   @IsNotEmpty({ message: 'Chat ID can not be empty' })
   chatId: string;
 
-  @IsUUID()
-  @IsNotEmpty({ message: 'Sender ID can not be empty' })
-  senderId: string;
+  @ApiPropertyOptional({
+    description: 'Text content (optional if file attached)',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(5000, { message: 'Message is too long' })
+  content?: string;
+
+  @ApiPropertyOptional({ type: 'string', format: 'binary', isArray: true })
+  files?: any[];
 }
