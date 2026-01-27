@@ -13,7 +13,7 @@ async function bootstrap() {
   await redisIoAdapter.connectToRedis();
   app.useWebSocketAdapter(redisIoAdapter);
   app.use(cookieParser());
-  app.enableCors({ credentials: true, origin: true });
+  app.enableCors({ credentials: true, origin: 'http://localhost:3002' });
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,

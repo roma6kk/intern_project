@@ -83,7 +83,7 @@ export class AuthController {
   async handleOAuthCallback(
     @Param('provider') provider: string,
     @Query('code') code: string,
-    @Res({ passthrough: true }) res: Response,
+    @Res() res: Response,
   ) {
     const result = await this.authService.handleOAuthCallback(provider, code);
 
@@ -92,7 +92,9 @@ export class AuthController {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    return result;
+    return res.redirect(
+      `http://localhost:3002/auth/callback?accessToken=${result.accessToken}`
+    );
   }
 
   @Post('logout')
