@@ -5,6 +5,7 @@
     "build": "turbo run build",
     "dev": "turbo dev --parallel",
     "lint": "turbo run lint --fix",
+    "db:generate": "turbo db:generate",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types"
   },
