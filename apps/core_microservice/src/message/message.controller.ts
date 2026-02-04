@@ -6,18 +6,41 @@ import {
   Patch,
   Param,
   Delete,
+  UseGuards,
+  UseInterceptors,
+  UploadedFiles,
 } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import type { ICurrentUser } from 'src/auth/interfaces/ICurrentUser';
 import { MessageService } from './message.service';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { UpdateMessageDto } from './dto/update-message.dto';
+import { CurrentUser } from '../decorators/current-user.decorator';
 
-@Controller('message')
+@ApiTags('Messages')
+@ApiBearerAuth('JWT-auth')
+@UseGuards(JwtAuthGuard)
+@Controller('messages')
 export class MessageController {
   constructor(private readonly messageService: MessageService) {}
 
   @Post()
-  create(@Body() createMessageDto: CreateMessageDto) {
-    return this.messageService.create(createMessageDto);
+  @ApiOperation({ summary: 'Send a message (with optional files)' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FilesInterceptor('files', 5))
+  create(
+    @CurrentUser() user: ICurrentUser,
+    @Body() createMessageDto: CreateMessageDto,
+    @UploadedFiles() files: Array<Express.Multer.File>,
+  ) {
+    return this.messageService.create(user.userId, createMessageDto, files);
   }
 
   @Get(':chatId')

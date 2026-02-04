@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateChatDto } from './dto/create-chat.dto';
 import { UpdateChatDto } from './dto/update-chat.dto';
 import { PrismaService } from '../database/prisma.service';
+import { ChatType } from '@prisma/client';
 
 @Injectable()
 export class ChatService {
@@ -9,12 +10,26 @@ export class ChatService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createChatDto: CreateChatDto) {
+  async create(currentUserId: string, createChatDto: CreateChatDto) {
+    const uniqueMemberIds = new Set([
+      ...createChatDto.memberIds,
+      currentUserId,
+    ]);
+    const membersList = Array.from(uniqueMemberIds).map((id) => ({ id }));
+
+    let type = createChatDto.type || ChatType.PRIVATE;
+
+    if (uniqueMemberIds.size > 2) {
+      type = ChatType.GROUP;
+    }
+
     try {
       const chat = await this.prisma.chat.create({
         data: {
+          type: type,
+          name: createChatDto.name,
           members: {
-            connect: createChatDto.memberIds.map((id) => ({ id })),
+            connect: membersList,
           },
         },
         include: {
@@ -22,21 +37,14 @@ export class ChatService {
             select: {
               id: true,
               profile: {
-                select: {
-                  firstName: true,
-                  secondName: true,
-                  avatarUrl: true,
-                },
-              },
-              account: {
-                select: { username: true },
+                select: { firstName: true, secondName: true, avatarUrl: true },
               },
             },
           },
         },
       });
 
-      this.logger.log(`Chat created successfully. ID: ${chat.id}`);
+      this.logger.log(`Chat "${chat.id}" created by ${currentUserId}`);
       return chat;
     } catch (error) {
       this.logger.error('Failed to create chat', (error as Error).stack);
