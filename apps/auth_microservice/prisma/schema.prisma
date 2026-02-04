@@ -51,6 +51,7 @@ model Profile {
   avatarUrl  String?   @map("avatar_url")
   bio        String? 
   birthday   DateTime?
+  isPrivate  Boolean   @default(false) @map("is_private")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@map("profiles")
@@ -61,6 +62,7 @@ model Follow {
   followerId  String   @map("follower_id")
   followingId String   @map("following_id")
   createdAt   DateTime @default(now()) @map("created_at")
+  status      FollowStatus @default(ACCEPTED)
 
   follower    User     @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
   following   User     @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
@@ -90,8 +92,10 @@ model Asset {
   url    String
   type   AssetType @default(IMAGE)
   postId String?   @map("post_id")
+  messageId String? @map("message_id")
 
   post   Post?     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  message Message? @relation(fields: [messageId], references: [id], onDelete: Cascade)
   @@map("assets")
 }
   
@@ -99,8 +103,12 @@ model Comment {
   id        String   @id @default(uuid())
   authorId  String   @map("author_id")
   postId    String   @map("post_id")
+  parentId    String?   @map("parent_id")
   content   String
   createdAt DateTime @default(now()) @map("created_at")
+  parent      Comment?  @relation("CommentChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children    Comment[] @relation("CommentChildren")
+  likes       Like[]
 
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
@@ -110,17 +118,25 @@ model Comment {
 model Like {
   id        String   @id @default(uuid())
   authorId  String   @map("author_id")
-  postId    String   @map("post_id")
+  postId      String?   @map("post_id")
+  commentId   String?   @map("comment_id")
   createdAt DateTime @default(now()) @map("created_at")
 
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  post        Post?     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment     Comment?  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  @@unique([authorId, postId])
+  @@unique([authorId, commentId])
+
   @@map("likes")
 }
 
 model Chat {
   id       String    @id @default(uuid())
-  
+  name      String?
+  type      ChatType @default(PRIVATE)
+
   members  User[]
   messages Message[]
 
@@ -129,11 +145,15 @@ model Chat {
 
 model Message {
   id        String   @id @default(uuid())
-  content   String   @db.Text
+  content   String?   @db.Text
   isRead    Boolean  @default(false) @map("is_read")
+  isEdited  Boolean  @default(false) @map("is_edited")
   chatId    String   @map("chat_id")
   senderId  String   @map("sender_id")
   createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime? @updatedAt @map("updated_at")
+
+  assets Asset[]
 
   chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
   sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
@@ -163,4 +183,14 @@ enum NotificationType {
 enum AssetType {
   IMAGE
   VIDEO
+}
+
+enum FollowStatus {
+  PENDING
+  ACCEPTED
+}
+
+enum ChatType {
+  PRIVATE
+  GROUP
 }

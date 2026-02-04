@@ -56,14 +56,16 @@ export class LikeService {
             select: { authorId: true },
           });
           if (!comment) {
-            throw new NotFoundException(`Comment with ID ${targetId} not found`);
+            throw new NotFoundException(
+              `Comment with ID ${targetId} not found`,
+            );
           }
           recipientId = comment.authorId;
         }
 
         this.logger.log(`User ${userId} liked ${type} ${targetId}`);
 
-        await this.notificationService.create({
+        this.notificationService.create({
           type: NotificationType.LIKE,
           recipientId,
           actorId: userId,

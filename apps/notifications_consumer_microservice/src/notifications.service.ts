@@ -1,6 +1,13 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, NotificationType } from '@prisma/client';
 import { MailerService } from './mailer.service';
+
+interface NotificationData {
+  type: string;
+  recipientId: string;
+  actorId: string;
+  itemId?: string;
+}
 
 @Injectable()
 export class NotificationsService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
@@ -30,23 +37,29 @@ export class NotificationsService extends PrismaClient implements OnModuleInit, 
     }
   
 
-  async handleNotification(data: any) {
+  async handleNotification(data: NotificationData) {
     try {
       this.logger.log(`Processing notification: type=${data.type}, recipientId=${data.recipientId}, actorId=${data.actorId}`);
       
       const savedNotification = await this.notification.create({
         data: {
-          type: data.type,
+          type: data.type as NotificationType,
           recipientId: data.recipientId,
           actorId: data.actorId,
           itemId: data.itemId,
         },
-        include: { recipient: { include: { account: true } } }
+        include: { 
+          recipient: { 
+            include: { 
+              account: true 
+            } 
+          } 
+        }
       });
 
       this.logger.log(`Notification created successfully with ID: ${savedNotification.id}`);
 
-      const email = savedNotification.recipient.account?.email;
+      const email = savedNotification.recipient?.account?.email;
       if (email) {
           await this.mailerService.sendEmail(
               email, 

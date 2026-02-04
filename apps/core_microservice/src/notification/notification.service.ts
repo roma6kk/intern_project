@@ -33,7 +33,7 @@ export class NotificationService implements OnModuleInit {
     }
   }
 
-  async create(dto: CreateNotificationDto) {
+  create(dto: CreateNotificationDto) {
     if (dto.actorId === dto.recipientId) {
       this.logger.debug(
         `Skipping notification: actor and recipient are the same (${dto.actorId})`,

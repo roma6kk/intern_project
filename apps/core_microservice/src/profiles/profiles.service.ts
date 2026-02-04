@@ -36,6 +36,40 @@ export class ProfilesService {
     }
   }
 
+  async getProfileByUsername(username: string) {
+    try {
+      const profile = await this.prisma.profile.findFirst({
+        where: {
+          user: {
+            account: {
+              username,
+            },
+          },
+        },
+        include: {
+          user: {
+            include: {
+              account: { select: { username: true } },
+            },
+          },
+        },
+      });
+
+      if (!profile) {
+        this.logger.warn(`Profile for username ${username} not found`);
+        throw new NotFoundException('Profile not found');
+      }
+
+      return profile;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching profile for username ${username}`,
+        (error as Error).stack,
+      );
+      throw error;
+    }
+  }
+
   async updateProfile(userId: string, dto: UpdateProfileDto) {
     await this.getMyProfile(userId);
 

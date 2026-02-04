@@ -89,10 +89,20 @@ export class AuthService {
     }
   }
 
-  handleOAuthInit(provider: string): { url: string } {
-    return { url: `${this.authServiceUrl}/${provider}` };
-  }
+  async handleOAuthInit() {
+    const { data } = await firstValueFrom(
+      this.httpService
+        .get<{ url: string }>(`${this.authServiceUrl}/oauth/initiate`)
+        .pipe(
+          catchError((error: AxiosError) => {
+            this.handleAxiosError(error);
+            throw error;
+          }),
+        ),
+    );
 
+    return data;
+  }
   async handleOAuthCallback(
     provider: string,
     code: string,

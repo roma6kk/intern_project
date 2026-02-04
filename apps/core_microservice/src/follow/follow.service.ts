@@ -60,7 +60,7 @@ export class FollowService {
         },
       });
 
-      await this.notificationService.create({
+      this.notificationService.create({
         type: NotificationType.FOLLOW,
         recipientId: targetUserId,
         actorId: followerId,
@@ -118,7 +118,7 @@ export class FollowService {
       });
 
       // Отправляем уведомление фолловеру, что его запрос принят
-      await this.notificationService.create({
+      this.notificationService.create({
         type: NotificationType.FOLLOW,
         recipientId: followerId,
         actorId: currentUserId,

@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PostModule } from './post/post.module';
-import { UserModule } from './user/user.module';
+import { UsersModule } from './users/users.module';
 import { AccountModule } from './account/account.module';
 import { ProfilesModule } from './profiles/profiles.module';
 import { FollowModule } from './follow/follow.module';
@@ -19,7 +19,7 @@ import { ConfigModule } from '@nestjs/config';
 @Module({
   imports: [
     PostModule,
-    UserModule,
+    UsersModule,
     AccountModule,
     ProfilesModule,
     FollowModule,

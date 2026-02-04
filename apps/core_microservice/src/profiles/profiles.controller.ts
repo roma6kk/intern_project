@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Put, UseGuards, Param } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -24,6 +24,20 @@ export class ProfilesController {
   @ApiResponse({ status: 200, description: 'Return profile data' })
   async getMyProfile(@CurrentUser() user: ICurrentUser) {
     return this.profilesService.getMyProfile(user.userId);
+  }
+
+  @Get('by-username/:username')
+  @ApiOperation({ summary: 'Get user profile by username' })
+  @ApiResponse({ status: 200, description: 'Return profile data' })
+  async getUserProfileByUsername(@Param('username') username: string) {
+    return this.profilesService.getProfileByUsername(username);
+  }
+
+  @Get(':userId')
+  @ApiOperation({ summary: 'Get user profile by ID' })
+  @ApiResponse({ status: 200, description: 'Return profile data' })
+  async getUserProfile(@Param('userId') userId: string) {
+    return this.profilesService.getMyProfile(userId);
   }
 
   @Put('me')

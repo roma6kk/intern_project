@@ -73,8 +73,8 @@ export class AuthController {
   @Get('login/:provider')
   @ApiOperation({ summary: 'Initiate OAuth 2.0 login' })
   @ApiParam({ name: 'provider', example: 'google' })
-  handleOAuthLogin(@Param('provider') provider: string) {
-    return this.authService.handleOAuthInit(provider);
+  handleOAuthLogin() {
+    return this.authService.handleOAuthInit();
   }
 
   @Get(':provider/callback')
@@ -93,7 +93,7 @@ export class AuthController {
     });
 
     return res.redirect(
-      `http://localhost:3002/auth/callback?accessToken=${result.accessToken}`
+      `http://localhost:3002/auth/callback?accessToken=${result.accessToken}`,
     );
   }
 
