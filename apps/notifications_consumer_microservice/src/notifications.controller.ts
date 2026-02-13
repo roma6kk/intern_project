@@ -2,6 +2,13 @@ import { Controller, Logger } from '@nestjs/common';
 import { EventPattern, Payload } from '@nestjs/microservices';
 import { NotificationsService } from './notifications.service';
 
+interface NotificationData {
+  type: string;
+  recipientId: string;
+  actorId: string;
+  itemId?: string;
+}
+
 @Controller()
 export class NotificationsController {
   private readonly logger = new Logger(NotificationsController.name);
@@ -9,7 +16,7 @@ export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @EventPattern('notification_created')
-  async handleNotificationCreated(@Payload() data: any): Promise<void> {
+  async handleNotificationCreated(@Payload() data: NotificationData): Promise<void> {
     this.logger.log(`Received notification_created event: type=${data.type}, recipientId=${data.recipientId}, actorId=${data.actorId}`);
     try {
       await this.notificationsService.handleNotification(data);

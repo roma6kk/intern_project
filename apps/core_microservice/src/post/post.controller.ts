@@ -47,6 +47,11 @@ export class PostController {
     return this.postService.getFeed(user.userId, pagination);
   }
 
+  @Get('search')
+  search(@Query() pagination: PaginationDto) {
+    return this.postService.findAll(pagination);
+  }
+
   @Get()
   findAll(@Query() pagination: PaginationDto) {
     return this.postService.findAll(pagination);

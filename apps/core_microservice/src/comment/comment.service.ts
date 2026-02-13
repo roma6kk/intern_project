@@ -62,14 +62,14 @@ export class CommentService {
       }
 
       if (recipientId && recipientId !== userId) {
-        await this.notificationService.create({
+        this.notificationService.create({
           type: NotificationType.COMMENT,
           recipientId,
           actorId: userId,
           itemId: comment.id,
         });
       }
-      
+
       if (mentionedUsernames.length > 0) {
         this.logger.log(
           `User ${userId} mentioned: ${mentionedUsernames.join(', ')}`,
@@ -84,9 +84,9 @@ export class CommentService {
           },
         });
 
-        const notificationPromises = mentionedUsers
+        mentionedUsers
           .filter((account) => account.userId !== userId)
-          .map((account) =>
+          .forEach((account) =>
             this.notificationService.create({
               type: NotificationType.COMMENT,
               recipientId: account.userId,
@@ -94,8 +94,6 @@ export class CommentService {
               itemId: comment.id,
             }),
           );
-
-        await Promise.all(notificationPromises);
       }
 
       this.logger.log(`Comment created. ID: ${comment.id}`);
