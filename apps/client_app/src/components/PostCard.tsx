@@ -37,7 +37,6 @@ export default function PostCard({ post }: { post: Post }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
-  const [isVisible, setIsVisible] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const articleRef = useRef<HTMLElement | null>(null);
@@ -110,8 +109,6 @@ export default function PostCard({ post }: { post: Post }) {
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        setIsVisible(entry.isIntersecting);
-        
         if (videoRef.current) {
           if (entry.isIntersecting) {
             videoRef.current.play().catch(() => {});

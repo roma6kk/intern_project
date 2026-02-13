@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Search } from 'lucide-react';
 import api from '@/lib/api';
@@ -46,7 +46,7 @@ export default function SearchPage() {
     }
   }, [user, isLoading]);
 
-  const searchPosts = async (searchQuery: string, pageNum: number = 1, append: boolean = false) => {
+  const searchPosts = useCallback(async (searchQuery: string, pageNum: number = 1, append: boolean = false) => {
     const hasQuery = Boolean(searchQuery.trim());
 
     setLoading(true);
@@ -97,7 +97,7 @@ export default function SearchPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [sort, filter]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -106,7 +106,7 @@ export default function SearchPage() {
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [query, sort, filter]);
+  }, [query, sort, filter, searchPosts]);
 
   useEffect(() => {
     setPage(1);
@@ -115,7 +115,7 @@ export default function SearchPage() {
     }, 50);
 
     return () => clearTimeout(timeoutId);
-  }, [sort, filter]);
+  }, [query, sort, filter, searchPosts]);
 
   const loadMore = () => {
     if (!loading && hasMore) {

@@ -28,7 +28,7 @@ export class PostService {
     try {
       const assetUrls: string[] = [];
       if (files && files.length > 0) {
-        const uploadPromises = files.map((file) =>
+        const uploadPromises: Promise<string>[] = files.map((file) =>
           this.filesService.uploadFile(file),
         );
         const urls = await Promise.all(uploadPromises);
@@ -67,7 +67,12 @@ export class PostService {
   }
 
   async getFeed(userId: string, pagination: PaginationDto) {
-    const { page = 1, limit = 10, sort = 'newest', mediaOnly = false } = pagination;
+    const {
+      page = 1,
+      limit = 10,
+      sort = 'newest',
+      mediaOnly = false,
+    } = pagination;
     const skip = (page - 1) * limit;
 
     const following = await this.prisma.follow.findMany({
@@ -87,19 +92,17 @@ export class PostService {
       whereClause['assets'] = { some: {} };
     }
 
-    let orderByClause: any = { createdAt: 'desc' };
-    if (sort === 'oldest') {
-      orderByClause = { createdAt: 'asc' };
-    } else if (sort === 'trending') {
-      orderByClause = { likes: { _count: 'desc' } };
-    }
-
     const [posts, total] = await Promise.all([
       this.prisma.post.findMany({
         where: whereClause,
         take: limit,
         skip: skip,
-        orderBy: orderByClause,
+        orderBy:
+          sort === 'oldest'
+            ? { createdAt: 'asc' }
+            : sort === 'trending'
+              ? { likes: { _count: 'desc' } }
+              : { createdAt: 'desc' },
         include: {
           assets: true,
           author: {
@@ -119,7 +122,13 @@ export class PostService {
   }
 
   async findAll(pagination: PaginationDto) {
-    const { page = 1, limit = 10, search, sort = 'newest', mediaOnly = false, followingOnly = false } = pagination;
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      sort = 'newest',
+      mediaOnly = false,
+    } = pagination;
     const skip = (page - 1) * limit;
 
     const whereClause: Prisma.PostWhereInput = { isArchived: false };
@@ -132,19 +141,17 @@ export class PostService {
       whereClause.assets = { some: {} };
     }
 
-    let orderByClause: any = { createdAt: 'desc' };
-    if (sort === 'oldest') {
-      orderByClause = { createdAt: 'asc' };
-    } else if (sort === 'trending') {
-      orderByClause = { likes: { _count: 'desc' } };
-    }
-
     const [posts, total] = await Promise.all([
       this.prisma.post.findMany({
         where: whereClause,
         take: limit,
         skip: skip,
-        orderBy: orderByClause,
+        orderBy:
+          sort === 'oldest'
+            ? { createdAt: 'asc' }
+            : sort === 'trending'
+              ? { likes: { _count: 'desc' } }
+              : { createdAt: 'desc' },
         include: {
           assets: true,
           author: {

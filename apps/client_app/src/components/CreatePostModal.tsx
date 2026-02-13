@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { X, Upload, ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
 import api from '@/lib/api';
@@ -17,8 +17,7 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
   const [previews, setPreviews] = useState<string[]>([]);
   const [fileTypes, setFileTypes] = useState<('image' | 'video')[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const touchStartX = useRef<number | null>(null);
-  const touchDeltaX = useRef<number>(0);
+  
   const [caption, setCaption] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
@@ -106,7 +105,6 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-hidden">
-        {/* Заголовок */}
         <div className="flex items-center justify-between p-4 border-b">
           {step === 'caption' && (
             <button onClick={handleBack} className="p-1">
@@ -121,13 +119,10 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
           </button>
         </div>
 
-        {/* Содержимое */}
         <div className="p-4">
           {step === 'upload' ? (
             <div className="space-y-4">
-              {/* Загрузка файла */}
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                {/* Preview gallery (if any) */}
                 {previews.length > 0 && (
                   <div className="space-y-4">
                     <div className="border rounded-lg overflow-hidden relative">
@@ -178,7 +173,6 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
                   </div>
                 )}
 
-                {/* Upload area / add more */}
                 <div className="space-y-4 pt-4">
                   <Upload className="w-12 h-12 mx-auto text-gray-400" />
                   <div>
@@ -202,7 +196,6 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
                 </div>
               </div>
 
-              {/* Кнопки */}
               <div className="flex gap-2">
                 <button
                   onClick={handleSkipUpload}
@@ -220,7 +213,6 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Предпросмотр изображения/видео */}
               {previews.length > 0 && (
                 <div className="border rounded-lg overflow-hidden">
                   {fileTypes[currentIndex] === 'image' ? (
@@ -241,7 +233,6 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
                 </div>
               )}
 
-              {/* Информация о пользователе */}
               <div className="flex items-center gap-3 text-gray-600">
                 <Image
                   src={user?.profile?.avatarUrl || '/default-avatar.svg'}
@@ -253,7 +244,6 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
                 <span className="font-medium">{user?.username || 'Пользователь'}</span>
               </div>
 
-              {/* Поле для описания */}
               <div>
                 <textarea
                   value={caption}
@@ -267,7 +257,6 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
                 </div>
               </div>
 
-              {/* Кнопка публикации */}
               <button
                 onClick={handleSubmit}
                 disabled={!caption.trim() || isSubmitting}

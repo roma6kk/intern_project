@@ -32,7 +32,9 @@ export class PaginationDto {
   @IsOptional()
   mediaOnly?: boolean = false;
 
-  @ApiPropertyOptional({ description: 'Filter posts from following users only' })
+  @ApiPropertyOptional({
+    description: 'Filter posts from following users only',
+  })
   @Type(() => Boolean)
   @IsBoolean()
   @IsOptional()
