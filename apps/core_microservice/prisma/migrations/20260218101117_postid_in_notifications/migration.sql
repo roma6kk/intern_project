@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "notifications" ADD COLUMN     "post_id" TEXT;

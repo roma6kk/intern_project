@@ -1,6 +1,9 @@
 'use client';
 
 import { AuthProvider } from '@/context/AuthContext';
+import { ToastProvider } from '@/context/ToastContext';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import './globals.css';
 import TopNav from '@/components/TopNav';
 import BottomNav from '@/components/BottomNav';
@@ -28,7 +31,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <AuthProvider>
-          <LayoutContent>{children}</LayoutContent>
+          <ToastProvider>
+            <LayoutContent>{children}</LayoutContent>
+            <ToastContainer position="top-right" autoClose={3000} />
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>

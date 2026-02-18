@@ -17,12 +17,6 @@ import { WsAuthGuard } from '../auth/guards/ws-auth.guard';
 import { ICurrentUser } from '../auth/interfaces/ICurrentUser';
 import type { IAuthenticatedSocket } from './interfaces/IAuthenticatedSocket';
 
-interface AuthenticatedSocket extends Socket {
-  data: {
-    user?: ICurrentUser;
-  };
-}
-
 @WebSocketGateway({
   cors: {
     origin: '*',
@@ -101,6 +95,14 @@ export class ChatGateway
 
   async handleConnection(client: IAuthenticatedSocket) {
     try {
+      const systemSecret = client.handshake.headers['x-system-secret'];
+
+      if (systemSecret === (process.env.SYSTEM_SECRET || 'my-super-secret')) {
+        client.data.isSystem = true;
+        this.logger.log(`System Service connected: ${client.id}`);
+        return;
+      }
+
       const authPayload = client.handshake.auth as { token?: string };
 
       const token = this.extractToken(client) || authPayload.token;
@@ -156,7 +158,7 @@ export class ChatGateway
   @SubscribeMessage('typing')
   handleTyping(
     @MessageBody() data: { chatId: string; isTyping: boolean },
-    @ConnectedSocket() client: AuthenticatedSocket,
+    @ConnectedSocket() client: IAuthenticatedSocket,
   ) {
     const user = client.data.user;
 
@@ -168,6 +170,16 @@ export class ChatGateway
       isTyping: data.isTyping,
       chatId: data.chatId,
     });
+  }
+
+  @SubscribeMessage('send_notification')
+  handleSendNotification(
+    @MessageBody() data: { recipientId: string; notification: unknown },
+  ) {
+    this.server
+      .to(`user_${data.recipientId}`)
+      .emit('notification', data.notification);
+    this.logger.log(`Notification sent to user_${data.recipientId}`);
   }
 
   async getOnlineUsers(): Promise<string[]> {
@@ -189,6 +201,10 @@ export class ChatGateway
 
   sendMessageDelete(chatId: string, messageId: string) {
     this.server.to(`chat_${chatId}`).emit('message_deleted', { id: messageId });
+  }
+
+  sendNotification(recipientId: string, notification: unknown) {
+    this.server.to(`user_${recipientId}`).emit('notification', notification);
   }
 
   private extractToken(client: Socket): string | undefined {

@@ -5,6 +5,8 @@ import { Heart } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { createComment, toggleCommentLike, type Comment } from '@/lib/services/comments.service';
+import MentionTextarea from './MentionTextarea';
+import MentionText from './MentionText';
 
 interface CommentItemProps {
   comment: Comment;
@@ -32,7 +34,7 @@ export default function CommentItem({
   const [likesCount, setLikesCount] = useState(comment.likesCount || 0);
 
   const handleReply = async () => {
-    if (!replyText.trim() || isReplying || !user) return;
+    if (!replyText || !replyText.trim() || isReplying || !user) return;
     
     setIsReplying(true);
     try {
@@ -104,7 +106,7 @@ export default function CommentItem({
               {comment.author?.username || 'Unknown'}
             </button>
             {' '}
-            <span>{comment.content}</span>
+            <MentionText text={comment.content} />
           </div>
           
           <div className="flex items-center gap-4 mt-1 text-xs text-gray-500">
@@ -134,27 +136,29 @@ export default function CommentItem({
           </div>
           
           {showReplyInput && (
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-2 flex items-start gap-2">
               <Image
                 src={user?.profile?.avatarUrl || '/default-avatar.svg'}
                 alt="you"
                 width={20}
                 height={20}
-                className="rounded-full object-cover"
+                className="rounded-full object-cover shrink-0"
               />
-              <input
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                placeholder="Add a reply..."
-                className="flex-1 text-xs outline-none bg-gray-100 text-gray-600 placeholder:text-gray-400 px-2 py-1 rounded-full"
-              />
-              <button
-                onClick={handleReply}
-                disabled={!replyText.trim() || isReplying}
-                className="text-xs text-blue-500 font-semibold px-2 py-1 rounded hover:bg-blue-50 disabled:opacity-50"
-              >
-                {isReplying ? 'Posting...' : 'Post'}
-              </button>
+              <div className="flex-1 flex flex-col gap-1">
+                <MentionTextarea
+                  value={replyText}
+                  onChange={setReplyText}
+                  placeholder="Добавить ответ... (используйте @ для упоминания)"
+                  className="flex-1 text-xs outline-none bg-gray-100 text-gray-600 placeholder:text-gray-400 px-2 py-1 rounded-lg resize-none min-h-[28px]"
+                />
+                <button
+                  onClick={handleReply}
+                  disabled={!replyText || !replyText.trim() || isReplying}
+                  className="self-end text-xs text-blue-500 font-semibold px-2 py-1 rounded hover:bg-blue-50 disabled:opacity-50"
+                >
+                  {isReplying ? 'Posting...' : 'Post'}
+                </button>
+              </div>
             </div>
           )}
         </div>

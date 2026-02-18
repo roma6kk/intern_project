@@ -5,6 +5,7 @@ import { X, Upload, ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import MentionTextarea from './MentionTextarea';
 
 interface CreatePostModalProps {
   isOpen: boolean;
@@ -245,12 +246,11 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
               </div>
 
               <div>
-                <textarea
+                <MentionTextarea
                   value={caption}
-                  onChange={(e) => setCaption(e.target.value)}
-                  placeholder="Напишите описание..."
+                  onChange={setCaption}
+                  placeholder="Напишите описание... (используйте @ для упоминания)"
                   className="w-full h-32 p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
-                  maxLength={2200}
                 />
                 <div className="text-right text-sm text-gray-500 mt-1">
                   {caption.length}/2200
