@@ -67,4 +67,25 @@ export class FollowController {
   ) {
     return this.followService.removeFollower(user.userId, followerId);
   }
+
+  @Get('followers/:userId')
+  @ApiOperation({ summary: 'Get followers of a specific user' })
+  getFollowersPublic(@Param('userId') userId: string) {
+    return this.followService.getFollowersPublic(userId);
+  }
+
+  @Get('following/:userId')
+  @ApiOperation({ summary: 'Get users that a specific user follows' })
+  getFollowingPublic(@Param('userId') userId: string) {
+    return this.followService.getFollowingPublic(userId);
+  }
+
+  @Delete('remove-follower/:followerId')
+  @ApiOperation({ summary: 'Remove a follower from your profile' })
+  removeFollower(
+    @CurrentUser() user: ICurrentUser,
+    @Param('followerId') followerId: string,
+  ) {
+    return this.followService.removeFollower(user.userId, followerId);
+  }
 }

@@ -60,7 +60,7 @@ export class FollowService {
         },
       });
 
-      this.notificationService.create({
+      await this.notificationService.create({
         type: NotificationType.FOLLOW,
         recipientId: targetUserId,
         actorId: followerId,
@@ -118,7 +118,7 @@ export class FollowService {
       });
 
       // Отправляем уведомление фолловеру, что его запрос принят
-      this.notificationService.create({
+      await this.notificationService.create({
         type: NotificationType.FOLLOW,
         recipientId: followerId,
         actorId: currentUserId,
@@ -158,6 +158,7 @@ export class FollowService {
         status: 'ACCEPTED',
       },
       select: {
+        id: true,
         follower: {
           select: {
             id: true,
@@ -178,6 +179,49 @@ export class FollowService {
         status: 'ACCEPTED',
       },
       select: {
+        id: true,
+        following: {
+          select: {
+            id: true,
+            account: { select: { username: true } },
+            profile: {
+              select: { firstName: true, secondName: true, avatarUrl: true },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async getFollowersPublic(userId: string) {
+    return this.prisma.follow.findMany({
+      where: {
+        followingId: userId,
+        status: 'ACCEPTED',
+      },
+      select: {
+        id: true,
+        follower: {
+          select: {
+            id: true,
+            account: { select: { username: true } },
+            profile: {
+              select: { firstName: true, secondName: true, avatarUrl: true },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async getFollowingPublic(userId: string) {
+    return this.prisma.follow.findMany({
+      where: {
+        followerId: userId,
+        status: 'ACCEPTED',
+      },
+      select: {
+        id: true,
         following: {
           select: {
             id: true,

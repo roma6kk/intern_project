@@ -1,9 +1,22 @@
-import { Body, Controller, Get, Put, UseGuards, Param } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Put,
+  UseGuards,
+  Param,
+  Post,
+  Query,
+  UseInterceptors,
+  UploadedFile,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiResponse,
   ApiTags,
+  ApiConsumes,
 } from '@nestjs/swagger';
 
 import { ProfilesService } from './profiles.service';
@@ -24,6 +37,13 @@ export class ProfilesController {
   @ApiResponse({ status: 200, description: 'Return profile data' })
   async getMyProfile(@CurrentUser() user: ICurrentUser) {
     return this.profilesService.getMyProfile(user.userId);
+  }
+
+  @Get('search')
+  @ApiOperation({ summary: 'Search profiles by username or name' })
+  async search(@Query('query') query: string) {
+    if (!query) return [];
+    return this.profilesService.searchProfiles(query);
   }
 
   @Get('by-username/:username')
@@ -48,5 +68,17 @@ export class ProfilesController {
     @Body() updateProfileDto: UpdateProfileDto,
   ) {
     return this.profilesService.updateProfile(user.userId, updateProfileDto);
+  }
+
+  @Post('me/avatar')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload profile avatar' })
+  @ApiResponse({ status: 200, description: 'Avatar uploaded' })
+  async uploadAvatar(
+    @CurrentUser() user: ICurrentUser,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.profilesService.uploadAvatar(user.userId, file);
   }
 }

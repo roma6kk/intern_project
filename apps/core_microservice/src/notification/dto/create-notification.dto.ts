@@ -23,4 +23,8 @@ export class CreateNotificationDto {
   @IsString()
   @IsOptional()
   itemId?: string;
+
+  @IsUUID()
+  @IsOptional()
+  postId?: string;
 }

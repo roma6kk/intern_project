@@ -1,12 +1,14 @@
 import { Controller, Logger } from '@nestjs/common';
 import { EventPattern, Payload } from '@nestjs/microservices';
 import { NotificationsService } from './notifications.service';
+import { NotificationType } from '@prisma/client';
 
 interface NotificationData {
-  type: string;
+  type: NotificationType;
   recipientId: string;
   actorId: string;
   itemId?: string;
+  postId?: string;
 }
 
 @Controller()
