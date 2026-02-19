@@ -28,7 +28,7 @@ export class PostService {
     try {
       const assetUrls: string[] = [];
       if (files && files.length > 0) {
-        const uploadPromises = files.map((file) =>
+        const uploadPromises: Promise<string>[] = files.map((file) =>
           this.filesService.uploadFile(file),
         );
         const urls = await Promise.all(uploadPromises);
@@ -42,7 +42,7 @@ export class PostService {
           assets: {
             create: assetUrls.map((url) => ({
               url,
-              type: 'IMAGE', // Можно усложнить логику определения типа (видео/фото)
+              type: 'IMAGE',
             })),
           },
         },
@@ -67,7 +67,12 @@ export class PostService {
   }
 
   async getFeed(userId: string, pagination: PaginationDto) {
-    const { page = 1, limit = 10 } = pagination;
+    const {
+      page = 1,
+      limit = 10,
+      sort = 'newest',
+      mediaOnly = false,
+    } = pagination;
     const skip = (page - 1) * limit;
 
     const following = await this.prisma.follow.findMany({
@@ -83,12 +88,21 @@ export class PostService {
       isArchived: false,
     };
 
+    if (mediaOnly) {
+      whereClause['assets'] = { some: {} };
+    }
+
     const [posts, total] = await Promise.all([
       this.prisma.post.findMany({
         where: whereClause,
         take: limit,
         skip: skip,
-        orderBy: { createdAt: 'desc' },
+        orderBy:
+          sort === 'oldest'
+            ? { createdAt: 'asc' }
+            : sort === 'trending'
+              ? { likes: { _count: 'desc' } }
+              : { createdAt: 'desc' },
         include: {
           assets: true,
           author: {
@@ -108,7 +122,13 @@ export class PostService {
   }
 
   async findAll(pagination: PaginationDto) {
-    const { page = 1, limit = 10, search } = pagination;
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      sort = 'newest',
+      mediaOnly = false,
+    } = pagination;
     const skip = (page - 1) * limit;
 
     const whereClause: Prisma.PostWhereInput = { isArchived: false };
@@ -117,12 +137,21 @@ export class PostService {
       whereClause.description = { contains: search, mode: 'insensitive' };
     }
 
+    if (mediaOnly) {
+      whereClause.assets = { some: {} };
+    }
+
     const [posts, total] = await Promise.all([
       this.prisma.post.findMany({
         where: whereClause,
         take: limit,
         skip: skip,
-        orderBy: { createdAt: 'desc' },
+        orderBy:
+          sort === 'oldest'
+            ? { createdAt: 'asc' }
+            : sort === 'trending'
+              ? { likes: { _count: 'desc' } }
+              : { createdAt: 'desc' },
         include: {
           assets: true,
           author: {

@@ -19,7 +19,7 @@ interface PaginationResponse<T> {
   };
 }
 
-export function useInfiniteScroll<T>({ 
+export function useInfiniteScroll<T extends { id?: string }>({ 
   endpoint, 
   limit = 10, 
   maxItems = 50 
@@ -43,20 +43,20 @@ export function useInfiniteScroll<T>({
       const meta = response.data.meta;
 
       setItems(prev => {
-        const itemsMap = new Map();
-        
+        const itemsMap = new Map<string, T>();
+
         prev.forEach(item => {
-          const id = (item as any)?.id;
+          const id = item.id;
           if (id) itemsMap.set(id, item);
         });
-        
+
         newItems.forEach(item => {
-          const id = (item as any)?.id;
+          const id = item.id;
           if (id) itemsMap.set(id, item);
         });
-        
+
         const combined = Array.from(itemsMap.values());
-        
+
         if (combined.length > maxItems) {
           return combined.slice(-maxItems);
         }

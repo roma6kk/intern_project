@@ -24,12 +24,11 @@ export default function Feed() {
     maxItems: 50
   });
 
-  // Обновляем посты при смене пользователя
   useEffect(() => {
     if (!isLoading && user) {
       refresh();
     }
-  }, [user?.id, refresh, isLoading]);
+  }, [user, refresh, isLoading]);
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -45,7 +44,6 @@ export default function Feed() {
     }
   }, [user, isLoading]);
 
-  // Нормализация постов
   const normalizedPosts = useMemo(() => {
     return posts.map((p: Post) => {
       const author = p.author || { id: p.authorId };
@@ -56,7 +54,6 @@ export default function Feed() {
     });
   }, [posts]);
 
-  // derive story list (unique authors) and suggestions for sidebar
   const storyAuthors = useMemo(() => {
     const seen = new Set<string>();
     const list: { id?: string; username: string; avatarUrl?: string }[] = [];
@@ -64,7 +61,6 @@ export default function Feed() {
       const a = p.author || { id: p.authorId };
       const id = a.id || a.username;
       if (!id || seen.has(id)) continue;
-      // only include authors that the current user follows
       if (id && followingIds.length > 0 && !followingIds.includes(id)) continue;
       seen.add(id);
       list.push({ id, username: a.username || 'Unknown', avatarUrl: a.profile?.avatarUrl });
@@ -131,14 +127,12 @@ export default function Feed() {
               );
             })}
             
-            {/* Индикатор загрузки */}
             {postsLoading && (
               <div className="flex justify-center py-4">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               </div>
             )}
             
-            {/* Сообщение об окончании */}
             {!hasMore && normalizedPosts.length > 0 && (
               <div className="text-center py-4 text-gray-500">
                 Вы просмотрели все посты
@@ -147,7 +141,6 @@ export default function Feed() {
           </div>
         </div>
 
-        {/* Right sidebar */}
         <aside className="hidden lg:block">
           <div className="sticky top-6 space-y-4">
             <div className="flex items-center justify-between bg-white p-3 rounded border">
