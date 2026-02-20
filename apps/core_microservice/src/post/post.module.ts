@@ -3,10 +3,9 @@ import { PostService } from './post.service';
 import { PostController } from './post.controller';
 import { PrismaModule } from '../database/prisma.module';
 import { FilesModule } from '../files/file.module';
-import { NotificationModule } from 'src/notification/notification.module';
 
 @Module({
-  imports: [PrismaModule, FilesModule, NotificationModule],
+  imports: [PrismaModule, FilesModule],
   controllers: [PostController],
   providers: [PostService],
 })

@@ -22,6 +22,8 @@ export class CommentService {
 
   async create(userId: string, createCommentDto: CreateCommentDto) {
     try {
+      const mentionedUsernames = this.extractMentions(createCommentDto.content);
+
       const comment = await this.prisma.comment.create({
         data: {
           content: createCommentDto.content,
@@ -40,45 +42,58 @@ export class CommentService {
         },
       });
 
-      let postOwnerId: string | undefined;
-
+      let recipientId: string | undefined = undefined;
       if (createCommentDto.parentId) {
         const parentComment = await this.prisma.comment.findUnique({
           where: { id: createCommentDto.parentId },
           select: { authorId: true },
         });
-        postOwnerId = parentComment?.authorId;
+        if (parentComment) {
+          recipientId = parentComment.authorId;
+        }
       } else {
         const post = await this.prisma.post.findUnique({
           where: { id: createCommentDto.postId },
           select: { authorId: true },
         });
-        postOwnerId = post?.authorId;
+        if (post) {
+          recipientId = post.authorId;
+        }
       }
 
-      if (postOwnerId && postOwnerId !== userId) {
-        await this.notificationService.create({
+      if (recipientId && recipientId !== userId) {
+        this.notificationService.create({
           type: NotificationType.COMMENT,
-          recipientId: postOwnerId,
+          recipientId,
           actorId: userId,
           itemId: comment.id,
-          postId: createCommentDto.postId,
         });
       }
 
-      const mentionedUsernames = this.extractUsernames(
-        createCommentDto.content,
-      );
       if (mentionedUsernames.length > 0) {
-        const mentionsToNotify = mentionedUsernames;
-
-        await this.sendMentionNotifications(
-          mentionsToNotify,
-          userId,
-          comment.id,
-          createCommentDto.postId,
-          postOwnerId,
+        this.logger.log(
+          `User ${userId} mentioned: ${mentionedUsernames.join(', ')}`,
         );
+
+        const mentionedUsers = await this.prisma.account.findMany({
+          where: {
+            username: { in: mentionedUsernames },
+          },
+          select: {
+            userId: true,
+          },
+        });
+
+        mentionedUsers
+          .filter((account) => account.userId !== userId)
+          .forEach((account) =>
+            this.notificationService.create({
+              type: NotificationType.COMMENT,
+              recipientId: account.userId,
+              actorId: userId,
+              itemId: comment.id,
+            }),
+          );
       }
 
       this.logger.log(`Comment created. ID: ${comment.id}`);
@@ -173,7 +188,6 @@ export class CommentService {
         where: { id },
         data: { content: updateCommentDto.content },
       });
-
       return updated;
     } catch (error) {
       this.logger.error(
@@ -204,57 +218,9 @@ export class CommentService {
     }
   }
 
-  private extractUsernames(content: string): string[] {
-    const usernames = new Set<string>();
-
-    // react-mentions markup: @[display](id)
-    const markupRegex = /@\[[^\]]+\]\(([^)]+)\)/g;
-    let match: RegExpExecArray | null;
-    while ((match = markupRegex.exec(content)) !== null) {
-      if (match[1]) {
-        usernames.add(match[1]);
-      }
-    }
-
-    // plain text mentions: @username
-    const plainRegex = /@([\w.-_]+)/g;
-    while ((match = plainRegex.exec(content)) !== null) {
-      if (match[1]) {
-        usernames.add(match[1]);
-      }
-    }
-
-    return [...usernames];
-  }
-
-  private async sendMentionNotifications(
-    usernames: string[],
-    actorId: string,
-    itemId: string,
-    postId: string,
-    excludeUserId?: string,
-  ) {
-    if (usernames.length === 0) return;
-
-    const accounts = await this.prisma.account.findMany({
-      where: {
-        OR: usernames.map((u) => ({
-          username: { equals: u, mode: 'insensitive' },
-        })),
-      },
-      select: { userId: true, username: true },
-    });
-
-    for (const account of accounts) {
-      if (account.userId !== actorId && account.userId !== excludeUserId) {
-        await this.notificationService.create({
-          type: NotificationType.MENTION,
-          recipientId: account.userId,
-          actorId: actorId,
-          itemId: itemId,
-          postId,
-        });
-      }
-    }
+  private extractMentions(content: string): string[] {
+    const regex = /@(\w+)/g;
+    const matches = content.match(regex);
+    return matches ? matches.map((m) => m.substring(1)) : [];
   }
 }

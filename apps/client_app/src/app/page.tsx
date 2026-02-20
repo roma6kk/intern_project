@@ -1,11 +1,6 @@
-'use client';
-
 import Image from "next/image";
-import { useToast } from '@/context/ToastContext';
 
 export default function Home() {
-  const { success, error, info, warning } = useToast();
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
       <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
@@ -40,30 +35,29 @@ export default function Home() {
           </p>
         </div>
         <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <button
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-green-600 px-5 text-white transition-colors hover:bg-green-700 md:w-39.5"
-            onClick={() => success('Успешно!')}
+          <a
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-39.5"
+            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+            target="_blank"
+            rel="noopener noreferrer"
           >
-            Success
-          </button>
-          <button
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-red-600 px-5 text-white transition-colors hover:bg-red-700 md:w-39.5"
-            onClick={() => error('Ошибка!')}
+            <Image
+              className="dark:invert"
+              src="/vercel.svg"
+              alt="Vercel logomark"
+              width={16}
+              height={16}
+            />
+            Deploy Now
+          </a>
+          <a
+            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/8 px-5 transition-colors hover:border-transparent hover:bg-black/4 dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-39.5"
+            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+            target="_blank"
+            rel="noopener noreferrer"
           >
-            Error
-          </button>
-          <button
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-blue-600 px-5 text-white transition-colors hover:bg-blue-700 md:w-39.5"
-            onClick={() => info('Информация')}
-          >
-            Info
-          </button>
-          <button
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-yellow-600 px-5 text-white transition-colors hover:bg-yellow-700 md:w-39.5"
-            onClick={() => warning('Предупреждение')}
-          >
-            Warning
-          </button>
+            Documentation
+          </a>
         </div>
       </main>
     </div>

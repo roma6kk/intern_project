@@ -20,7 +20,7 @@ export default function BottomNav() {
           >
             <PlusSquare />
           </button>
-          <Link href="/interactions" className="flex-1 flex justify-center py-2 text-gray-600"><Heart /></Link>
+          <Link href="/activity" className="flex-1 flex justify-center py-2 text-gray-600"><Heart /></Link>
           <Link href="/profile" className="flex-1 flex justify-center py-2 text-gray-600"><User /></Link>
         </div>
       </nav>

@@ -1,45 +1,66 @@
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+  OnModuleInit,
+} from '@nestjs/common';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
+import { ClientProxy } from '@nestjs/microservices';
 import { PrismaService } from '../database/prisma.service';
-import { ChatGateway } from '../chat/chat.gateway';
 
 @Injectable()
-export class NotificationService {
+export class NotificationService implements OnModuleInit {
   private readonly logger = new Logger(NotificationService.name);
 
   constructor(
     private readonly prisma: PrismaService,
     @Inject('NOTIFICATIONS_SERVICE') private readonly client: ClientProxy,
-    private readonly chatGateway: ChatGateway,
   ) {}
 
-  async create(dto: CreateNotificationDto) {
+  async onModuleInit() {
+    try {
+      await this.client.connect();
+      this.logger.log(
+        'NotificationService: RabbitMQ client connected successfully',
+      );
+    } catch (error) {
+      this.logger.error(
+        'NotificationService: Failed to connect RabbitMQ client',
+        (error as Error).stack,
+      );
+    }
+  }
+
+  create(dto: CreateNotificationDto) {
     if (dto.actorId === dto.recipientId) {
+      this.logger.debug(
+        `Skipping notification: actor and recipient are the same (${dto.actorId})`,
+      );
       return;
     }
 
     try {
-      this.client.emit('notification_created', dto);
-
-      const actor = await this.prisma.user.findUnique({
-        where: { id: dto.actorId },
-        include: { account: { select: { username: true } }, profile: true },
-      });
-
-      this.chatGateway.sendNotification(dto.recipientId, {
-        type: dto.type,
-        itemId: dto.itemId,
-        postId: dto.postId,
-        actor: {
-          username: actor?.account?.username,
-          avatarUrl: actor?.profile?.avatarUrl,
+      this.logger.log(
+        `Sending notification event to queue: type=${dto.type}, recipientId=${dto.recipientId}, actorId=${dto.actorId}, itemId=${dto.itemId}`,
+      );
+      this.client.emit('notification_created', dto).subscribe({
+        next: () => {
+          this.logger.log(
+            `Notification event sent successfully: type=${dto.type}`,
+          );
+        },
+        error: (error) => {
+          this.logger.error(
+            `Failed to send notification event: type=${dto.type}`,
+            (error as Error).stack,
+          );
         },
       });
     } catch (error) {
       this.logger.error(
-        `Error sending notification: type=${dto.type}`,
+        `Error emitting notification event: type=${dto.type}`,
         (error as Error).stack,
       );
     }
@@ -59,11 +80,6 @@ export class NotificationService {
         actor: {
           select: {
             id: true,
-            account: {
-              select: {
-                username: true,
-              },
-            },
             profile: {
               select: {
                 firstName: true,

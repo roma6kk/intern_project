@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Grid, Play, Tag, Loader2, X, Settings } from 'lucide-react';
+import { Heart, MessageCircle, Grid, Play, Tag, Loader2 } from 'lucide-react';
 import Image from 'next/image';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import api from '@/lib/api';
 
 interface Asset {
@@ -58,42 +58,13 @@ interface ProfileData {
   user: User;
 }
 
-interface FollowUser {
-  id: string;
-  account: {
-    username: string;
-  };
-  profile: {
-    firstName: string;
-    secondName: string;
-    avatarUrl: string | null;
-  };
-}
-
-interface FollowerItem {
-  id: string;
-  follower: FollowUser;
-}
-
-interface FollowingItem {
-  id: string;
-  following: FollowUser;
-  status?: 'ACCEPTED' | 'PENDING' | 'DECLINED';
-}
-
 const ProfilePage = () => {
   const params = useParams();
-  const router = useRouter();
   const username = params.username as string;
   const isMyProfile = username === 'me';
 
-  const isVideoAsset = (asset?: Asset) => {
-    if (!asset?.url) return false;
-    if (asset.type === 'VIDEO') return true;
-    return /\.(mp4|webm|ogg|mov)$/i.test(asset.url);
-  };
-
   const [activeTab, setActiveTab] = useState<'posts' | 'reels' | 'tagged'>('posts');
+  const [isFollowing, setIsFollowing] = useState(false);
   const [userProfile, setUserProfile] = useState<ProfileData | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -102,23 +73,12 @@ const ProfilePage = () => {
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [isFollowingUser, setIsFollowingUser] = useState(false);
-  const [isPendingFollowRequest, setIsPendingFollowRequest] = useState(false);
-  const [isFollowLoading, setIsFollowLoading] = useState(false);
-  const [showFollowersModal, setShowFollowersModal] = useState(false);
-  const [showFollowingModal, setShowFollowingModal] = useState(false);
-  const [followersList, setFollowersList] = useState<FollowerItem[]>([]);
-  const [followingList, setFollowingList] = useState<FollowingItem[]>([]);
-  const [listLoading, setListLoading] = useState(false);
 
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
         setLoading(true);
         setError(null);
-        setFollowersCount(0);
-        setFollowingCount(0);
-        setIsFollowingUser(false);
-        setIsPendingFollowRequest(false);
 
         const profileEndpoint = isMyProfile ? '/profiles/me' : `/profiles/by-username/${username}`;
         const profileResponse = await api.get(profileEndpoint);
@@ -126,22 +86,16 @@ const ProfilePage = () => {
         setUserProfile(profileData);
 
         try {
-          const followersEndpoint = isMyProfile ? '/follows/followers/me' : `/follows/followers/${profileData.userId}`;
-          const followersResponse = await api.get(followersEndpoint);
-          const followersData = Array.isArray(followersResponse.data) ? followersResponse.data : [];
-          setFollowersCount(followersData.length || 0);
-        } catch (err) {
-          console.error('Failed to load followers count:', err);
+          const followersResponse = await api.get('/follows/followers/me');
+          setFollowersCount(followersResponse.data.length || 0);
+        } catch {
           setFollowersCount(0);
         }
 
         try {
-          const followingEndpoint = isMyProfile ? '/follows/following/me' : `/follows/following/${profileData.userId}`;
-          const followingResponse = await api.get(followingEndpoint);
-          const followingData = Array.isArray(followingResponse.data) ? followingResponse.data : [];
-          setFollowingCount(followingData.length || 0);
-        } catch (err) {
-          console.error('Failed to load following count:', err);
+          const followingResponse = await api.get('/follows/following/me');
+          setFollowingCount(followingResponse.data.length || 0);
+        } catch {
           setFollowingCount(0);
         }
 
@@ -150,43 +104,15 @@ const ProfilePage = () => {
         } catch {
         }
 
-        let isFollowing = false;
-        let isPending = false;
-
         if (!isMyProfile) {
           try {
             const followingResponse = await api.get('/follows/following/me');
-            console.log('Following response:', followingResponse.data);
-            console.log('Looking for userId:', profileData.userId);
-            
-            const followRelation = followingResponse.data.find(
-              (follow: FollowingItem) => follow.following.id === profileData.userId
+            const isFollowing = followingResponse.data.some(
+              (follow: { following: { id: string } }) => follow.following.id === profileData.userId
             );
-            
-            console.log('Found follow relation:', followRelation);
-            console.log('Follow relation status:', followRelation?.status);
-            
-            if (followRelation) {
-              if (followRelation.status === 'PENDING') {
-                isPending = true;
-                isFollowing = false;
-              } else if (followRelation.status === 'ACCEPTED') {
-                isFollowing = true;
-                isPending = false;
-              } else {
-                // Если статуса нет или он не PENDING/ACCEPTED, считаем что подписка активна
-                isFollowing = true;
-                isPending = false;
-              }
-            }
-            
-            console.log('Final status - isFollowing:', isFollowing, 'isPending:', isPending);
-            
-            setIsPendingFollowRequest(isPending);
             setIsFollowingUser(isFollowing);
           } catch {
             setIsFollowingUser(false);
-            setIsPendingFollowRequest(false);
           }
         }
 
@@ -205,7 +131,7 @@ const ProfilePage = () => {
             }
           );
           
-          if (!profileData.isPrivate || isMyProfile || isFollowing) {
+          if (!profileData.isPrivate || isMyProfile || isFollowingUser) {
             setPosts(userPosts);
           } else {
             setPosts([]);
@@ -221,83 +147,10 @@ const ProfilePage = () => {
     };
 
     fetchProfileData();
-  }, [username, isMyProfile]);
+  }, [username, isMyProfile, isFollowingUser]);
 
-  const handleFollowToggle = async () => {
-    if (!userProfile || isFollowLoading) return;
-
-    try {
-      setIsFollowLoading(true);
-
-      if (isFollowingUser || isPendingFollowRequest) {
-        await api.delete(`/follows/${userProfile.userId}`);
-        setIsFollowingUser(false);
-        setIsPendingFollowRequest(false);
-      } else {
-        const response = await api.post(`/follows/${userProfile.userId}`);
-        
-        if (response.data?.status === 'PENDING') {
-          setIsPendingFollowRequest(true);
-          setIsFollowingUser(false);
-        } else if (response.data?.status === 'ACCEPTED') {
-          setIsFollowingUser(true);
-          setIsPendingFollowRequest(false);
-        }
-      }
-    } catch (error) {
-      setError('Failed to update follow status');
-      console.error('Follow toggle error:', error);
-    } finally {
-      setIsFollowLoading(false);
-    }
-  };
-
-  const openFollowersModal = async () => {
-    try {
-      setListLoading(true);
-      const endpoint = isMyProfile ? '/follows/followers/me' : `/follows/followers/${userProfile?.userId}`;
-      const response = await api.get(endpoint);
-      setFollowersList(response.data || []);
-      setShowFollowersModal(true);
-    } catch (error) {
-      console.error('Failed to load followers:', error);
-    } finally {
-      setListLoading(false);
-    }
-  };
-
-  const openFollowingModal = async () => {
-    try {
-      setListLoading(true);
-      const endpoint = isMyProfile ? '/follows/following/me' : `/follows/following/${userProfile?.userId}`;
-      const response = await api.get(endpoint);
-      setFollowingList(response.data || []);
-      setShowFollowingModal(true);
-    } catch (error) {
-      console.error('Failed to load following:', error);
-    } finally {
-      setListLoading(false);
-    }
-  };
-
-  const handleRemoveFollower = async (followerId: string) => {
-    try {
-      await api.delete(`/follows/remove-follower/${followerId}`);
-      setFollowersList(followersList.filter(f => f.id !== followerId));
-      setFollowersCount(followersCount - 1);
-    } catch (error) {
-      console.error('Failed to remove follower:', error);
-    }
-  };
-
-  const handleUnfollow = async (followingId: string, userId: string) => {
-    try {
-      await api.delete(`/follows/${userId}`);
-      setFollowingList(followingList.filter(f => f.id !== followingId));
-      setFollowingCount(followingCount - 1);
-    } catch (error) {
-      console.error('Failed to unfollow:', error);
-    }
+  const handleFollowToggle = () => {
+    setIsFollowing(!isFollowing);
   };
 
   if (loading) {
@@ -322,13 +175,15 @@ const ProfilePage = () => {
   const avatarUrl = userProfile.avatarUrl || '/default-avatar.svg';
   const bio = userProfile.bio || '';
   const postsCount = posts.length;
-  const isPrivateAndNotFollowing = userProfile.isPrivate && !isMyProfile && !isFollowingUser && !isPendingFollowRequest;
+  const isPrivateAndNotFollowing = userProfile.isPrivate && !isMyProfile && !isFollowingUser;
 
   return (
     <div className="min-h-screen bg-white">
+      {/* Header */}
       <div className="border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 py-8">
           <div className="flex gap-8 md:gap-12">
+            {/* Avatar */}
             <div className="shrink-0">
               <div className="w-32 h-32 md:w-40 md:h-40 relative">
                 <Image
@@ -342,50 +197,67 @@ const ProfilePage = () => {
               </div>
             </div>
 
+            {/* Profile Info */}
             <div className="flex-1">
               <div className="mb-4">
                 <div className="flex items-center gap-3 mb-4">
-                  <h1 className="text-2xl md:text-3xl font-light text-gray-500">{userProfile.user.account.username}</h1>
+                  <h1 className="text-2xl md:text-3xl font-light">{userProfile.user.account.username}</h1>
                 </div>
 
                 <div className="flex gap-2 mb-4">
                   {isMyProfile ? (
                     <>
-                      <button 
-                        onClick={() => router.push('/profile/settings')}
-                        className="px-4 py-2 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors flex items-center gap-2"
-                      >
-                        <Settings className="w-5 h-5 text-gray-500" />
-                        <span className="font-semibold text-gray-500">Settings</span>
+                      <button className="px-8 py-2 border border-gray-300 rounded-full font-semibold hover:bg-gray-50 transition-colors">
+                        Edit profile
+                      </button>
+                      <button className="px-8 py-2 border border-gray-300 rounded-full font-semibold hover:bg-gray-50 transition-colors">
+                        Share profile
+                      </button>
+                      <button className="px-4 py-2 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors">
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
                       </button>
                     </>
                   ) : (
                     <>
                       <button
                         onClick={handleFollowToggle}
-                        disabled={isFollowLoading}
-                        className={`px-8 py-2 rounded-full font-semibold transition-colors flex items-center gap-2 ${
-                          isFollowingUser
-                            ? 'bg-gray-200 text-black hover:bg-gray-300 disabled:bg-gray-200'
-                            : isPendingFollowRequest
-                            ? 'bg-gray-200 text-black hover:bg-gray-300 disabled:bg-gray-200'
-                            : 'bg-blue-500 text-white hover:bg-blue-600 disabled:bg-blue-400'
-                        } disabled:cursor-not-allowed`}
+                        className={`px-8 py-2 rounded-full font-semibold transition-colors ${
+                          isFollowing
+                            ? 'bg-gray-200 text-black hover:bg-gray-300'
+                            : 'bg-blue-500 text-white hover:bg-blue-600'
+                        }`}
                       >
-                        {isFollowLoading ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span>
-                              {isFollowingUser ? 'Unfollowing' : isPendingFollowRequest ? 'Canceling' : 'Following'}
-                            </span>
-                          </>
-                        ) : isPendingFollowRequest ? (
-                          <span>Request Sent</span>
-                        ) : isFollowingUser ? (
-                          <span>Following</span>
-                        ) : (
-                          <span>Follow</span>
-                        )}
+                        {isFollowing ? 'Following' : 'Follow'}
+                      </button>
+                      <button className="px-8 py-2 border border-gray-300 rounded-full font-semibold hover:bg-gray-50 transition-colors">
+                        Message
+                      </button>
+                      <button className="px-4 py-2 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors">
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
                       </button>
                     </>
                   )}
@@ -394,28 +266,23 @@ const ProfilePage = () => {
 
               <div className="flex gap-8 mb-4">
                 <div>
-                  <span className="font-semibold text-gray-500">{postsCount || 0}</span>
+                  <span className="font-semibold">{isPrivateAndNotFollowing ? 0 : postsCount || 0}</span>
                   <p className="text-gray-600 text-sm">posts</p>
                 </div>
-                <button 
-                  onClick={openFollowersModal}
-                  className="text-left hover:opacity-70 transition-opacity cursor-pointer"
-                >
-                  <span className="font-semibold text-gray-500">{(followersCount || 0).toLocaleString()}</span>
+                <div>
+                  <span className="font-semibold">{isPrivateAndNotFollowing ? 0 : (followersCount || 0).toLocaleString()}</span>
                   <p className="text-gray-600 text-sm">followers</p>
-                </button>
-                <button 
-                  onClick={openFollowingModal}
-                  className="text-left hover:opacity-70 transition-opacity cursor-pointer"
-                >
-                  <span className="font-semibold text-gray-500">{followingCount || 0}</span>
+                </div>
+                <div>
+                  <span className="font-semibold">{isPrivateAndNotFollowing ? 0 : followingCount || 0}</span>
                   <p className="text-gray-600 text-sm">following</p>
-                </button>
+                </div>
               </div>
 
+              {/* Bio */}
               <div>
-                <p className="font-semibold mb-1 text-gray-500">{fullName}</p>
-                {!isPrivateAndNotFollowing && <p className="text-sm text-gray-500 mb-2">{bio}</p>}
+                <p className="font-semibold mb-1">{fullName}</p>
+                {!isPrivateAndNotFollowing && <p className="text-sm text-gray-800 mb-2">{bio}</p>}
                 {isPrivateAndNotFollowing && (
                   <p className="text-sm text-gray-500 mb-2">This account is private</p>
                 )}
@@ -425,6 +292,7 @@ const ProfilePage = () => {
         </div>
       </div>
 
+      {/* Tabs */}
       <div className="border-b border-gray-200 sticky top-0 bg-white z-10">
         <div className="max-w-4xl mx-auto px-4">
           <div className="flex gap-8 justify-center">
@@ -474,6 +342,7 @@ const ProfilePage = () => {
         </div>
       </div>
 
+      {/* Posts Grid */}
       <div className="max-w-4xl mx-auto px-4 py-8">
         {activeTab === 'posts' && (
           <>
@@ -496,61 +365,39 @@ const ProfilePage = () => {
               <div className="grid grid-cols-3 gap-1 md:gap-4">
                 {posts.map((post) => {
                   const firstAsset = post.assets?.[0];
-                  const isVideo = isVideoAsset(firstAsset);
+                  const isVideo = firstAsset?.type === 'VIDEO';
                   const hasMultipleAssets = post.assets && post.assets.length > 1;
                   
                   return (
                     <div
                       key={post.id}
                       className="group relative overflow-hidden bg-gray-100 aspect-square cursor-pointer"
-                      onClick={() => router.push(`/post/${post.id}`)}
                     >
                       {firstAsset ? (
-                        isVideo ? (
-                          <video
-                            key={firstAsset.url}
-                            src={firstAsset.url}
-                            preload="metadata"
-                            muted
-                            playsInline
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none"
-                            onLoadedData={(e) => {
-                              const v = e.currentTarget;
-                              v.pause();
-                              try {
-                                v.currentTime = 0;
-                              } catch {
-                              }
-                            }}
-                            onError={(e) => {
-                              const v = e.currentTarget;
-                              v.style.display = 'none';
-                            }}
-                          />
-                        ) : (
-                          <Image
-                            src={firstAsset.url}
-                            alt={post.description || 'Post image'}
-                            fill
-                            className="object-cover group-hover:scale-105 transition-transform duration-300"
-                            sizes="(max-width: 768px) 33vw, (max-width: 1200px) 25vw, 20vw"
-                            unoptimized
-                            onError={() => {
-                            }}
-                          />
-                        )
+                        <Image
+                          src={firstAsset.url}
+                          alt={post.description || 'Post image'}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          sizes="(max-width: 768px) 33vw, (max-width: 1200px) 25vw, 20vw"
+                          unoptimized
+                          onError={() => {
+                          }}
+                        />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-gray-200">
                           <Grid className="w-8 h-8 text-gray-400" />
                         </div>
                       )}
                       
+                      {/* Video indicator */}
                       {isVideo && (
-                        <div className="absolute top-2 left-2 bg-black bg-opacity-60 rounded-full p-1.5">
+                        <div className="absolute top-2 right-2 bg-black bg-opacity-60 rounded-full p-1.5">
                           <Play className="w-3 h-3 md:w-4 md:h-4 text-white fill-white" />
                         </div>
                       )}
                       
+                      {/* Multiple assets indicator */}
                       {hasMultipleAssets && (
                         <div className="absolute top-2 right-2 bg-black bg-opacity-60 rounded-full p-1.5">
                           <svg className="w-3 h-3 md:w-4 md:h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -560,6 +407,7 @@ const ProfilePage = () => {
                         </div>
                       )}
                       
+                      {/* Hover overlay */}
                       <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center gap-2 md:gap-4 opacity-0 group-hover:opacity-100">
                         <div className="flex items-center gap-1 text-white font-semibold text-sm md:text-base">
                           <Heart className="w-4 h-4 md:w-5 md:h-5 fill-white" />
@@ -626,124 +474,6 @@ const ProfilePage = () => {
           </div>
         )}
       </div>
-
-      {showFollowersModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-96 flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-500">Followers</h2>
-              <button
-                onClick={() => setShowFollowersModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="overflow-y-auto flex-1">
-              {listLoading ? (
-                <div className="flex items-center justify-center h-20">
-                  <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
-                </div>
-              ) : followersList.length === 0 ? (
-                <div className="flex items-center justify-center h-20">
-                  <p className="text-gray-500 text-sm">No followers yet</p>
-                </div>
-              ) : (
-                followersList.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between p-3 border-b border-gray-100 hover:bg-gray-50"
-                  >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="relative w-8 h-8 shrink-0">
-                        <Image
-                          src={item.follower.profile.avatarUrl || '/default-avatar.svg'}
-                          alt={item.follower.account.username}
-                          fill
-                          className="rounded-full object-cover"
-                        />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold truncate text-gray-500">{item.follower.account.username}</p>
-                        <p className="text-xs text-gray-500 truncate">
-                          {item.follower.profile.firstName} {item.follower.profile.secondName}
-                        </p>
-                      </div>
-                    </div>
-                    {isMyProfile && (
-                      <button
-                        onClick={() => handleRemoveFollower(item.follower.id)}
-                        className="px-4 py-1 text-sm font-semibold text-red-500 hover:bg-red-50 rounded-full transition-colors shrink-0"
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showFollowingModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-96 flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-500">Following</h2>
-              <button
-                onClick={() => setShowFollowingModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="overflow-y-auto flex-1">
-              {listLoading ? (
-                <div className="flex items-center justify-center h-20">
-                  <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
-                </div>
-              ) : followingList.length === 0 ? (
-                <div className="flex items-center justify-center h-20">
-                  <p className="text-gray-500 text-sm">Not following anyone yet</p>
-                </div>
-              ) : (
-                followingList.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between p-3 border-b border-gray-100 hover:bg-gray-50"
-                  >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="relative w-8 h-8 shrink-0">
-                        <Image
-                          src={item.following.profile.avatarUrl || '/default-avatar.svg'}
-                          alt={item.following.account.username}
-                          fill
-                          className="rounded-full object-cover"
-                        />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold truncate text-gray-500">{item.following.account.username}</p>
-                        <p className="text-xs text-gray-500 truncate">
-                          {item.following.profile.firstName} {item.following.profile.secondName}
-                        </p>
-                      </div>
-                    </div>
-                    {isMyProfile && (
-                      <button
-                        onClick={() => handleUnfollow(item.id, item.following.id)}
-                        className="px-4 py-1 text-sm font-semibold text-blue-500 hover:bg-blue-50 rounded-full transition-colors shrink-0"
-                      >
-                        Unfollow
-                      </button>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

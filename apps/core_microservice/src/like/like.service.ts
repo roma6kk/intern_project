@@ -41,7 +41,6 @@ export class LikeService {
         });
 
         let recipientId: string;
-        let postId: string | undefined;
         if (type === 'POST') {
           const post = await this.prisma.post.findUnique({
             where: { id: targetId },
@@ -51,11 +50,10 @@ export class LikeService {
             throw new NotFoundException(`Post with ID ${targetId} not found`);
           }
           recipientId = post.authorId;
-          postId = targetId;
         } else {
           const comment = await this.prisma.comment.findUnique({
             where: { id: targetId },
-            select: { authorId: true, postId: true },
+            select: { authorId: true },
           });
           if (!comment) {
             throw new NotFoundException(
@@ -63,17 +61,15 @@ export class LikeService {
             );
           }
           recipientId = comment.authorId;
-          postId = comment.postId;
         }
 
         this.logger.log(`User ${userId} liked ${type} ${targetId}`);
 
-        await this.notificationService.create({
+        this.notificationService.create({
           type: NotificationType.LIKE,
           recipientId,
           actorId: userId,
           itemId: targetId,
-          postId,
         });
 
         return { liked: true, message: 'Liked' };

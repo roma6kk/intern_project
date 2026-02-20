@@ -166,8 +166,6 @@ model Notification {
   recipientId String           @map("recipient_id")
   actorId     String           @map("actor_id")
   itemId      String?          @map("item_id")
-  postId      String?          @map("post_id")
-  isRead      Boolean          @default(false) @map("is_read")
   createdAt   DateTime         @default(now()) @map("created_at")
 
   recipient   User             @relation("recipient", fields: [recipientId], references: [id], onDelete: Cascade)
@@ -180,7 +178,6 @@ enum NotificationType {
   COMMENT
   FOLLOW
   SYSTEM
-  MENTION
 }
 
 enum AssetType {

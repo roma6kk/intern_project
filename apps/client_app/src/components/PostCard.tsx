@@ -10,8 +10,6 @@ import { createComment, getPostComments, getCommentLikes, getCommentReplies } fr
 import { updatePost, deletePost } from '@/lib/services/posts.service';
 import type { Comment } from '@/lib/services/comments.service';
 import CommentItem from './CommentItem';
-import MentionTextarea from './MentionTextarea';
-import MentionText from './MentionText';
 
 function timeAgo(date?: string) {
   if (!date) return '';
@@ -46,17 +44,21 @@ export default function PostCard({ post }: { post: Post }) {
   const touchStartX = useRef<number | null>(null);
   const touchDeltaX = useRef<number>(0);
 
+  // Load likes and comments data on mount
   useEffect(() => {
     if (!post.id || !user?.id) return;
 
     const loadData = async () => {
       try {
+        // Load likes data
         const likes = await getPostLikes(post.id);
         setLikesCount(likes.length);
         
+        // Check if user liked the post
         const userLiked = likes.some((like: { author?: { id?: string } }) => like.author?.id === user.id);
         setLiked(userLiked);
 
+        // Load comments
         const commentsData = await getPostComments(post.id, 1, 5);
         const commentsWithLikes = await Promise.all(
           (commentsData.data || []).map(async (comment: Comment) => {
@@ -89,6 +91,7 @@ export default function PostCard({ post }: { post: Post }) {
     loadData();
   }, [post.id, user?.id]);
 
+  // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -102,6 +105,7 @@ export default function PostCard({ post }: { post: Post }) {
     }
   }, [showMenu]);
 
+  // Intersection Observer for video autoplay/pause
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -524,7 +528,7 @@ export default function PostCard({ post }: { post: Post }) {
             >
               {post.author?.username || 'Unknown'}
             </button>
-            <MentionText text={showFull ? post.description : descShort} />
+            <span>{showFull ? post.description : descShort}</span>
             {post.description.length > 120 && (
               <button className="ml-2 text-sm text-gray-500" onClick={() => setShowFull((s) => !s)}>
                 {showFull ? 'less' : 'more'}
@@ -557,50 +561,49 @@ export default function PostCard({ post }: { post: Post }) {
 
         <div className="text-xs text-gray-400 mb-3">{timeAgo(post.createdAt)} ago</div>
 
-        <div className="pt-2 border-t flex items-start gap-3">
+        <div className="pt-2 border-t flex items-center gap-3">
           <Image
             src={user?.profile?.avatarUrl || '/default-avatar.svg'}
             alt={user?.username || 'you'}
             width={32}
             height={32}
-            className="rounded-full object-cover shrink-0"
+            className="rounded-full object-cover"
           />
-          <div className="flex-1 flex flex-col gap-2">
-            <MentionTextarea
-              value={commentText}
-              onChange={setCommentText}
-              placeholder="Добавить комментарий... (используйте @ для упоминания)"
-              className="flex-1 text-sm outline-none bg-gray-100 text-gray-600 placeholder:text-gray-400 px-3 py-2 rounded-lg border border-transparent focus:border-gray-300 resize-none min-h-[40px]"
-            />
-            <button
-              onClick={async () => {
-                if (!commentText || !commentText.trim() || isPublishing) return;
-                if (!user) return (window.location.href = '/login');
-                setIsPublishing(true);
-                try {
-                  const newComment = await createComment({
-                    postId: post.id,
-                    content: commentText.trim(),
-                  });
-                  const author = newComment.author || { id: newComment.authorId };
-                  const username = author.username || author?.account?.username || author?.profile?.firstName || 'Unknown';
-                  const profile = author.profile || {};
-                  const normalizedComment = { ...newComment, author: { ...author, id: author.id || newComment.authorId, username, profile } };
-                  
-                  setCommentText('');
-                  setCommentsCount((c) => (c || 0) + 1);
-                  setComments((prev) => [normalizedComment, ...prev]);
-                } catch {
-                } finally {
-                  setIsPublishing(false);
-                }
-              }}
-              disabled={!commentText || !commentText.trim() || isPublishing}
-              className="self-end text-sm text-blue-500 font-semibold px-3 py-1 rounded-md hover:bg-blue-50 active:bg-blue-100 transition-colors disabled:opacity-50"
-            >
-              {isPublishing ? 'Posting...' : 'Publish'}
-            </button>
-          </div>
+          <input
+            id={`comment-input-${post.id}`}
+            value={commentText}
+            onChange={(e) => setCommentText(e.target.value)}
+            placeholder="Add a comment..."
+            className="flex-1 text-sm outline-none bg-gray-100 text-gray-600 placeholder:text-gray-400 px-3 py-2 rounded-full border border-transparent focus:border-gray-300"
+          />
+          <button
+            onClick={async () => {
+              if (!commentText.trim() || isPublishing) return;
+              if (!user) return (window.location.href = '/login');
+              setIsPublishing(true);
+              try {
+                const newComment = await createComment({
+                  postId: post.id,
+                  content: commentText.trim(),
+                });
+                const author = newComment.author || { id: newComment.authorId };
+                const username = author.username || author?.account?.username || author?.profile?.firstName || 'Unknown';
+                const profile = author.profile || {};
+                const normalizedComment = { ...newComment, author: { ...author, id: author.id || newComment.authorId, username, profile } };
+                
+                setCommentText('');
+                setCommentsCount((c) => (c || 0) + 1);
+                setComments((prev) => [normalizedComment, ...prev]);
+              } catch {
+              } finally {
+                setIsPublishing(false);
+              }
+            }}
+            disabled={!commentText.trim() || isPublishing}
+            className="text-sm text-blue-500 font-semibold px-3 py-1 rounded-md hover:bg-blue-50 active:bg-blue-100 transition-colors disabled:opacity-50"
+          >
+            {isPublishing ? 'Posting...' : 'Publish'}
+          </button>
         </div>
       </div>
       </article>
@@ -619,9 +622,9 @@ export default function PostCard({ post }: { post: Post }) {
               </button>
             </div>
 
-            <MentionTextarea
+            <textarea
               value={editDescription}
-              onChange={setEditDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
               placeholder="What's on your mind?"
               className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
             />
