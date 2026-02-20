@@ -1,17 +1,18 @@
 'use client';
 
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { Post } from '@/types';
-import { Heart, MessageCircle, MoreHorizontal, Send, Bookmark, Edit2, Trash2, X, Volume2, VolumeX } from 'lucide-react';
+import { Heart, MessageCircle, MoreHorizontal, Send, Bookmark, Edit2, Trash2, X, Volume2, VolumeX, ArchiveRestore, Archive, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { togglePostLike, getPostLikes } from '@/lib/services/likes.service';
 import { createComment, getPostComments, getCommentLikes, getCommentReplies } from '@/lib/services/comments.service';
-import { updatePost, deletePost } from '@/lib/services/posts.service';
+import { updatePost, deletePost, archivePost } from '@/lib/services/posts.service';
 import type { Comment } from '@/lib/services/comments.service';
 import CommentItem from './CommentItem';
 import MentionTextarea from './MentionTextarea';
 import MentionText from './MentionText';
+import SharePostModal from './SharePostModal';
 
 function timeAgo(date?: string) {
   if (!date) return '';
@@ -23,16 +24,19 @@ function timeAgo(date?: string) {
   return `${Math.floor(diff / 86400)}d`;
 }
 
-export default function PostCard({ post }: { post: Post }) {
+export default function PostCard({ post, fullView = false }: { post: Post; fullView?: boolean }) {
   const { user } = useAuth();
   const [showFull, setShowFull] = useState(false);
   const [likesCount, setLikesCount] = useState<number>(post.likesCount || 0);
-  const [commentsCount, setCommentsCount] = useState<number>(post.commentsCount || 0);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentsPage, setCommentsPage] = useState(1);
+  const [commentsHasMore, setCommentsHasMore] = useState(true);
+  const [, setCommentsCount] = useState<number>(0);
+  const [commentsLoading, setCommentsLoading] = useState(false);
   const [liked, setLiked] = useState<boolean>(false);
   const [isLiking, setIsLiking] = useState(false);
   const [commentText, setCommentText] = useState<string>('');
   const [isPublishing, setIsPublishing] = useState(false);
-  const [comments, setComments] = useState<Comment[]>([]);
   const [showMenu, setShowMenu] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editDescription, setEditDescription] = useState<string>(post.description || '');
@@ -45,6 +49,17 @@ export default function PostCard({ post }: { post: Post }) {
   const [currentAssetIndex, setCurrentAssetIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
   const touchDeltaX = useRef<number>(0);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [isArchived, setIsArchived] = useState(post.isArchived);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [editFiles, setEditFiles] = useState<File[]>([]);
+  const [editPreviews, setEditPreviews] = useState<string[]>([]);
+  const [editFileTypes, setEditFileTypes] = useState<('image' | 'video')[]>([]);
+  const [editCurrentIndex, setEditCurrentIndex] = useState(0);
+  const [editAssetsToDelete, setEditAssetsToDelete] = useState<string[]>([]);
+  const [editExistingAssets, setEditExistingAssets] = useState<Array<{ id: string; url: string; type?: string }>>(
+    (post.assets || []).map(asset => ({ id: (asset as { id?: string }).id ?? asset.url, url: asset.url, type: asset.type }))
+  );
 
   useEffect(() => {
     if (!post.id || !user?.id) return;
@@ -57,37 +72,67 @@ export default function PostCard({ post }: { post: Post }) {
         const userLiked = likes.some((like: { author?: { id?: string } }) => like.author?.id === user.id);
         setLiked(userLiked);
 
-        const commentsData = await getPostComments(post.id, 1, 5);
-        const commentsWithLikes = await Promise.all(
-          (commentsData.data || []).map(async (comment: Comment) => {
-            try {
-              const commentLikes = await getCommentLikes(comment.id);
-              const author = comment.author || { id: comment.authorId };
-              const username = author.username || author?.account?.username || author?.profile?.firstName || 'Unknown';
-              const profile = author.profile || {};
-              
-              return {
-                ...comment,
-                author: { ...author, id: author.id || comment.authorId, username, profile },
-                likesCount: commentLikes.length,
-                liked: commentLikes.some((like: { author?: { id?: string } }) => like.author?.id === user.id)
-              };
-            } catch {
-              const author = comment.author || { id: comment.authorId };
-              const username = author.username || author?.account?.username || author?.profile?.firstName || 'Unknown';
-              const profile = author.profile || {};
-              return { ...comment, author: { ...author, id: author.id || comment.authorId, username, profile } };
-            }
-          })
-        );
-        setComments(commentsWithLikes);
-        setCommentsCount(commentsData.pagination?.total || commentsData.data?.length || 0);
-      } catch {
-      }
+      } catch {}
     };
 
     loadData();
   }, [post.id, user?.id]);
+
+ const handleArchivePost = async () => {
+  if (isArchiving || !post.id) return;
+
+  setIsArchiving(true);
+  try {
+    const updatedPost = await archivePost(post.id);
+    
+    setIsArchived(updatedPost.isArchived);
+    setShowMenu(false);
+    
+  } catch (error) {
+    console.error('Failed to archive post:', error);
+    alert('Failed to update archive status');
+  } finally {
+    setIsArchiving(false);
+  }
+};
+
+  const processComments = useCallback(async (rawComments: Comment[]) => {
+    return await Promise.all(
+      rawComments.map(async (comment) => {
+        try {
+          const commentLikes = await getCommentLikes(comment.id);
+          const author = comment.author || { id: comment.authorId };
+          const username = author.username || author?.account?.username || author?.profile?.firstName || 'Unknown';
+          return {
+            ...comment,
+            author: { ...author, id: author.id || comment.authorId, username, profile: author.profile || {} },
+            likesCount: commentLikes.length,
+            liked: commentLikes.some((l: { author?: { id?: string } }) => l.author?.id === user?.id)
+          };
+        } catch {
+          return comment;
+        }
+      })
+    );
+  }, [user?.id]);
+
+  const loadPreviewComments = useCallback(async () => {
+    try {
+      const res = await getPostComments(post.id, 1, 3);
+      const processed = await processComments(res.data || []);
+      setComments(processed);
+      setCommentsCount(res.meta.total);
+    } catch {}
+  }, [post.id, processComments]);
+
+  useEffect(() => {
+    setComments([]);
+    setCommentsPage(1);
+    setCommentsHasMore(true);
+    if (!fullView && post.id) {
+      loadPreviewComments();
+   }
+ }, [post.id, fullView, loadPreviewComments]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -126,9 +171,38 @@ export default function PostCard({ post }: { post: Post }) {
   }, []);
 
   useEffect(() => {
-    // reset index when assets change
     setCurrentAssetIndex(0);
   }, [post.assets]);
+  
+  const loadMoreComments = useCallback(async () => {
+    if (!post.id || commentsLoading || !commentsHasMore) return;
+  
+    setCommentsLoading(true);
+    try {
+      const res = await getPostComments(post.id, commentsPage, 20);
+      const newComments = await processComments(res.data || []);
+  
+      setComments(prev => {
+        // Убираем дубликаты
+        const map = new Map(prev.map(c => [c.id, c]));
+        newComments.forEach(c => map.set(c.id, c));
+        return Array.from(map.values());
+      });
+  
+      setCommentsHasMore(comments.length + newComments.length < res.meta.total);
+      setCommentsPage(p => p + 1);
+      setCommentsCount(res.meta.total);
+    } catch {}
+    setCommentsLoading(false);
+  }, [post.id, commentsPage, commentsHasMore, commentsLoading, comments.length, processComments]);
+
+  useEffect(() => {
+    if (fullView && commentsPage === 1 && comments.length === 0) {
+      loadMoreComments();
+    }
+  }, [fullView, loadMoreComments, commentsPage, comments.length]);
+  
+  
 
   const handleReplyAdded = (parentId: string, reply: Comment) => {
     setComments(prev => {
@@ -154,21 +228,112 @@ export default function PostCard({ post }: { post: Post }) {
     setCommentsCount(c => c + 1);
   };
 
+  const handleEditFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(e.target.files || []);
+    if (!selected.length) return;
+
+    const MAX_FILES = 10;
+    const currentFileCount = editExistingAssets.length - editAssetsToDelete.length + editFiles.length;
+    const remainingSlots = MAX_FILES - currentFileCount;
+    
+    if (remainingSlots <= 0) {
+      alert(`Максимальное количество файлов: ${MAX_FILES}`);
+      return;
+    }
+
+    const valid: File[] = [];
+    const previewsArr: string[] = [];
+    const typesArr: ('image' | 'video')[] = [];
+
+    const filesToProcess = selected.slice(0, remainingSlots);
+    if (selected.length > remainingSlots) {
+      alert(`Можно добавить только ${remainingSlots} файл(ов). Остальные будут проигнорированы.`);
+    }
+
+    await Promise.all(filesToProcess.map(async (f) => {
+      const isVideo = f.type.startsWith('video/');
+      const isImage = f.type.startsWith('image/');
+      if (!isVideo && !isImage) return;
+      valid.push(f);
+      typesArr.push(isVideo ? 'video' : 'image');
+      previewsArr.push(await new Promise<string>((res) => {
+        const reader = new FileReader();
+        reader.onload = () => res(reader.result as string);
+        reader.readAsDataURL(f);
+      }));
+    }));
+
+    if (valid.length) {
+      setEditFiles(prev => [...prev, ...valid]);
+      setEditPreviews(prev => [...prev, ...previewsArr]);
+      setEditFileTypes(prev => [...prev, ...typesArr]);
+      setEditCurrentIndex(editPreviews.length);
+    }
+  };
+
+  const handleDeleteExistingAsset = (assetId: string) => {
+    if (editAssetsToDelete.includes(assetId)) {
+      setEditAssetsToDelete(prev => prev.filter(id => id !== assetId));
+    } else {
+      setEditAssetsToDelete(prev => [...prev, assetId]);
+    }
+  };
+
+  const handleDeleteNewFile = (index: number) => {
+    const nextFiles = [...editFiles];
+    const nextPreviews = [...editPreviews];
+    const nextTypes = [...editFileTypes];
+    nextFiles.splice(index, 1);
+    nextPreviews.splice(index, 1);
+    nextTypes.splice(index, 1);
+    setEditFiles(nextFiles);
+    setEditPreviews(nextPreviews);
+    setEditFileTypes(nextTypes);
+    setEditCurrentIndex(i => Math.max(0, Math.min(i, nextPreviews.length - 1)));
+  };
+
   const handleEditPost = async () => {
-    if (!editDescription.trim() || isEditing || !post.id) return;
+    if (isEditing || !post.id) return;
     
     setIsEditing(true);
     try {
-      const updatedPost = await updatePost(post.id, editDescription.trim());
+      const updatedPost = await updatePost(
+        post.id,
+        editDescription.trim(),
+        editFiles.length > 0 ? editFiles : undefined,
+        editAssetsToDelete.length > 0 ? editAssetsToDelete : undefined
+      );
       post.description = updatedPost.description;
+      post.assets = updatedPost.assets;
+      setEditExistingAssets(
+        (updatedPost.assets || []).map(asset => ({ id: (asset as { id?: string }).id ?? asset.url, url: asset.url, type: asset.type }))
+      );
       setShowEditModal(false);
       setShowMenu(false);
+      // Reset edit state
+      setEditFiles([]);
+      setEditPreviews([]);
+      setEditFileTypes([]);
+      setEditCurrentIndex(0);
+      setEditAssetsToDelete([]);
+      window.location.reload(); // Reload to show updated assets
     } catch (error) {
       console.error('Failed to update post:', error);
       alert('Failed to update post');
     } finally {
       setIsEditing(false);
     }
+  };
+
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    setEditFiles([]);
+    setEditPreviews([]);
+    setEditFileTypes([]);
+    setEditCurrentIndex(0);
+    setEditAssetsToDelete([]);
+    setEditDescription(post.description || '');
+    setEditExistingAssets(post.assets || []);
   };
 
   const handleDeletePost = async () => {
@@ -182,8 +347,6 @@ export default function PostCard({ post }: { post: Post }) {
     try {
       await deletePost(post.id);
       setShowMenu(false);
-      // Remove the post from the feed by triggering a page reload or callback
-      // For now, we'll just hide it
       window.location.reload();
     } catch (error) {
       console.error('Failed to delete post:', error);
@@ -252,9 +415,44 @@ export default function PostCard({ post }: { post: Post }) {
     });
   };
 
+  const handleCommentDeleted = (commentId: string) => {
+    setComments(prev => {
+      const removeComment = (list: Comment[]): Comment[] => {
+        return list.filter(c => c.id !== commentId).map(c => {
+          if (c.replies && c.replies.length > 0) {
+            return { ...c, replies: removeComment(c.replies) };
+          }
+          return c;
+        });
+      };
+      return removeComment(prev);
+    });
+  };
+
+  const handleCommentUpdated = (commentId: string, content: string) => {
+    setComments(prev => {
+      const updateComments = (comments: Comment[]): Comment[] => {
+        return comments.map(comment => {
+          if (comment.id === commentId) {
+            return { ...comment, content };
+          }
+          if (comment.replies) {
+            return {
+              ...comment,
+              replies: updateComments(comment.replies)
+            };
+          }
+          return comment;
+        });
+      };
+      return updateComments(prev);
+    });
+  };
+
   const handleLoadReplies = async (commentId: string) => {
     try {
       const repliesData = await getCommentReplies(commentId);
+      
       const repliesWithLikes = await Promise.all(
         repliesData.map(async (reply: Comment) => {
           try {
@@ -270,32 +468,28 @@ export default function PostCard({ post }: { post: Post }) {
               liked: replyLikes.some((like: { author?: { id?: string } }) => like.author?.id === user?.id)
             };
           } catch {
-            const author = reply.author || { id: reply.authorId };
-            const username = author.username || author?.account?.username || author?.profile?.firstName || 'Unknown';
-            const profile = author.profile || {};
-            return { ...reply, author: { ...author, id: author.id || reply.authorId, username, profile } };
+            return reply;
           }
         })
       );
       
       setComments(prev => {
-        const updateComments = (comments: Comment[]): Comment[] => {
-          return comments.map(comment => {
-            if (comment.id === commentId) {
-              return { ...comment, replies: repliesWithLikes };
+        const updateRecursive = (list: Comment[]): Comment[] => {
+          return list.map(c => {
+            if (c.id === commentId) {
+              return { ...c, replies: repliesWithLikes };
             }
-            if (comment.replies) {
-              return {
-                ...comment,
-                replies: updateComments(comment.replies)
-              };
+            if (c.replies && c.replies.length > 0) {
+              return { ...c, replies: updateRecursive(c.replies) };
             }
-            return comment;
+            return c;
           });
         };
-        return updateComments(prev);
+
+        return updateRecursive(prev);
       });
-    } catch {
+    } catch (e) {
+      console.error('Failed to load replies', e);
     }
   };
 
@@ -306,166 +500,210 @@ export default function PostCard({ post }: { post: Post }) {
 
   return (
     <>
-      <article className="bg-white border rounded" ref={articleRef}>
-      <header className="flex items-center p-3">
-        <button
-          onClick={() => window.location.href = `/profile/${post.author?.username || 'unknown'}`}
-          className="shrink-0 mr-3"
-        >
-          <Image
-            src={post.author?.profile?.avatarUrl || '/default-avatar.svg'}
-            alt={post.author?.username || 'avatar'}
-            width={40}
-            height={40}
-            className="rounded-full object-cover hover:opacity-80 transition-opacity"
-          />
-        </button>
-        <div className="flex-1">
+      <article className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-200 p-3" ref={articleRef}>
+        {/* Header */}
+        <header className="flex items-center mb-3">
           <button
             onClick={() => window.location.href = `/profile/${post.author?.username || 'unknown'}`}
-            className="font-semibold text-sm text-gray-600 hover:underline"
+            className="shrink-0 mr-3 w-10 h-10 rounded-full overflow-hidden"
           >
-            {post.author?.username || 'Unknown'}
+            <Image
+              src={post.author?.profile?.avatarUrl || '/default-avatar.svg'}
+              alt={post.author?.username || 'avatar'}
+              width={40}
+              height={40}
+              className="w-full h-full object-cover hover:opacity-80 transition-opacity"
+            />
           </button>
-          <div className="text-xs text-gray-500">{post.author?.profile?.firstName || ''}</div>
-        </div>
-        
-        {/* Menu button - only show if current user is the post author */}
-        {user?.id === post.author?.id && (
-          <div className="relative" ref={menuRef}>
+          <div className="flex-1">
             <button
-              aria-label="More"
-              onClick={() => setShowMenu(!showMenu)}
-              className="p-1 rounded-full hover:bg-gray-100 active:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              onClick={() => window.location.href = `/profile/${post.author?.username || 'unknown'}`}
+              className="font-semibold text-gray-500 hover:underline"
             >
-              <MoreHorizontal size={18} className="text-gray-600" />
+              {post.author?.username || 'Unknown'}
             </button>
+            <div className="text-xs text-gray-500">{post.author?.profile?.firstName || ''}</div>
+          </div>
+  
+          {/* Menu */}
+          {user?.id === post.author?.id && (
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className="p-1 rounded-full hover:bg-gray-100 active:bg-gray-200 transition"
+              >
+                <MoreHorizontal size={18} className="text-gray-600" />
+              </button>
+              {showMenu && (
+                <div className="absolute right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[150px]">
+                  <button
+                    onClick={() => {
+                      setEditDescription(post.description || '');
+                      setEditExistingAssets(
+                        (post.assets || []).map(asset => ({ id: (asset as { id?: string }).id ?? asset.url, url: asset.url, type: asset.type }))
+                      );
+                      setEditFiles([]);
+                      setEditPreviews([]);
+                      setEditFileTypes([]);
+                      setEditCurrentIndex(0);
+                      setEditAssetsToDelete([]);
+                      setShowEditModal(true);
+                      setShowMenu(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                  >
+                    <Edit2 size={16} /> Edit
+                  </button>
 
-            {/* Dropdown menu */}
-            {showMenu && (
-              <div className="absolute right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-37.5">
-                <button
-                  onClick={() => {
-                    setEditDescription(post.description || '');
-                    setShowEditModal(true);
-                    setShowMenu(false);
-                  }}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 rounded-t-lg"
-                >
-                  <Edit2 size={16} />
-                  Edit
-                </button>
-                <button
-                  onClick={handleDeletePost}
-                  disabled={isDeleting}
-                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 rounded-b-lg disabled:opacity-50"
-                >
-                  <Trash2 size={16} />
-                  {isDeleting ? 'Deleting...' : 'Delete'}
-                </button>
-              </div>
-            )}
+                  <button
+                    onClick={handleArchivePost}
+                    disabled={isArchiving}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isArchiving ? (
+                      <span className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                    ) : isArchived ? (
+                      <>
+                        <ArchiveRestore size={16} /> Unarchive
+                      </>
+                    ) : (
+                      <>
+                        <Archive size={16} /> Archive
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={handleDeletePost}
+                    disabled={isDeleting}
+                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <Trash2 size={16} /> {isDeleting ? 'Deleting...' : 'Delete'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </header>
+
+        {isArchived && fullView && (
+            <div className="bg-yellow-50 text-yellow-800 text-sm px-4 py-2 flex items-center gap-2 border-b border-yellow-100">
+                <Archive size={16} />
+                This post is archived and only visible to you.
+            </div>
+        )}
+  
+        {/* Media */}
+        {post.assets && post.assets.length > 0 && (
+          <div 
+            className="relative w-full bg-black rounded-lg overflow-hidden group"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            {(() => {
+              const asset = post.assets![currentAssetIndex];
+              if (!asset) return null;
+              const isVideo = asset.type === 'VIDEO' || !!asset.url.match(/\.(mp4|webm|ogg|mov)$/i);
+  
+              return (
+                <>
+                  {isVideo ? (
+                    <video
+                      key={asset.url}
+                      ref={videoRef}
+                      src={asset.url}
+                      className="w-full max-h-[70vh] object-contain h-auto"
+                      muted={isMuted}
+                      loop
+                    />
+                  ) : (
+                    <Image
+                      key={asset.url}
+                      src={asset.url}
+                      alt={'post'}
+                      width={600}
+                      height={400}
+                      className="w-full h-auto max-h-[70vh] object-contain"
+                    />
+                  )}
+  
+                  {/* Navigation arrows */}
+                  {post.assets.length > 1 && (
+                    <>
+                      <button
+                        onClick={goToPrev}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-75 text-white rounded-full p-2 transition-all opacity-0 group-hover:opacity-100"
+                        aria-label="Previous image"
+                      >
+                        <ChevronLeft size={24} />
+                      </button>
+                      <button
+                        onClick={goToNext}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-75 text-white rounded-full p-2 transition-all opacity-0 group-hover:opacity-100"
+                        aria-label="Next image"
+                      >
+                        <ChevronRight size={24} />
+                      </button>
+                    </>
+                  )}
+  
+                  {/* Dots indicator */}
+                  {post.assets.length > 1 && (
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                      {post.assets.map((_, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setCurrentAssetIndex(index)}
+                          className={`w-1.5 h-1.5 rounded-full transition-all ${
+                            index === currentAssetIndex 
+                              ? 'bg-white w-6' 
+                              : 'bg-white bg-opacity-50 hover:bg-opacity-75'
+                          }`}
+                          aria-label={`Go to image ${index + 1}`}
+                        />
+                      ))}
+                    </div>
+                  )}
+  
+                  {isVideo && (
+                    <button
+                      onClick={handleToggleMute}
+                      className="absolute bottom-3 right-3 bg-black bg-opacity-50 hover:bg-opacity-75 text-white rounded-full p-2 transition-all"
+                    >
+                      {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                    </button>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
-      </header>
 
-      {post.assets && post.assets.length > 0 && (
-        <div
-          className="w-full bg-black relative group overflow-hidden"
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          {(() => {
-            const asset = post.assets![currentAssetIndex];
-            if (!asset) return null;
-            const isVideo = asset.type === 'VIDEO' || !!asset.url.match(/\.(mp4|webm|ogg|mov)$/i);
-
-            return (
-              <>
-                {isVideo ? (
-                  <video
-                    key={asset.url}
-                    ref={videoRef}
-                    src={asset.url}
-                    className="w-full max-h-[70vh] object-contain h-auto"
-                    muted={isMuted}
-                    loop
-                    onError={(e) => {
-                      const target = e.target as HTMLVideoElement;
-                      target.parentElement?.remove();
-                    }}
-                  />
-                ) : (
-                  <Image
-                    key={asset.url}
-                    src={asset.url}
-                    alt={'post'}
-                    width={600}
-                    height={400}
-                    className="w-full h-auto max-h-[70vh] object-contain"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.parentElement?.remove();
-                    }}
-                  />
-                )}
-
-                {/* Sound toggle button for videos */}
-                {isVideo && (
-                  <button
-                    onClick={handleToggleMute}
-                    className="absolute bottom-4 right-4 bg-black bg-opacity-50 hover:bg-opacity-75 text-white rounded-full p-2 transition-all"
-                    aria-label={isMuted ? 'Unmute' : 'Mute'}
-                  >
-                    {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-                  </button>
-                )}
-
-                {/* Prev / Next buttons */}
-                {post.assets.length > 1 && (
-                  <>
-                    <button
-                      onClick={goToPrev}
-                      aria-label="Prev"
-                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-30 hover:bg-opacity-50 text-white rounded-full p-2"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.293 16.293a1 1 0 010 1.414l-6-6a1 1 0 010-1.414l6-6a1 1 0 111.414 1.414L8.414 10l5.293 5.293a1 1 0 010 1.414z" clipRule="evenodd"/></svg>
-                    </button>
-                    <button
-                      onClick={goToNext}
-                      aria-label="Next"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-30 hover:bg-opacity-50 text-white rounded-full p-2"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M7.707 3.707a1 1 0 010-1.414l6 6a1 1 0 010 1.414l-6 6A1 1 0 018.121 16.12L13.879 10 8.12 4.121a1 1 0 01-.413-.414z" clipRule="evenodd"/></svg>
-                    </button>
-                  </>
-                )}
-
-                {/* Dots */}
-                {post.assets.length > 1 && (
-                  <div className="absolute left-1/2 -translate-x-1/2 bottom-3 flex items-center gap-2">
-                    {post.assets.map((_, idx) => (
-                      <button
-                        key={idx}
-                        onClick={(e) => { e.stopPropagation(); setCurrentAssetIndex(idx); }}
-                        className={`w-2 h-2 rounded-full ${idx === currentAssetIndex ? 'bg-white' : 'bg-white/50'}`}
-                        aria-label={`Go to media ${idx + 1}`}
-                      />
-                    ))}
-                  </div>
-                )}
-              </>
-            );
-          })()}
-        </div>
-      )}
-
-      <div className="p-3">
-        <div className="flex items-center justify-between mb-2">
+        {/* Description for posts without media - shown before actions */}
+        {(!post.assets || post.assets.length === 0) && post.description && (
+          <div className="mt-3 mb-3 px-4 py-3 bg-gray-50 rounded-xl border border-gray-100">
+            <p className="text-base text-gray-800 leading-relaxed">
+              <button
+                onClick={() => window.location.href = `/profile/${post.author?.username || 'unknown'}`}
+                className="font-semibold mr-2 hover:underline text-gray-500"
+              >
+                {post.author?.username || 'Unknown'}
+              </button>
+              <MentionText text={showFull ? post.description : descShort} />
+              {post.description.length > 120 && (
+                <button className="ml-2 text-sm text-gray-500 hover:text-gray-700" onClick={() => setShowFull(s => !s)}>
+                  {showFull ? 'less' : 'more'}
+                </button>
+              )}
+            </p>
+          </div>
+        )}
+  
+        {/* Actions */}
+        <div className="flex items-center justify-between mt-3 mb-2">
           <div className="flex items-center gap-4">
             <button
-              aria-label="Like"
               onClick={async () => {
                 if (!post.id || isLiking) return;
                 if (!user) return (window.location.href = '/login');
@@ -475,168 +713,313 @@ export default function PostCard({ post }: { post: Post }) {
                   const nowLiked = res.liked === true;
                   setLiked(nowLiked);
                   setLikesCount((c) => (nowLiked ? (c || 0) + 1 : Math.max((c || 0) - 1, 0)));
-                } catch {
-                } finally {
-                  setIsLiking(false);
-                }
+                } finally { setIsLiking(false); }
               }}
-              className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="p-2 rounded-full hover:bg-gray-100 transition"
             >
               <Heart size={24} className={liked ? 'text-red-500 fill-red-500' : 'text-gray-700'} />
             </button>
 
             <button
-              aria-label="Comment"
               onClick={() => {
-                const el = document.querySelector(`#comment-input-${post.id}`) as HTMLInputElement | null;
+                const el = document.querySelector<HTMLTextAreaElement>(`#comment-input-${post.id}`);
                 el?.focus();
               }}
-              className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="p-2 rounded-full hover:bg-gray-100 transition"
             >
               <MessageCircle size={24} className="text-gray-700" />
             </button>
 
             <button
-              aria-label="Send"
-              className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-            >
-              <Send size={24} className="text-gray-700" />
-            </button>
-          </div>
+                aria-label="Send"
+                onClick={() => setShowShareModal(true)}
+                className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              >
+                <Send size={24} className="text-gray-700" />
+              </button>
+            </div>
 
-          <button
-            aria-label="Bookmark"
-            className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-          >
+          <button className="p-2 rounded-full hover:bg-gray-100 transition">
             <Bookmark size={20} className="text-gray-700" />
           </button>
         </div>
 
-        {likesCount > 0 && (
-          <div className="text-sm font-semibold mb-1 text-gray-600">{likesCount} likes</div>
-        )}
-
-        {post.description && (
-          <div className="text-sm text-gray-800 mb-2">
-            <button
-              onClick={() => window.location.href = `/profile/${post.author?.username || 'unknown'}`}
-              className="font-semibold mr-2 hover:underline"
-            >
-              {post.author?.username || 'Unknown'}
-            </button>
-            <MentionText text={showFull ? post.description : descShort} />
-            {post.description.length > 120 && (
-              <button className="ml-2 text-sm text-gray-500" onClick={() => setShowFull((s) => !s)}>
-                {showFull ? 'less' : 'more'}
-              </button>
+  
+        {/* Likes & Description for posts with media */}
+        {post.assets && post.assets.length > 0 && (
+          <>
+            {likesCount > 0 && <div className="text-sm font-semibold text-gray-600 mb-1">{likesCount} likes</div>}
+  
+            {post.description && (
+              <div className="text-sm text-gray-800 mb-2">
+                <button
+                  onClick={() => window.location.href = `/profile/${post.author?.username || 'unknown'}`}
+                  className="font-semibold mr-2 hover:underline text-gray-500"
+                >
+                  {post.author?.username || 'Unknown'}
+                </button>
+                <MentionText text={showFull ? post.description : descShort} />
+                {post.description.length > 120 && (
+                  <button className="ml-2 text-sm text-gray-500" onClick={() => setShowFull(s => !s)}>
+                    {showFull ? 'less' : 'more'}
+                  </button>
+                )}
+              </div>
             )}
-          </div>
+          </>
         )}
 
-        {commentsCount > 0 && (
-          <div className="text-sm text-gray-500 mb-2 cursor-pointer hover:text-gray-700">
-            View all {commentsCount} comments
-          </div>
+        {/* Likes count for posts without media */}
+        {(!post.assets || post.assets.length === 0) && likesCount > 0 && (
+          <div className="text-sm font-semibold text-gray-600 mb-1">{likesCount} likes</div>
         )}
-
-        {/* Display first few comments */}
-        {comments.length > 0 && (
-          <div className="mb-3 space-y-2">
-            {comments.slice(0, 3).map((comment) => (
-              <CommentItem
-                key={comment.id}
-                comment={comment}
-                postId={post.id}
-                onReplyAdded={handleReplyAdded}
-                onLikeToggle={handleCommentLikeToggle}
-                onLoadReplies={handleLoadReplies}
-              />
-            ))}
-          </div>
-        )}
-
-        <div className="text-xs text-gray-400 mb-3">{timeAgo(post.createdAt)} ago</div>
-
+  
+        {/* Comments */}
+        <div className="space-y-2 mb-3">
+          {comments.map((comment) => (
+            <CommentItem
+              key={comment.id}
+              comment={comment}
+              postId={post.id}
+              onReplyAdded={handleReplyAdded}
+              onLikeToggle={handleCommentLikeToggle}
+              onCommentDeleted={handleCommentDeleted}
+              onCommentUpdated={handleCommentUpdated}
+              onLoadReplies={handleLoadReplies}
+            />
+          ))}
+        </div>
+  
+        {/* Add Comment */}
         <div className="pt-2 border-t flex items-start gap-3">
-          <Image
-            src={user?.profile?.avatarUrl || '/default-avatar.svg'}
-            alt={user?.username || 'you'}
-            width={32}
-            height={32}
-            className="rounded-full object-cover shrink-0"
-          />
-          <div className="flex-1 flex flex-col gap-2">
+          <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
+            <Image
+              src={user?.profile?.avatarUrl || '/default-avatar.svg'}
+              alt="you"
+              width={32}
+              height={32}
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="flex-1 flex flex-col">
             <MentionTextarea
               value={commentText}
               onChange={setCommentText}
               placeholder="Добавить комментарий... (используйте @ для упоминания)"
-              className="flex-1 text-sm outline-none bg-gray-100 text-gray-600 placeholder:text-gray-400 px-3 py-2 rounded-lg border border-transparent focus:border-gray-300 resize-none min-h-[40px]"
+              className="flex-1 text-sm bg-gray-100 text-gray-600 placeholder:text-gray-400 px-3 py-2 rounded-lg border border-gray-300 resize-none min-h-[40px] mb-1 box-border"
             />
             <button
               onClick={async () => {
-                if (!commentText || !commentText.trim() || isPublishing) return;
+                if (!commentText?.trim() || isPublishing) return;
                 if (!user) return (window.location.href = '/login');
                 setIsPublishing(true);
                 try {
-                  const newComment = await createComment({
-                    postId: post.id,
-                    content: commentText.trim(),
-                  });
+                  const newComment = await createComment({ postId: post.id, content: commentText.trim() });
                   const author = newComment.author || { id: newComment.authorId };
                   const username = author.username || author?.account?.username || author?.profile?.firstName || 'Unknown';
                   const profile = author.profile || {};
                   const normalizedComment = { ...newComment, author: { ...author, id: author.id || newComment.authorId, username, profile } };
-                  
                   setCommentText('');
-                  setCommentsCount((c) => (c || 0) + 1);
-                  setComments((prev) => [normalizedComment, ...prev]);
-                } catch {
-                } finally {
-                  setIsPublishing(false);
-                }
+                  setComments(prev => [normalizedComment, ...prev]);
+                } finally { setIsPublishing(false); }
               }}
-              disabled={!commentText || !commentText.trim() || isPublishing}
-              className="self-end text-sm text-blue-500 font-semibold px-3 py-1 rounded-md hover:bg-blue-50 active:bg-blue-100 transition-colors disabled:opacity-50"
+              disabled={!commentText?.trim() || isPublishing}
+              className="self-end mt-1 text-sm text-blue-500 font-semibold px-3 py-1 rounded-md hover:bg-blue-50 active:bg-blue-100 transition disabled:opacity-50"
             >
               {isPublishing ? 'Posting...' : 'Publish'}
             </button>
           </div>
         </div>
-      </div>
+  
+        <div className="text-xs text-gray-400 mt-2">{timeAgo(post.createdAt)} ago</div>
       </article>
-
-      {/* Edit Post Modal */}
+      {showShareModal && (
+        <SharePostModal 
+          postId={post.id} 
+          onClose={() => setShowShareModal(false)} 
+        />
+      )}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg max-w-md w-full mx-4 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Edit Post</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={handleCloseEditModal}>
+          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-lg font-semibold text-gray-600">Edit Post</h2>
               <button
-                onClick={() => setShowEditModal(false)}
-                className="text-gray-500 hover:text-gray-700"
+                onClick={handleCloseEditModal}
+                className="p-1 rounded-full hover:bg-gray-100 transition"
               >
-                <X size={24} />
+                <X size={20} className="text-gray-600" />
               </button>
             </div>
 
-            <MentionTextarea
-              value={editDescription}
-              onChange={setEditDescription}
-              placeholder="What's on your mind?"
-              className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-            />
+            <div className="p-4 overflow-y-auto max-h-[calc(90vh-200px)]">
+              {/* Existing Assets */}
+              {editExistingAssets.length > 0 && (
+                <div className="mb-4">
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">Existing Media</h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    {editExistingAssets.map((asset) => {
+                      const isMarkedForDelete = editAssetsToDelete.includes(asset.id);
+                      const isVideo = asset.type === 'VIDEO' || !!asset.url.match(/\.(mp4|webm|ogg|mov)$/i);
+                      return (
+                        <div
+                          key={asset.id}
+                          className={`relative aspect-square border-2 rounded-lg overflow-hidden ${
+                            isMarkedForDelete ? 'border-red-500 opacity-50' : 'border-gray-200'
+                          }`}
+                        >
+                          {isVideo ? (
+                            <video
+                              src={asset.url}
+                              className="w-full h-full object-cover"
+                              muted
+                              playsInline
+                            />
+                          ) : (
+                            <Image
+                              src={asset.url}
+                              alt="asset"
+                              fill
+                              className="object-cover"
+                              sizes="(max-width: 768px) 33vw, 150px"
+                            />
+                          )}
+                          <button
+                            onClick={() => handleDeleteExistingAsset(asset.id)}
+                            className={`absolute top-1 right-1 p-1 rounded-full text-white text-xs ${
+                              isMarkedForDelete ? 'bg-green-500' : 'bg-red-500'
+                            }`}
+                          >
+                            {isMarkedForDelete ? 'Restore' : 'Delete'}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
-            <div className="flex gap-2 mt-4">
+              {/* New Files Preview */}
+              {(editPreviews.length > 0 || editExistingAssets.length - editAssetsToDelete.length + editFiles.length < 10) && (
+                <div className="mb-4">
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">New Media</h3>
+                  {editPreviews.length > 0 && (
+                    <div className="border rounded-lg overflow-hidden relative mb-2">
+                      {editFileTypes[editCurrentIndex] === 'image' ? (
+                        <Image
+                          src={editPreviews[editCurrentIndex]}
+                          alt={`preview-${editCurrentIndex}`}
+                          width={400}
+                          height={200}
+                          className="w-full h-auto object-contain"
+                        />
+                      ) : (
+                        <video
+                          src={editPreviews[editCurrentIndex]}
+                          className="w-full h-auto object-contain"
+                          controls
+                        />
+                      )}
+
+                      {editPreviews.length > 1 && (
+                        <>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditCurrentIndex(i => (i - 1 + editPreviews.length) % editPreviews.length);
+                            }}
+                            className="absolute left-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-30 text-white rounded-full p-1"
+                          >
+                            ‹
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditCurrentIndex(i => (i + 1) % editPreviews.length);
+                            }}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-30 text-white rounded-full p-1"
+                          >
+                            ›
+                          </button>
+                        </>
+                      )}
+
+                      <button
+                        onClick={() => handleDeleteNewFile(editCurrentIndex)}
+                        className="absolute top-2 right-2 text-sm text-red-600 bg-white/80 rounded px-2 py-1"
+                      >
+                        Удалить
+                      </button>
+
+                      {editPreviews.length > 1 && (
+                        <div className="absolute left-1/2 -translate-x-1/2 bottom-2 flex gap-2">
+                          {editPreviews.map((_, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => setEditCurrentIndex(idx)}
+                              className={`w-2 h-2 rounded-full ${
+                                idx === editCurrentIndex ? 'bg-white' : 'bg-white/50'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                    <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                    <input
+                      type="file"
+                      accept="image/*,video/*"
+                      onChange={handleEditFileChange}
+                      className="hidden"
+                      id="edit-file-upload"
+                      multiple
+                      disabled={editExistingAssets.length - editAssetsToDelete.length + editFiles.length >= 10}
+                    />
+                    <label
+                      htmlFor="edit-file-upload"
+                      className={`inline-block px-4 py-2 rounded-lg transition-colors cursor-pointer ${
+                        editExistingAssets.length - editAssetsToDelete.length + editFiles.length >= 10
+                          ? 'bg-gray-400 text-white cursor-not-allowed'
+                          : 'bg-blue-600 text-white hover:bg-blue-700'
+                      }`}
+                    >
+                      {editPreviews.length > 0
+                        ? `Add More (${editExistingAssets.length - editAssetsToDelete.length + editFiles.length}/10)`
+                        : 'Add Files'}
+                    </label>
+                    {editExistingAssets.length - editAssetsToDelete.length + editFiles.length >= 10 && (
+                      <p className="text-xs text-gray-500 mt-2">Maximum 10 files</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Description */}
+              <div className="mb-4">
+                <MentionTextarea
+                  value={editDescription}
+                  onChange={setEditDescription}
+                  placeholder="Edit post description... (use @ to mention)"
+                  className="w-full text-sm bg-gray-50 text-gray-800 placeholder:text-gray-400 px-3 py-2 rounded-lg border border-gray-300 resize-none min-h-[100px] box-border"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-end p-4 border-t">
               <button
-                onClick={() => setShowEditModal(false)}
-                className="flex-1 px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+                onClick={handleCloseEditModal}
+                className="px-4 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+                disabled={isEditing}
               >
                 Cancel
               </button>
               <button
                 onClick={handleEditPost}
-                disabled={isEditing || !editDescription.trim()}
-                className="flex-1 px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isEditing}
+                className="px-4 py-2 text-sm text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isEditing ? 'Saving...' : 'Save'}
               </button>
@@ -645,5 +1028,5 @@ export default function PostCard({ post }: { post: Post }) {
         </div>
       )}
     </>
-  );
+  );  
 }

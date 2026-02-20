@@ -21,6 +21,11 @@ export class CreateMessageDto {
   @MaxLength(5000, { message: 'Message is too long' })
   content?: string;
 
+  @ApiPropertyOptional({ description: 'ID of the message being replied to' })
+  @IsOptional()
+  @IsUUID()
+  replyToId?: string;
+
   @ApiPropertyOptional({ type: 'string', format: 'binary', isArray: true })
   files?: any[];
 }

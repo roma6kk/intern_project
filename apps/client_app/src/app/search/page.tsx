@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Search } from 'lucide-react';
+import { Search, Loader2, LogIn } from 'lucide-react';
 import api from '@/lib/api';
 import { Post } from '@/types';
 import PostCard from '@/components/PostCard';
@@ -173,8 +174,31 @@ export default function SearchPage() {
     return filtered;
   }, [posts, filter, sort, followingIds]);
 
-  if (isLoading) return <div className="p-4">Loading...</div>;
-  if (!isLoading && !user) return <div className="p-4">Please sign in</div>;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 flex flex-col items-center gap-4 max-w-sm w-full">
+          <Loader2 className="w-10 h-10 animate-spin text-gray-400" />
+          <p className="text-gray-600 font-medium">Загрузка...</p>
+        </div>
+      </div>
+    );
+  }
+  if (!isLoading && !user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 flex flex-col items-center gap-4 max-w-sm w-full">
+          <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
+            <LogIn className="w-7 h-7 text-gray-400" />
+          </div>
+          <p className="text-gray-600 font-medium text-center">Войдите для поиска постов</p>
+          <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium text-sm">
+            Войти
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -216,15 +240,20 @@ export default function SearchPage() {
 
         {loading && page === 1 && (
           <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm px-6 py-4 flex items-center gap-3">
+              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+              <span className="text-sm text-gray-600">Поиск постов...</span>
+            </div>
           </div>
         )}
         
         {!loading && posts.length === 0 && (
-          <div className="text-center py-12">
-            <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">{query ? 'Посты не найдены' : 'Постов нет'}</h3>
-            <p className="text-gray-500">{query ? 'Попробуйте изменить поисковый запрос' : 'Пока нет доступных постов'}</p>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+              <Search className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-600 mb-2">{query ? 'Посты не найдены' : 'Постов нет'}</h3>
+            <p className="text-sm text-gray-500">{query ? 'Попробуйте изменить поисковый запрос' : 'Пока нет доступных постов'}</p>
           </div>
         )}
 
@@ -256,14 +285,17 @@ export default function SearchPage() {
         </div>
 
         {loading && page > 1 && (
-          <div className="flex justify-center py-4">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="flex justify-center py-6">
+            <div className="flex items-center gap-2 text-gray-500">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span className="text-sm">Загрузка...</span>
+            </div>
           </div>
         )}
         
         {!hasMore && normalizedPosts.length > 0 && (
-          <div className="text-center py-4 text-gray-500">
-            Вы просмотрели все результаты
+          <div className="text-center py-6">
+            <p className="text-sm text-gray-500">Вы просмотрели все результаты</p>
           </div>
         )}
       </div>

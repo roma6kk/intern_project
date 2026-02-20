@@ -6,6 +6,7 @@ import {
   MaxLength,
   IsDateString,
 } from 'class-validator';
+import { IsValidBirthDate } from './validators/is-valid-birth-date.validator';
 
 export class UpdateProfileDto {
   @ApiPropertyOptional({ example: 'Ivan', description: 'First name' })
@@ -31,9 +32,13 @@ export class UpdateProfileDto {
   @IsString()
   avatarUrl?: string;
 
-  @ApiPropertyOptional({ example: '1990-01-15', description: 'Birthday date' })
+  @ApiPropertyOptional({
+    example: '1990-01-15',
+    description: 'Birthday date (ISO 8601). User must be 13–120 years old.',
+  })
   @IsOptional()
   @IsDateString()
+  @IsValidBirthDate()
   birthday?: string;
 
   @ApiPropertyOptional({ example: true, description: 'Private profile status' })

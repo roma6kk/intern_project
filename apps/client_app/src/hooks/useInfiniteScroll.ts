@@ -63,7 +63,9 @@ export function useInfiniteScroll<T extends { id?: string }>({
         return combined;
       });
 
-      setHasMore(page < meta.totalPages);
+      // Calculate totalPages if not provided in meta
+      const totalPages = meta.totalPages ?? Math.ceil((meta.total || 0) / meta.limit);
+      setHasMore(page < totalPages);
       setPage(prev => prev + 1);
     } catch (error) {
       console.error('Ошибка загрузки данных:', error);

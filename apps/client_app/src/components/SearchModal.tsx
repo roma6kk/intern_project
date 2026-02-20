@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Search } from 'lucide-react';
+import { X, Search, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { Post } from '@/types';
@@ -93,20 +93,30 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
         <div className="overflow-y-auto max-h-96">
           {loading && (
             <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-5 py-3">
+                <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                <span className="text-sm text-gray-600">Поиск...</span>
+              </div>
             </div>
           )}
           
           {!loading && query && posts.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              Посты не найдены
+            <div className="flex flex-col items-center justify-center py-8 px-4">
+              <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                <Search className="w-6 h-6 text-gray-400" />
+              </div>
+              <p className="text-gray-600 font-medium">Посты не найдены</p>
+              <p className="text-sm text-gray-500 mt-1">Попробуйте другой запрос</p>
             </div>
           )}
           
           {!loading && !query && (
-            <div className="text-center py-8 text-gray-500">
-              <p>Введите запрос для поиска</p>
-              <p className="text-sm mt-2">Нажмите Enter для перехода к полному поиску</p>
+            <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+              <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                <Search className="w-6 h-6 text-gray-400" />
+              </div>
+              <p className="text-gray-600 font-medium">Введите запрос для поиска</p>
+              <p className="text-sm text-gray-500 mt-1">Нажмите Enter для перехода к полному поиску</p>
             </div>
           )}
 

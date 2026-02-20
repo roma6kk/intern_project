@@ -27,11 +27,25 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
     const selected = Array.from(e.target.files || []);
     if (!selected.length) return;
 
+    const MAX_FILES = 10;
+    const currentFileCount = files.length;
+    const remainingSlots = MAX_FILES - currentFileCount;
+    
+    if (remainingSlots <= 0) {
+      alert(`Максимальное количество файлов: ${MAX_FILES}`);
+      return;
+    }
+
     const valid: File[] = [];
     const previewsArr: string[] = [];
     const typesArr: ('image' | 'video')[] = [];
 
-    await Promise.all(selected.map(async (f) => {
+    const filesToProcess = selected.slice(0, remainingSlots);
+    if (selected.length > remainingSlots) {
+      alert(`Можно добавить только ${remainingSlots} файл(ов). Остальные будут проигнорированы.`);
+    }
+
+    await Promise.all(filesToProcess.map(async (f) => {
       const isVideo = f.type.startsWith('video/');
       const isImage = f.type.startsWith('image/');
       if (!isVideo && !isImage) return;
@@ -187,13 +201,21 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
                     className="hidden"
                     id="file-upload"
                     multiple
+                    disabled={previews.length >= 10}
                   />
                   <label
                     htmlFor="file-upload"
-                    className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700 transition-colors"
+                    className={`inline-block px-4 py-2 rounded-lg transition-colors ${
+                      previews.length >= 10
+                        ? 'bg-gray-400 text-white cursor-not-allowed'
+                        : 'bg-blue-600 text-white cursor-pointer hover:bg-blue-700'
+                    }`}
                   >
-                    {previews.length > 0 ? 'Добавить ещё' : 'Выбрать файл'}
+                    {previews.length > 0 ? `Добавить ещё (${previews.length}/10)` : 'Выбрать файл'}
                   </label>
+                  {previews.length >= 10 && (
+                    <p className="text-sm text-gray-500 mt-2">Достигнуто максимальное количество файлов (10)</p>
+                  )}
                 </div>
               </div>
 

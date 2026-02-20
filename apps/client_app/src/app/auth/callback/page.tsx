@@ -12,13 +12,11 @@ export default function AuthCallbackPage() {
     const accessToken = searchParams.get('accessToken');
 
     if (accessToken) {
-      console.log('[AuthCallback] Setting accessToken and redirecting to /feed');
       Cookies.set('accessToken', accessToken);
       // Force AuthProvider to re-check auth by clearing the init flag
       sessionStorage.removeItem('auth_initialized');
       router.replace('/feed');
     } else {
-      console.log('[AuthCallback] No accessToken, redirecting to /login');
       router.push('/login');
     }
   }, [searchParams, router]);

@@ -50,6 +50,7 @@ export class ProfilesService {
       const profile = await this.prisma.profile.findFirst({
         where: {
           user: {
+            deletedAt: null,
             account: {
               username,
             },
@@ -79,25 +80,57 @@ export class ProfilesService {
     }
   }
 
+  async getSuggestions(userId: string, limit: number = 10) {
+    const following = await this.prisma.follow.findMany({
+      where: { followerId: userId, status: 'ACCEPTED' },
+      select: { followingId: true },
+    });
+    const followingIds = following.map((f) => f.followingId);
+    const excludeIds = [...followingIds, userId];
+
+    const profiles = await this.prisma.profile.findMany({
+      where: {
+        userId: { notIn: excludeIds },
+        user: { deletedAt: null },
+      },
+      take: limit * 2,
+      include: {
+        user: {
+          include: {
+            account: { select: { username: true } },
+          },
+        },
+      },
+    });
+
+    const shuffled = profiles.sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, limit);
+  }
+
   async searchProfiles(query: string) {
     return this.prisma.profile.findMany({
       where: {
-        OR: [
+        AND: [
+          { user: { deletedAt: null } },
           {
-            user: {
-              account: {
-                username: {
+            OR: [
+              {
+                user: {
+                  account: {
+                    username: {
+                      contains: query,
+                      mode: 'insensitive',
+                    },
+                  },
+                },
+              },
+              {
+                firstName: {
                   contains: query,
                   mode: 'insensitive',
                 },
               },
-            },
-          },
-          {
-            firstName: {
-              contains: query,
-              mode: 'insensitive',
-            },
+            ],
           },
         ],
       },

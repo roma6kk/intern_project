@@ -4,6 +4,7 @@ import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
 import { PrismaService } from '../database/prisma.service';
 import { ChatGateway } from '../chat/chat.gateway';
+import { PaginationDto } from '../common/dto/pagination.dto';
 
 @Injectable()
 export class NotificationService {
@@ -51,33 +52,52 @@ export class NotificationService {
     return notifications;
   }
 
-  async findByRecipient(recipientId: string) {
-    const notifications = await this.prisma.notification.findMany({
-      where: { recipientId },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        actor: {
-          select: {
-            id: true,
-            account: {
-              select: {
-                username: true,
+  async findByRecipient(recipientId: string, pagination?: PaginationDto) {
+    const page = pagination?.page ?? 1;
+    const limit = pagination?.limit ?? 20;
+    const skip = (page - 1) * limit;
+
+    const [notifications, total] = await Promise.all([
+      this.prisma.notification.findMany({
+        where: { recipientId },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip: skip,
+        include: {
+          actor: {
+            select: {
+              id: true,
+              account: {
+                select: {
+                  username: true,
+                },
               },
-            },
-            profile: {
-              select: {
-                firstName: true,
-                avatarUrl: true,
+              profile: {
+                select: {
+                  firstName: true,
+                  avatarUrl: true,
+                },
               },
             },
           },
         },
+      }),
+      this.prisma.notification.count({
+        where: { recipientId },
+      }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: notifications,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages,
       },
-    });
-    this.logger.log(
-      `Retrieved ${notifications.length} notifications for user ${recipientId}`,
-    );
-    return notifications;
+    };
   }
 
   async findOne(id: string) {

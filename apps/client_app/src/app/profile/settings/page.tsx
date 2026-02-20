@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Loader2, Upload } from 'lucide-react';
+import { ArrowLeft, Loader2, Upload, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 
 interface ProfileData {
   id: string;
@@ -19,12 +20,16 @@ interface ProfileData {
 
 const SettingsPage = () => {
   const router = useRouter();
+  const { logout } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const [formData, setFormData] = useState<ProfileData>({
     id: '',
@@ -126,10 +131,30 @@ const SettingsPage = () => {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (deleteConfirm !== 'DELETE') return;
+    try {
+      setDeleting(true);
+      setError(null);
+      await api.delete('/users/me');
+      await logout();
+    } catch (err) {
+      setError('Failed to delete account');
+      console.error(err);
+    } finally {
+      setDeleting(false);
+      setShowDeleteModal(false);
+      setDeleteConfirm('');
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-gray-500" />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 flex flex-col items-center gap-4 max-w-sm w-full">
+          <Loader2 className="w-10 h-10 animate-spin text-gray-400" />
+          <p className="text-gray-600 font-medium">Загрузка настроек...</p>
+        </div>
       </div>
     );
   }
@@ -258,13 +283,13 @@ const SettingsPage = () => {
 
           {error && (
             <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-gray-500">{error}</p>
+              <p className="text-sm text-red-700">{error}</p>
             </div>
           )}
 
           {success && (
             <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-sm text-gray-500">{success}</p>
+              <p className="text-sm text-green-700">{success}</p>
             </div>
           )}
 
@@ -293,7 +318,72 @@ const SettingsPage = () => {
               )}
             </button>
           </div>
+
+          {/* Delete account section */}
+          <div className="pt-12 mt-12 border-t border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Danger zone</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Once you delete your account, you have 30 days to recover it. After that, your data will be permanently removed.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowDeleteModal(true)}
+              className="flex items-center gap-2 px-4 py-2 text-red-600 border border-red-300 rounded-full font-semibold hover:bg-red-50 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete account
+            </button>
+          </div>
         </form>
+
+        {/* Delete confirmation modal */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">Delete account?</h3>
+              <p className="text-sm text-gray-600">
+                This will schedule your account for deletion. You can recover within 30 days by logging in again.
+              </p>
+              <p className="text-sm text-gray-600">
+                Type <strong>DELETE</strong> to confirm:
+              </p>
+              <input
+                type="text"
+                value={deleteConfirm}
+                onChange={(e) => setDeleteConfirm(e.target.value)}
+                placeholder="Type DELETE"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900"
+              />
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setDeleteConfirm('');
+                  }}
+                  className="flex-1 py-2 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  disabled={deleteConfirm !== 'DELETE' || deleting}
+                  className="flex-1 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {deleting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    'Delete account'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
