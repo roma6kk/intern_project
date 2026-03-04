@@ -3,7 +3,7 @@ import { NotificationService } from './notification.service';
 import { NotificationController } from './notification.controller';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ChatModule } from 'src/chat/chat.module';
+import { ChatModule } from '../chat/chat.module';
 
 import { UsersModule } from '../users/users.module';
 

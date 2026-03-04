@@ -805,7 +805,7 @@ export default function PostCard({ post, fullView = false }: { post: Post; fullV
             <MentionTextarea
               value={commentText}
               onChange={setCommentText}
-              placeholder="Добавить комментарий... (используйте @ для упоминания)"
+              placeholder="Add a comment... (use @ to mention)"
               className="flex-1 text-sm bg-gray-100 text-gray-600 placeholder:text-gray-400 px-3 py-2 rounded-lg border border-gray-300 resize-none min-h-[40px] mb-1 box-border"
             />
             <button

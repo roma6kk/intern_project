@@ -3,10 +3,24 @@ import {
   NotFoundException,
   Logger,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { PrismaService } from '../database/prisma.service';
 import { FilesService } from '../files/files.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { Prisma } from '@prisma/client';
+
+type ProfileWithRelations = Prisma.ProfileGetPayload<{
+  include: {
+    user: {
+      include: {
+        account: { select: { username: true } };
+      };
+    };
+  };
+}>;
 
 @Injectable()
 export class ProfilesService {
@@ -15,11 +29,20 @@ export class ProfilesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly filesService: FilesService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
-  async getMyProfile(userId: string) {
+  async getMyProfile(userId: string): Promise<ProfileWithRelations> {
+    const cacheKey = `profile:${userId}`;
+
+    const cachedProfile = await this.cacheManager.get<ProfileWithRelations>(cacheKey);
+    if (cachedProfile) {
+      return cachedProfile;
+    }
+
     try {
-      const profile = await this.prisma.profile.findUnique({
+      const profile: ProfileWithRelations | null =
+        await this.prisma.profile.findUnique({
         where: { userId },
         include: {
           user: {
@@ -35,6 +58,8 @@ export class ProfilesService {
         throw new NotFoundException('Profile not found');
       }
 
+      await this.cacheManager.set(cacheKey, profile, 3600);
+      this.logger.log(`Profile for user ${userId} cached`);
       return profile;
     } catch (error) {
       this.logger.error(
@@ -146,7 +171,8 @@ export class ProfilesService {
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
-    await this.getMyProfile(userId);
+    const exists = await this.prisma.profile.findUnique({ where: { userId }, select: { id: true }});
+    if(!exists) throw new NotFoundException('Profile not found');
 
     try {
       const updatedProfile = await this.prisma.profile.update({
@@ -160,7 +186,9 @@ export class ProfilesService {
           isPrivate: dto.isPrivate,
         },
       });
-
+      
+      await this.cacheManager.del(`profile:${userId}`);
+      this.logger.log(`Cache invalidated for profile ${userId}`);
       this.logger.log(`Profile for user ${userId} updated successfully`);
       return updatedProfile;
     } catch (error) {

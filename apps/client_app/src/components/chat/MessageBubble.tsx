@@ -274,7 +274,7 @@ export default function MessageBubble({
               </span>
               <span className="ml-1">
                 {message.replyTo.deletedAt
-                  ? 'Сообщение удалено'
+                  ? 'Message deleted'
                   : message.replyTo.content != null && message.replyTo.content !== ''
                     ? message.replyTo.content.slice(0, 80) + (message.replyTo.content.length > 80 ? '…' : '')
                     : (message.replyTo.assets?.length ?? 0) > 0
@@ -285,7 +285,7 @@ export default function MessageBubble({
           )}
           {message.deletedAt ? (
             <p className="italic opacity-80">
-              Сообщение удалено
+              Message deleted
             </p>
           ) : isEditing ? (
             <div className="space-y-2">
@@ -361,7 +361,7 @@ export default function MessageBubble({
               )}
               {message.isEdited && (
                 <div className={`text-[10px] mt-0.5 ${isOwn ? 'text-blue-200' : 'text-gray-400'}`}>
-                  изменено
+                  edited
                 </div>
               )}
             </>

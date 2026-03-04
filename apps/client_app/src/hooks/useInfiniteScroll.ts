@@ -12,22 +12,22 @@ interface UseInfiniteScrollOptions {
 interface PaginationResponse<T> {
   data: T[];
   meta: {
-    page: number;
+    cursor: string | null;
+    hasNextPage: boolean;
     limit: number;
-    total: number;
-    totalPages: number;
+    total?: number;
   };
 }
 
-export function useInfiniteScroll<T extends { id?: string }>({ 
-  endpoint, 
-  limit = 10, 
-  maxItems = 50 
+export function useInfiniteScroll<T extends { id?: string }>({
+  endpoint,
+  limit = 10,
+  maxItems = 50,
 }: UseInfiniteScrollOptions) {
   const [items, setItems] = useState<T[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [page, setPage] = useState(1);
+  const [cursor, setCursor] = useState<string | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
   const loadMore = useCallback(async () => {
@@ -35,22 +35,28 @@ export function useInfiniteScroll<T extends { id?: string }>({
 
     setLoading(true);
     try {
+      const params = new URLSearchParams();
+      params.set('limit', String(limit));
+      if (cursor) {
+        params.set('cursor', cursor);
+      }
+
       const response = await api.get<PaginationResponse<T>>(
-        `${endpoint}?page=${page}&limit=${limit}`
+        `${endpoint}?${params.toString()}`,
       );
-      
+
       const newItems = response.data.data || [];
       const meta = response.data.meta;
 
-      setItems(prev => {
+      setItems((prev) => {
         const itemsMap = new Map<string, T>();
 
-        prev.forEach(item => {
+        prev.forEach((item) => {
           const id = item.id;
           if (id) itemsMap.set(id, item);
         });
 
-        newItems.forEach(item => {
+        newItems.forEach((item) => {
           const id = item.id;
           if (id) itemsMap.set(id, item);
         });
@@ -63,33 +69,34 @@ export function useInfiniteScroll<T extends { id?: string }>({
         return combined;
       });
 
-      // Calculate totalPages if not provided in meta
-      const totalPages = meta.totalPages ?? Math.ceil((meta.total || 0) / meta.limit);
-      setHasMore(page < totalPages);
-      setPage(prev => prev + 1);
+      setHasMore(Boolean(meta.hasNextPage));
+      setCursor(meta.cursor ?? null);
     } catch (error) {
       console.error('Ошибка загрузки данных:', error);
     } finally {
       setLoading(false);
     }
-  }, [endpoint, limit, maxItems, page, loading, hasMore]);
+  }, [endpoint, limit, maxItems, cursor, loading, hasMore]);
 
-  const lastElementRef = useCallback((node: HTMLElement | null) => {
-    if (loading) return;
-    if (observerRef.current) observerRef.current.disconnect();
-    
-    observerRef.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && hasMore) {
-        loadMore();
-      }
-    });
-    
-    if (node) observerRef.current.observe(node);
-  }, [loading, hasMore, loadMore]);
+  const lastElementRef = useCallback(
+    (node: HTMLElement | null) => {
+      if (loading) return;
+      if (observerRef.current) observerRef.current.disconnect();
+
+      observerRef.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          loadMore();
+        }
+      });
+
+      if (node) observerRef.current.observe(node);
+    },
+    [loading, hasMore, loadMore],
+  );
 
   const refresh = useCallback(() => {
     setItems([]);
-    setPage(1);
+    setCursor(null);
     setHasMore(true);
     setLoading(false);
   }, []);
@@ -103,10 +110,10 @@ export function useInfiniteScroll<T extends { id?: string }>({
   }, []);
 
   useEffect(() => {
-    if (page === 1 && items.length === 0) {
+    if (items.length === 0) {
       loadMore();
     }
-  }, [loadMore, page, items.length]);
+  }, [loadMore, items.length]);
 
   return {
     items,
