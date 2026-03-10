@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches:[ "main", "dev" ]
+    branches: [ "main", "dev" ]
   pull_request:
-    branches:[ "main", "dev" ]
+    branches: [ "main", "dev" ]
 
 env:
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
@@ -110,7 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service:[core_microservice, auth_microservice, notifications_consumer_microservice, client_app]
+        service: [core_microservice, auth_microservice, notifications_consumer_microservice, client_app]
     steps:
       - uses: actions/checkout@v4
 
