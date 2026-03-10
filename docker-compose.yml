@@ -1,15 +1,19 @@
 services:
   postgres:
-    image: postgres:15-alpine
-    container_name: postgres_container
+    image: postgres:15-alpine # Используем Alpine для легковесности (можно просто postgres:latest)
+    container_name: postgres_container # Имя контейнера
     environment:
-      DATABASE_URL="postgresql://postgres:Jadirus33@localhost:5432/innogram?schema=main"
+      # Эти значения должны совпадать с тем, что вы ожидаете в DATABASE_URL в .env
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword # Замените на нужный, если в CI другой
+      POSTGRES_DB: innogram_test # Имя БД по умолчанию, которое создастся при старте
     ports:
-      - "5432:5432"
+      - "5432:5432" # Проброс порта на хост
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data # Сохранение данных
     networks:
       - innogram-network
+    # Полезно для CI: ждем, пока БД реально запустится
     healthcheck:
       test:["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
