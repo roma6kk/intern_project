@@ -22,12 +22,13 @@ import {
 import { ProfilesService } from './profiles.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { DeletedUserGuard } from '../auth/guards/deleted-user.guard';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import type { ICurrentUser } from '../auth/interfaces/ICurrentUser';
 
 @ApiTags('Profiles')
 @ApiBearerAuth('JWT-auth')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, DeletedUserGuard)
 @Controller('profiles')
 export class ProfilesController {
   constructor(private readonly profilesService: ProfilesService) {}
@@ -44,6 +45,16 @@ export class ProfilesController {
   async search(@Query('query') query: string) {
     if (!query) return [];
     return this.profilesService.searchProfiles(query);
+  }
+
+  @Get('suggestions')
+  @ApiOperation({ summary: 'Get suggested users to follow (not following)' })
+  async getSuggestions(
+    @CurrentUser() user: ICurrentUser,
+    @Query('limit') limit?: string,
+  ) {
+    const limitNum = limit ? Math.min(parseInt(limit, 10) || 10, 10) : 10;
+    return this.profilesService.getSuggestions(user.userId, limitNum);
   }
 
   @Get('by-username/:username')

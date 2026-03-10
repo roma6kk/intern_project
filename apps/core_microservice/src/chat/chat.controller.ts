@@ -14,12 +14,13 @@ import { ChatService } from './chat.service';
 import { CreateChatDto } from './dto/create-chat.dto';
 import { UpdateChatDto } from './dto/update-chat.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { DeletedUserGuard } from '../auth/guards/deleted-user.guard';
 import { ChatGateway } from './chat.gateway';
 import { CurrentUser } from '../decorators/current-user.decorator';
 
 @ApiTags('Chats')
 @ApiBearerAuth('JWT-auth')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, DeletedUserGuard)
 @Controller('chats')
 export class ChatController {
   constructor(
@@ -34,6 +35,12 @@ export class ChatController {
     @Body() createChatDto: CreateChatDto,
   ) {
     return this.chatService.create(user.userId, createChatDto);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Get current user chats' })
+  findAll(@CurrentUser() user: ICurrentUser) {
+    return this.chatService.findAllByUser(user.userId);
   }
 
   @Get('online')
@@ -52,12 +59,18 @@ export class ChatController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateChatDto: UpdateChatDto) {
-    return this.chatService.update(id, updateChatDto);
+  @ApiOperation({ summary: 'Update chat (add/remove members)' })
+  update(
+    @CurrentUser() user: ICurrentUser,
+    @Param('id') id: string,
+    @Body() updateChatDto: UpdateChatDto,
+  ) {
+    return this.chatService.update(id, user.userId, updateChatDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.chatService.remove(id);
+  @ApiOperation({ summary: 'Delete a chat' })
+  remove(@CurrentUser() user: ICurrentUser, @Param('id') id: string) {
+    return this.chatService.remove(id, user.userId);
   }
 }

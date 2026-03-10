@@ -39,4 +39,30 @@ export class PaginationDto {
   @IsBoolean()
   @IsOptional()
   followingOnly?: boolean = false;
+
+  @ApiPropertyOptional({
+    description: 'Include archived posts (only for own posts)',
+  })
+  @Type(() => Boolean)
+  @IsBoolean()
+  @IsOptional()
+  includeArchived?: boolean = false;
+
+  @ApiPropertyOptional({
+    description: 'Filter posts by author ID',
+  })
+  @IsOptional()
+  authorId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Filter posts liked by user ID (for own profile)',
+  })
+  @IsOptional()
+  likedByUserId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Filter posts commented by user ID (for own profile)',
+  })
+  @IsOptional()
+  commentedByUserId?: string;
 }

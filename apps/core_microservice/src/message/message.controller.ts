@@ -17,6 +17,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { DeletedUserGuard } from '../auth/guards/deleted-user.guard';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import type { ICurrentUser } from 'src/auth/interfaces/ICurrentUser';
 import { MessageService } from './message.service';
@@ -26,7 +27,7 @@ import { CurrentUser } from '../decorators/current-user.decorator';
 
 @ApiTags('Messages')
 @ApiBearerAuth('JWT-auth')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, DeletedUserGuard)
 @Controller('messages')
 export class MessageController {
   constructor(private readonly messageService: MessageService) {}
@@ -34,7 +35,7 @@ export class MessageController {
   @Post()
   @ApiOperation({ summary: 'Send a message (with optional files)' })
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FilesInterceptor('files', 5))
+  @UseInterceptors(FilesInterceptor('files', 10))
   create(
     @CurrentUser() user: ICurrentUser,
     @Body() createMessageDto: CreateMessageDto,
@@ -54,12 +55,29 @@ export class MessageController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateMessageDto: UpdateMessageDto) {
-    return this.messageService.update(id, updateMessageDto);
+  @ApiOperation({ summary: 'Edit own message (text and/or assets)' })
+  @ApiConsumes('multipart/form-data', 'application/json')
+  @UseInterceptors(FilesInterceptor('files', 10))
+  update(
+    @CurrentUser() user: ICurrentUser,
+    @Param('id') id: string,
+    @Body() updateMessageDto: UpdateMessageDto,
+    @UploadedFiles() files?: Array<Express.Multer.File>,
+  ) {
+    return this.messageService.update(id, user.userId, updateMessageDto, files);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.messageService.remove(id);
+  remove(@CurrentUser() user: ICurrentUser, @Param('id') id: string) {
+    return this.messageService.remove(id, user.userId);
+  }
+
+  @Patch('chat/:chatId/read')
+  @ApiOperation({ summary: 'Mark all messages in a chat as read' })
+  markChatAsRead(
+    @CurrentUser() user: ICurrentUser,
+    @Param('chatId') chatId: string,
+  ) {
+    return this.messageService.markChatAsRead(chatId, user.userId);
   }
 }

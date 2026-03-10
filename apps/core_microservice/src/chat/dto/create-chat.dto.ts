@@ -20,11 +20,21 @@ export class CreateChatDto {
   @IsUUID('4', { each: true })
   memberIds: string[];
 
-  @ApiPropertyOptional({ description: 'Name of the group chat' })
+  @ApiPropertyOptional({
+    description: 'Name/title of the group chat (required when type is GROUP)',
+  })
   @IsOptional()
   @IsString()
-  @MaxLength(50)
+  @MaxLength(100)
   name?: string;
+
+  @ApiPropertyOptional({
+    description: 'Optional description of the group chat',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  description?: string;
 
   @ApiPropertyOptional({
     description: 'Type of chat',

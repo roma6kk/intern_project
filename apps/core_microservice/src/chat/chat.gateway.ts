@@ -58,9 +58,7 @@ export class ChatGateway
     );
   }
 
-  afterInit() {
-    this.logger.log('WebSocket Gateway Initialized');
-  }
+  afterInit() {}
 
   private startHeartbeat() {
     setInterval(() => {
@@ -115,23 +113,23 @@ export class ChatGateway
 
       const user = await this.authService.validateToken(token);
       client.data.user = user;
-      await client.join(`user_${user.userId}`);
+      const userRoom = `user_${user.userId}`;
+      await client.join(userRoom);
 
       await this.redisClient.zAdd('online_users_zset', {
         score: Date.now(),
         value: user.userId,
       });
 
-      this.logger.log(`User ${user.username} is ONLINE`);
+      this.logger.log(`User ${user.username} is online`);
     } catch {
       this.logger.error(`Connection rejected for ${client.id}: Invalid token`);
       client.disconnect();
     }
   }
 
-  handleDisconnect(client: IAuthenticatedSocket) {
-    this.logger.log(`Client disconnected: ${client.id}`);
-  }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- required by Nest gateway interface
+  handleDisconnect(client: IAuthenticatedSocket) {}
 
   @UseGuards(WsAuthGuard)
   @SubscribeMessage('join_chat')
@@ -139,9 +137,14 @@ export class ChatGateway
     @MessageBody('chatId') chatId: string,
     @ConnectedSocket() client: Socket,
   ) {
-    await client.join(`chat_${chatId}`);
-    this.logger.log(`Client ${client.id} joined room chat_${chatId}`);
-    return { event: 'joined_chat', data: { chatId } };
+    const normalizedChatId = typeof chatId === 'string' ? chatId.trim() : '';
+    if (!normalizedChatId) {
+      this.logger.warn(`Client ${client.id} sent empty chatId`);
+      return { event: 'join_error', data: { error: 'chatId is required' } };
+    }
+    const room = `chat_${normalizedChatId}`;
+    await client.join(room);
+    return { event: 'joined_chat', data: { chatId: normalizedChatId } };
   }
 
   @UseGuards(WsAuthGuard)
@@ -150,8 +153,11 @@ export class ChatGateway
     @MessageBody('chatId') chatId: string,
     @ConnectedSocket() client: Socket,
   ) {
-    await client.leave(`chat_${chatId}`);
-    return { event: 'left_chat', data: { chatId } };
+    const normalizedChatId = typeof chatId === 'string' ? chatId.trim() : '';
+    if (normalizedChatId) {
+      await client.leave(`chat_${normalizedChatId}`);
+    }
+    return { event: 'left_chat', data: { chatId: normalizedChatId } };
   }
 
   @UseGuards(WsAuthGuard)
@@ -179,7 +185,6 @@ export class ChatGateway
     this.server
       .to(`user_${data.recipientId}`)
       .emit('notification', data.notification);
-    this.logger.log(`Notification sent to user_${data.recipientId}`);
   }
 
   async getOnlineUsers(): Promise<string[]> {
@@ -191,8 +196,23 @@ export class ChatGateway
     return this.redisClient.zRange('online_users_zset', 0, -1);
   }
 
-  sendNewMessage(chatId: string, message: unknown) {
-    this.server.to(`chat_${chatId}`).emit('new_message', message);
+  sendNewMessage(
+    chatId: string,
+    message: unknown,
+    memberIds: string[] = [],
+    senderId?: string,
+  ) {
+    const room = `chat_${typeof chatId === 'string' ? chatId.trim() : chatId}`;
+    this.server.to(room).emit('new_message', message);
+
+    if (memberIds.length > 0) {
+      const recipientIds = senderId
+        ? memberIds.filter((id) => id !== senderId)
+        : memberIds;
+      for (const userId of recipientIds) {
+        this.server.to(`user_${userId}`).emit('new_message', message);
+      }
+    }
   }
 
   sendMessageUpdate(chatId: string, message: unknown) {
@@ -201,6 +221,10 @@ export class ChatGateway
 
   sendMessageDelete(chatId: string, messageId: string) {
     this.server.to(`chat_${chatId}`).emit('message_deleted', { id: messageId });
+  }
+
+  sendMessageDeleted(chatId: string, messagePayload: unknown) {
+    this.server.to(`chat_${chatId}`).emit('message_deleted', messagePayload);
   }
 
   sendNotification(recipientId: string, notification: unknown) {

@@ -23,8 +23,11 @@ export class FollowService {
     }
 
     try {
-      const targetUser = await this.prisma.user.findUnique({
-        where: { id: targetUserId },
+      const targetUser = await this.prisma.user.findFirst({
+        where: {
+          id: targetUserId,
+          deletedAt: null,
+        },
         include: { profile: true },
       });
 
@@ -156,6 +159,7 @@ export class FollowService {
       where: {
         followingId: userId,
         status: 'ACCEPTED',
+        follower: { deletedAt: null },
       },
       select: {
         id: true,
@@ -176,10 +180,12 @@ export class FollowService {
     return this.prisma.follow.findMany({
       where: {
         followerId: userId,
-        status: 'ACCEPTED',
+        status: { in: ['ACCEPTED', 'PENDING'] },
+        following: { deletedAt: null },
       },
       select: {
         id: true,
+        status: true,
         following: {
           select: {
             id: true,
@@ -198,6 +204,7 @@ export class FollowService {
       where: {
         followingId: userId,
         status: 'ACCEPTED',
+        follower: { deletedAt: null },
       },
       select: {
         id: true,
@@ -219,6 +226,7 @@ export class FollowService {
       where: {
         followerId: userId,
         status: 'ACCEPTED',
+        following: { deletedAt: null },
       },
       select: {
         id: true,
@@ -240,6 +248,7 @@ export class FollowService {
       where: {
         followingId: userId,
         status: 'PENDING',
+        follower: { deletedAt: null },
       },
       select: {
         follower: {

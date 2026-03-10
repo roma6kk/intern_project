@@ -1,16 +1,29 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
+import { ChevronDown, ChevronUp, Loader2, LogIn } from 'lucide-react';
 import api from '@/lib/api';
 import PostCard from './PostCard';
 import { Post } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
+interface SuggestionUser {
+  id: string;
+  userId: string;
+  username: string;
+  avatarUrl: string | null;
+}
+
 export default function Feed() {
   const { user, isLoading } = useAuth();
   const [followingIds, setFollowingIds] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<SuggestionUser[]>([]);
+  const [suggestionsExpanded, setSuggestionsExpanded] = useState(false);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [followLoadingId, setFollowLoadingId] = useState<string | null>(null);
   
   const { 
     items: posts, 
@@ -19,7 +32,7 @@ export default function Feed() {
     lastElementRef,
     refresh
   } = useInfiniteScroll<Post>({
-    endpoint: '/posts',
+    endpoint: '/posts/feed',
     limit: 10,
     maxItems: 50
   });
@@ -35,14 +48,63 @@ export default function Feed() {
       api.get('/follows/following/me')
         .then((followingRes) => {
           const followingRaw = followingRes.data || [];
-          const followingIds = followingRaw.map((f: { following?: { id?: string } }) => f.following?.id).filter(Boolean);
-          setFollowingIds(followingIds);
+          const ids = followingRaw.map((f: { following?: { id?: string } }) => f.following?.id).filter(Boolean);
+          setFollowingIds(ids);
         })
         .catch(() => {
           setFollowingIds([]);
         });
     }
   }, [user, isLoading]);
+
+  const loadSuggestions = useCallback(async (limit: number) => {
+    if (!user) return;
+    setSuggestionsLoading(true);
+    try {
+      const { data } = await api.get(`/profiles/suggestions?limit=${limit}`);
+      const list: SuggestionUser[] = (data || []).map((p: { userId: string; avatarUrl?: string | null; user?: { account?: { username?: string } } }) => ({
+        id: p.userId,
+        userId: p.userId,
+        username: p.user?.account?.username || 'Unknown',
+        avatarUrl: p.avatarUrl ?? null,
+      }));
+      setSuggestions(list);
+    } catch {
+      setSuggestions([]);
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!isLoading && user) {
+      loadSuggestions(3);
+    }
+  }, [user, isLoading, loadSuggestions]);
+
+  const handleExpandSuggestions = () => {
+    if (suggestionsExpanded) {
+      setSuggestionsExpanded(false);
+      loadSuggestions(3);
+    } else {
+      setSuggestionsExpanded(true);
+      loadSuggestions(10);
+    }
+  };
+
+  const handleFollowSuggestion = async (userId: string) => {
+    if (followLoadingId || !user) return;
+    setFollowLoadingId(userId);
+    try {
+      await api.post(`/follows/${userId}`);
+      setSuggestions((prev) => prev.filter((s) => s.userId !== userId));
+      setFollowingIds((prev) => [...prev, userId]);
+    } catch {
+      // ignore
+    } finally {
+      setFollowLoadingId(null);
+    }
+  };
 
   const normalizedPosts = useMemo(() => {
     return posts.map((p: Post) => {
@@ -69,13 +131,31 @@ export default function Feed() {
     return list;
   }, [normalizedPosts, followingIds]);
 
-  const suggestions = useMemo(() => {
-    const suggestions = storyAuthors.filter((s) => s.username !== user?.username).slice(0, 5);
-    return suggestions;
-  }, [storyAuthors, user]);
-
-  if (isLoading) return <div className="p-4">Loading...</div>;
-  if (!isLoading && !user) return <div className="p-4">Please sign in</div>;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 flex flex-col items-center gap-4 max-w-sm w-full">
+          <Loader2 className="w-10 h-10 animate-spin text-gray-400" />
+          <p className="text-gray-600 font-medium">Загрузка...</p>
+        </div>
+      </div>
+    );
+  }
+  if (!isLoading && !user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 flex flex-col items-center gap-4 max-w-sm w-full">
+          <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
+            <LogIn className="w-7 h-7 text-gray-400" />
+          </div>
+          <p className="text-gray-600 font-medium text-center">Войдите, чтобы просматривать ленту</p>
+          <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium text-sm">
+            Войти
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -89,25 +169,29 @@ export default function Feed() {
 
             <div className="flex gap-4 overflow-x-auto py-2">
               <div className="shrink-0 text-center w-20 ">
-                <Image
-                  src={user?.profile?.avatarUrl || '/default-avatar.svg'}
-                  alt={user?.username || 'You'}
-                  width={56}
-                  height={56}
-                  className="rounded-full object-cover mx-auto border-2 border-pink-500"
-                />
+                <div className="w-14 h-14 rounded-full overflow-hidden mx-auto border-2 border-pink-500">
+                  <Image
+                    src={user?.profile?.avatarUrl || '/default-avatar.svg'}
+                    alt={user?.username || 'You'}
+                    width={56}
+                    height={56}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
                 <div className="text-xs mt-1 truncate text-gray-600">Your story</div>
               </div>
 
               {storyAuthors.map((a, index) => (
                 <div key={`story-${a.id || a.username}-${index}`} className="shrink-0 text-center w-20">
-                  <Image
-                    src={a.avatarUrl || '/default-avatar.svg'}
-                    alt={a.username}
-                    width={56}
-                    height={56}
-                    className="rounded-full object-cover mx-auto border-2 border-yellow-400"
-                  />
+                  <div className="w-14 h-14 rounded-full overflow-hidden mx-auto border-2 border-yellow-400">
+                    <Image
+                      src={a.avatarUrl || '/default-avatar.svg'}
+                      alt={a.username}
+                      width={56}
+                      height={56}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
                   <div className="text-xs mt-1 truncate text-gray-600">{a.username}</div>
                 </div>
               ))}
@@ -128,14 +212,17 @@ export default function Feed() {
             })}
             
             {postsLoading && (
-              <div className="flex justify-center py-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div className="flex justify-center py-6">
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm px-6 py-4 flex items-center gap-3">
+                  <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                  <span className="text-sm text-gray-600">Загрузка постов...</span>
+                </div>
               </div>
             )}
             
             {!hasMore && normalizedPosts.length > 0 && (
-              <div className="text-center py-4 text-gray-500">
-                Вы просмотрели все посты
+              <div className="text-center py-6">
+                <p className="text-sm text-gray-500">Вы просмотрели все посты</p>
               </div>
             )}
           </div>
@@ -145,15 +232,17 @@ export default function Feed() {
           <div className="sticky top-6 space-y-4">
             <div className="flex items-center justify-between bg-white p-3 rounded border">
               <div className="flex items-center gap-3">
-                <Image
-                  src={user?.profile?.avatarUrl || '/default-avatar.svg'}
-                  alt={user?.username || 'You'}
-                  width={48}
-                  height={48}
-                  className="rounded-full object-cover"
-                />
+                <div className="w-12 h-12 rounded-full overflow-hidden">
+                  <Image
+                    src={user?.profile?.avatarUrl || '/default-avatar.svg'}
+                    alt={user?.username || 'You'}
+                    width={48}
+                    height={48}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
                 <div>
-                  <div className="font-semibold">{user?.username || 'Unknown'}</div>
+                  <div className="font-semibold text-gray-500">{user?.username || 'Unknown'}</div>
                   <div className="text-sm text-gray-500">{user?.profile?.firstName || ''}</div>
                 </div>
               </div>
@@ -163,23 +252,51 @@ export default function Feed() {
             <div className="bg-white p-3 rounded border">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-sm text-gray-500 font-semibold">Suggestions For You</div>
-                <button className="text-xs text-gray-400">See All</button>
+                <button
+                  onClick={handleExpandSuggestions}
+                  className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-0.5"
+                >
+                  {suggestionsExpanded ? (
+                    <>
+                      <ChevronUp size={14} /> Свернуть
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown size={14} /> Развернуть
+                    </>
+                  )}
+                </button>
               </div>
 
               <div className="space-y-3">
-                {suggestions.length === 0 ? (
-                  <div className="text-sm text-gray-500">No suggestions</div>
+                {suggestionsLoading ? (
+                  <div className="flex justify-center py-4">
+                    <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                  </div>
+                ) : suggestions.length === 0 ? (
+                  <p className="text-sm text-gray-500 py-2">Нет рекомендаций</p>
                 ) : (
-                  suggestions.map((s, index) => (
-                    <div key={`suggestion-${s.id || s.username}-${index}`} className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Image src={s.avatarUrl || '/default-avatar.svg'} alt={s.username} width={32} height={32} className="rounded-full object-cover" />
-                        <div className="text-sm">
-                          <div className="font-semibold">{s.username}</div>
+                  suggestions.map((s) => (
+                    <div key={`suggestion-${s.userId}`} className="flex items-center justify-between">
+                      <Link
+                        href={`/profile/${s.username}`}
+                        className="flex items-center gap-3 min-w-0 flex-1"
+                      >
+                        <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
+                          <Image src={s.avatarUrl || '/default-avatar.svg'} alt={s.username} width={32} height={32} className="w-full h-full object-cover" />
+                        </div>
+                        <div className="text-sm min-w-0">
+                          <div className="font-semibold truncate text-gray-500">{s.username}</div>
                           <div className="text-xs text-gray-400">Suggested</div>
                         </div>
-                      </div>
-                      <button className="text-xs text-blue-600">Follow</button>
+                      </Link>
+                      <button
+                        onClick={() => handleFollowSuggestion(s.userId)}
+                        disabled={followLoadingId === s.userId}
+                        className="text-xs text-blue-600 hover:text-blue-700 shrink-0 disabled:opacity-50"
+                      >
+                        {followLoadingId === s.userId ? '...' : 'Follow'}
+                      </button>
                     </div>
                   ))
                 )}

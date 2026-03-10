@@ -15,9 +15,11 @@ import { NotificationModule } from './notification/notification.module';
 import { AuthModule } from './auth/auth.module';
 import { FilesModule } from './files/file.module';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from './schedule/schedule.module';
 
 @Module({
   imports: [
+    ScheduleModule,
     PostModule,
     UsersModule,
     AccountModule,

@@ -7,12 +7,13 @@ import {
 } from '@nestjs/swagger';
 import { LikeService } from './like.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { DeletedUserGuard } from '../auth/guards/deleted-user.guard';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import type { ICurrentUser } from '../auth/interfaces/ICurrentUser';
 
 @ApiTags('Likes')
 @ApiBearerAuth('JWT-auth')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, DeletedUserGuard)
 @Controller('likes')
 export class LikeController {
   constructor(private readonly likeService: LikeService) {}

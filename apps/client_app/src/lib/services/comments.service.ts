@@ -31,7 +31,7 @@ export interface Comment {
 
 export interface CommentResponse {
   data: Comment[];
-  pagination?: {
+  meta: {
     page: number;
     limit: number;
     total: number;

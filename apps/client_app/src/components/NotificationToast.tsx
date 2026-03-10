@@ -42,7 +42,7 @@ export default function NotificationToast({ type, actor, itemId, postId }: Notif
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm">
-          <span className="font-semibold">{actor.username}</span>{' '}
+          <span className="font-semibold text-gray-500">{actor.username}</span>{' '}
           <span className="text-gray-600">{typeLabels[type] ?? 'взаимодействовал с вами'}</span>
         </p>
       </div>

@@ -10,12 +10,13 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { FollowService } from './follow.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { DeletedUserGuard } from '../auth/guards/deleted-user.guard';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import type { ICurrentUser } from '../auth/interfaces/ICurrentUser';
 
 @ApiTags('Follows')
 @ApiBearerAuth('JWT-auth')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, DeletedUserGuard)
 @Controller('follows')
 export class FollowController {
   constructor(private readonly followService: FollowService) {}

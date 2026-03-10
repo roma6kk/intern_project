@@ -61,18 +61,25 @@ export default function MentionTextarea({
         control: {
           fontSize: 14,
           width: '100%',
-          position: 'relative'
+          position: 'relative',
+          boxSizing: 'border-box',
+          minHeight: '40px',
+          padding: '8px 12px'
         },
         input: {
           margin: 0,
-          padding: '10px',
-          minHeight: 80
+          padding: 0,
+          border: 0,
+          outline: 'none',
+          minHeight: '24px',
+          boxSizing: 'border-box'
         },
         highlighter: {
           margin: 0,
-          padding: '10px',
-          pointerEvents: 'none'
-        },
+          padding: 0,
+          pointerEvents: 'none',
+          boxSizing: 'border-box'
+        },      
         suggestions: {
           list: {
             background: '#fff',

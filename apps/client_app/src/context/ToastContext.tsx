@@ -1,10 +1,15 @@
 'use client';
 
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react';
 import { toast, type ToastOptions } from 'react-toastify';
-import { useSocketNotifications } from '@/lib/socket';
+import { useSocketNotifications } from '@/hooks/useSocketNotifications';
 import NotificationToast from '@/components/NotificationToast';
-import Cookies from 'js-cookie';
+import ChatMessageToast from '@/components/chat/ChatMessageToast';
+import { useAuth } from '@/context/AuthContext';
+import { useSocket } from '@/context/SocketContext';
+import { currentChatIdRef } from '@/lib/currentChatId';
+import type { Message } from '@/types';
+
 interface ToastContextValue {
   success: (message: string, options?: ToastOptions) => void;
   error: (message: string, options?: ToastOptions) => void;
@@ -14,10 +19,24 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | undefined>(undefined);
 
-export function ToastProvider({ children }: { children: ReactNode }) {
-  const token = Cookies.get('accessToken') ?? null;
+function normalizeMessage(payload: unknown): Message | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const m = payload as Record<string, unknown>;
+  const chatId = (m.chatId as string) ?? (m.chat_id as string);
+  if (!chatId) return null;
+  const senderId = (m.senderId as string) ?? (m.sender_id as string);
+  return { ...m, chatId, senderId } as Message;
+}
 
-  useSocketNotifications(token, (notification) => {
+export function ToastProvider({ children }: { children: ReactNode }) {
+  const socket = useSocket();
+  const { user } = useAuth();
+  const userIdRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    userIdRef.current = user?.id;
+  }, [user?.id]);
+
+  useSocketNotifications(socket, (notification) => {
     toast(
       <NotificationToast
         type={notification.type}
@@ -27,6 +46,22 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       />
     );
   });
+
+  useEffect(() => {
+    if (!socket) return;
+    const handleNewMessage = (payload: unknown) => {
+      const message = normalizeMessage(payload);
+      if (!message) return;
+      if (currentChatIdRef.current === message.chatId) return;
+      const myId = userIdRef.current;
+      if (myId && message.senderId === myId) return;
+      toast(<ChatMessageToast message={message} />);
+    };
+    socket.on('new_message', handleNewMessage);
+    return () => {
+      socket.off('new_message', handleNewMessage);
+    };
+  }, [socket]);
 
   const contextValue: ToastContextValue = {
     success: (message, options) => toast.success(message, options),

@@ -10,6 +10,7 @@ interface User {
   username: string;
   email: string;
   createdAt?: string;
+  deletedAt?: string | null;
   account?: {
     email: string;
     username: string;
@@ -30,6 +31,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (token: string, user: User) => void;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -109,8 +111,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.replace('/login');
   };
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const { data } = await api.get('/users/me');
+      const normalized = {
+        ...data,
+        username: data.username || data.account?.username || data.profile?.firstName || '',
+      };
+      setUser(normalized);
+      localStorage.setItem('user', JSON.stringify(normalized));
+    } catch {
+      Cookies.remove('accessToken');
+      setUser(null);
+      localStorage.removeItem('user');
+      router.replace('/login');
+    }
+  }, [router]);
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

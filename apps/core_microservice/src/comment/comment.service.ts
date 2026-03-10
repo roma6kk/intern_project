@@ -136,7 +136,12 @@ export class CommentService {
             profile: { select: { firstName: true, avatarUrl: true } },
           },
         },
-        _count: { select: { likes: true } },
+        _count: {
+          select: {
+            likes: true,
+            children: true,
+          },
+        },
       },
     });
   }

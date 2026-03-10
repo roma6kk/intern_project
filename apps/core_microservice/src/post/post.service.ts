@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   Logger,
@@ -85,7 +86,7 @@ export class PostService {
     const skip = (page - 1) * limit;
 
     const following = await this.prisma.follow.findMany({
-      where: { followerId: userId },
+      where: { followerId: userId, status: 'ACCEPTED' },
       select: { followingId: true },
     });
 
@@ -95,6 +96,7 @@ export class PostService {
     const whereClause: Prisma.PostWhereInput = {
       authorId: { in: followingIds },
       isArchived: false,
+      author: { deletedAt: null },
     };
 
     if (mediaOnly) {
@@ -130,17 +132,41 @@ export class PostService {
     return { data: posts, meta: { total, page, limit } };
   }
 
-  async findAll(pagination: PaginationDto) {
+  async findAll(pagination: PaginationDto, userId?: string) {
     const {
       page = 1,
       limit = 10,
       search,
       sort = 'newest',
       mediaOnly = false,
+      includeArchived = false,
+      authorId,
+      likedByUserId,
+      commentedByUserId,
     } = pagination;
     const skip = (page - 1) * limit;
 
-    const whereClause: Prisma.PostWhereInput = { isArchived: false };
+    const whereClause: Prisma.PostWhereInput = {};
+
+    // Only include archived posts if explicitly requested and for own posts
+    if (!includeArchived) {
+      whereClause.isArchived = false;
+    } else if (includeArchived && userId && authorId && authorId !== userId) {
+      // If requesting archived posts but for another user, don't include archived
+      whereClause.isArchived = false;
+    }
+
+    if (authorId) {
+      whereClause.authorId = authorId;
+    }
+
+    if (likedByUserId) {
+      whereClause.likes = { some: { authorId: likedByUserId } };
+    }
+
+    if (commentedByUserId) {
+      whereClause.comments = { some: { authorId: commentedByUserId } };
+    }
 
     if (search) {
       whereClause.description = { contains: search, mode: 'insensitive' };
@@ -148,6 +174,38 @@ export class PostService {
 
     if (mediaOnly) {
       whereClause.assets = { some: {} };
+    }
+
+    if (!authorId) {
+      if (userId) {
+        const acceptedFollowing = await this.prisma.follow.findMany({
+          where: { followerId: userId, status: 'ACCEPTED' },
+          select: { followingId: true },
+        });
+        const visibleAuthorIds = [
+          userId,
+          ...acceptedFollowing.map((f) => f.followingId),
+        ];
+        whereClause.OR = [
+          {
+            author: {
+              deletedAt: null,
+              profile: { isPrivate: false },
+            },
+          },
+          {
+            author: { deletedAt: null },
+            authorId: { in: visibleAuthorIds },
+          },
+        ];
+      } else {
+        whereClause.author = {
+          deletedAt: null,
+          profile: { isPrivate: false },
+        };
+      }
+    } else {
+      whereClause.author = { deletedAt: null };
     }
 
     const [posts, total] = await Promise.all([
@@ -180,8 +238,11 @@ export class PostService {
   }
 
   async findOne(id: string) {
-    const post = await this.prisma.post.findUnique({
-      where: { id },
+    const post = await this.prisma.post.findFirst({
+      where: {
+        id,
+        author: { deletedAt: null },
+      },
       include: {
         author: {
           select: {
@@ -216,7 +277,12 @@ export class PostService {
     return post;
   }
 
-  async update(id: string, userId: string, updatePostDto: UpdatePostDto) {
+  async update(
+    id: string,
+    userId: string,
+    updatePostDto: UpdatePostDto,
+    files?: Array<Express.Multer.File>,
+  ) {
     const post = await this.findOne(id);
 
     if (post.authorId !== userId) {
@@ -224,12 +290,71 @@ export class PostService {
     }
 
     try {
+      // Delete specified assets
+      if (
+        updatePostDto.deleteAssetIds &&
+        updatePostDto.deleteAssetIds.length > 0
+      ) {
+        await this.prisma.asset.deleteMany({
+          where: {
+            id: { in: updatePostDto.deleteAssetIds },
+            postId: id,
+          },
+        });
+      }
+
+      // Upload new files
+      const newAssetData: Array<{ url: string; type: 'IMAGE' | 'VIDEO' }> = [];
+      if (files && files.length > 0) {
+        const uploadPromises = files.map((file) =>
+          this.filesService.uploadFile(file),
+        );
+        const urls = await Promise.all(uploadPromises);
+
+        newAssetData.push(
+          ...urls.map((url, index) => ({
+            url,
+            type: files[index].mimetype.startsWith('video/')
+              ? ('VIDEO' as const)
+              : ('IMAGE' as const),
+          })),
+        );
+      }
+
+      // Get current asset count after deletion
+      const currentAssets = await this.prisma.asset.findMany({
+        where: { postId: id },
+      });
+
+      // Check total limit (10 assets max)
+      const totalAssets = currentAssets.length + newAssetData.length;
+      if (totalAssets > 10) {
+        throw new BadRequestException(
+          `Maximum 10 assets allowed. Current: ${currentAssets.length}, New: ${newAssetData.length}`,
+        );
+      }
+
+      // Update post with new description and assets
       const updatedPost = await this.prisma.post.update({
         where: { id },
         data: {
           description: updatePostDto.description,
+          ...(newAssetData.length > 0 && {
+            assets: {
+              create: newAssetData,
+            },
+          }),
         },
-        include: { assets: true },
+        include: {
+          assets: true,
+          author: {
+            select: {
+              id: true,
+              account: { select: { username: true } },
+              profile: { select: { firstName: true, avatarUrl: true } },
+            },
+          },
+        },
       });
 
       if (updatePostDto.description) {
@@ -260,10 +385,18 @@ export class PostService {
       throw new ForbiddenException('You can only archive your own posts');
     }
 
-    return this.prisma.post.update({
+    const newState = !post.isArchived;
+
+    const updatedPost = await this.prisma.post.update({
       where: { id },
-      data: { isArchived: true },
+      data: { isArchived: newState },
     });
+
+    this.logger.log(
+      `Post ${id} ${newState ? 'archived' : 'unarchived'} by user ${userId}`,
+    );
+
+    return updatedPost;
   }
 
   async remove(id: string, userId: string) {
