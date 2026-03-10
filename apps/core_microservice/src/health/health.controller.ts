@@ -33,7 +33,10 @@ export class HealthController {
       () => this.memory.checkHeap('memory_heap', 1024 * 1024 * 1024),
       () =>
         this.http
-          .pingCheck('auth_service', `${authUrl.replace('/internal/auth', '/health')}/`)
+          .pingCheck(
+            'auth_service',
+            `${authUrl.replace('/internal/auth', '/health')}/`,
+          )
           .catch((e) => {
             throw e;
           }),

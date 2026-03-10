@@ -70,11 +70,11 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-app.get('/debug-sentry', function mainHandler(req, res) {
+app.get('/debug-sentry', function mainHandler() {
   throw new Error('My first Sentry error in Auth Service!');
 });
 
-app.get('/api-docs-json', (req, res) => {
+app.get('/api-docs-json', (_req, res) => {
   res.setHeader('Content-Type', 'application/json');
   res.send(swaggerSpec);
 });

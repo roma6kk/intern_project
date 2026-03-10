@@ -209,7 +209,9 @@ export class PostService {
 
     const [posts] = await Promise.all([
       this.prisma.post.findMany({
-        where: cursorFilter ? { AND: [whereClause, cursorFilter] } : whereClause,
+        where: cursorFilter
+          ? { AND: [whereClause, cursorFilter] }
+          : whereClause,
         take,
         orderBy,
         include: {
@@ -396,7 +398,9 @@ export class PostService {
 
     const [posts] = await Promise.all([
       this.prisma.post.findMany({
-        where: cursorFilter ? { AND: [whereClause, cursorFilter] } : whereClause,
+        where: cursorFilter
+          ? { AND: [whereClause, cursorFilter] }
+          : whereClause,
         take,
         orderBy,
         include: {

@@ -27,4 +27,3 @@ export function decodeCursor(cursor: string): CursorPayload {
     throw new BadRequestException('Invalid cursor parameter');
   }
 }
-

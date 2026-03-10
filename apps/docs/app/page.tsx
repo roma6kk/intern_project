@@ -42,13 +42,13 @@ export default function Home() {
           <ul>
             <li>
               Core microservice Swagger UI:{" "}
-              <a href="http://localhost:3000/api" target="_blank">
+              <a href="http://localhost:3000/api" target="_blank" rel="noreferrer">
                 http://localhost:3000/api
               </a>
             </li>
             <li>
               Auth microservice Swagger UI:{" "}
-              <a href="http://localhost:3001/api-docs" target="_blank">
+              <a href="http://localhost:3001/api-docs" target="_blank" rel="noreferrer">
                 http://localhost:3001/api-docs
               </a>
             </li>

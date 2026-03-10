@@ -13,14 +13,16 @@ import { catchError } from 'rxjs/operators';
 export class SentryInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     return next.handle().pipe(
-      catchError((error) => {
+      catchError((error: unknown) => {
         if (error instanceof HttpException && error.getStatus() < 500) {
           return throwError(() => error);
         }
 
         Sentry.captureException(error);
-        
-        return throwError(() => error);
+
+        return throwError(() =>
+          error instanceof Error ? error : new Error(String(error)),
+        );
       }),
     );
   }

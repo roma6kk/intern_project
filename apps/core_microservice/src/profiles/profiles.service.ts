@@ -35,7 +35,8 @@ export class ProfilesService {
   async getMyProfile(userId: string): Promise<ProfileWithRelations> {
     const cacheKey = `profile:${userId}`;
 
-    const cachedProfile = await this.cacheManager.get<ProfileWithRelations>(cacheKey);
+    const cachedProfile =
+      await this.cacheManager.get<ProfileWithRelations>(cacheKey);
     if (cachedProfile) {
       return cachedProfile;
     }
@@ -43,15 +44,15 @@ export class ProfilesService {
     try {
       const profile: ProfileWithRelations | null =
         await this.prisma.profile.findUnique({
-        where: { userId },
-        include: {
-          user: {
-            include: {
-              account: { select: { username: true } },
+          where: { userId },
+          include: {
+            user: {
+              include: {
+                account: { select: { username: true } },
+              },
             },
           },
-        },
-      });
+        });
 
       if (!profile) {
         this.logger.warn(`Profile for user ${userId} not found`);
@@ -171,8 +172,11 @@ export class ProfilesService {
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
-    const exists = await this.prisma.profile.findUnique({ where: { userId }, select: { id: true }});
-    if(!exists) throw new NotFoundException('Profile not found');
+    const exists = await this.prisma.profile.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!exists) throw new NotFoundException('Profile not found');
 
     try {
       const updatedProfile = await this.prisma.profile.update({
@@ -186,7 +190,7 @@ export class ProfilesService {
           isPrivate: dto.isPrivate,
         },
       });
-      
+
       await this.cacheManager.del(`profile:${userId}`);
       this.logger.log(`Cache invalidated for profile ${userId}`);
       this.logger.log(`Profile for user ${userId} updated successfully`);
