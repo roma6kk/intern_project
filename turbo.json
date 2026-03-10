@@ -1,17 +1,17 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv":[
+    "DATABASE_URL",
+    "REDIS_URL",
+    "RABBITMQ_URL",
+    "JWT_ACCESS_SECRET",
+    "JWT_REFRESH_SECRET"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
     },
-    "globalEnv":[
-      "DATABASE_URL",
-      "REDIS_URL",
-      "RABBITMQ_URL",
-      "JWT_ACCESS_SECRET",
-      "JWT_REFRESH_SECRET"
-    ],
     "lint": {},
     "dev": {
       "cache": false,
