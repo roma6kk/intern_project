@@ -2,16 +2,15 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches:[ "main", "develop" ]
+    branches:[ "main", "dev" ]
   pull_request:
-    branches:[ "main", "develop" ]
+    branches:[ "main", "dev" ]
 
 env:
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
   JWT_ACCESS_SECRET: ${{ secrets.JWT_ACCESS_SECRET }}
   JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
-  # Для тестов используем localhost, так как БД будет поднята прямо в GitHub Actions
   DATABASE_URL: postgresql://postgres:postgres@localhost:5432/innogram_test?schema=public
   REDIS_URL: redis://localhost:6379
   RABBITMQ_URL: amqp://guest:guest@localhost:5672
@@ -46,7 +45,7 @@ jobs:
         run: npx turbo test
 
   e2e-tests:
-    name: 🧪 E2E & Integration Tests
+    name: E2E & Integration Tests
     needs: quality
     runs-on: ubuntu-latest
     timeout-minutes: 20
