@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Client App (`apps/client_app`)
 
-## Getting Started
+### Purpose
 
-First, run the development server:
+The client app is the main user-facing web application for the Innogram platform. It is built with Next.js and communicates with the backend microservices for authentication, feeds, profiles, messaging, and notifications.
+
+### Running locally
+
+From the repository root:
 
 ```bash
+cd apps/client_app
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+By default the app runs at `http://localhost:3002` (check configuration if this differs).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Typical environment variables for the client app:
 
-## Learn More
+- `NEXT_PUBLIC_CORE_API_URL` – base URL of the core microservice (for example `http://localhost:3000`)
+- `NEXT_PUBLIC_AUTH_API_URL` – base URL of the auth microservice (for example `http://localhost:3001`)
 
-To learn more about Next.js, take a look at the following resources:
+These variables are used to construct HTTP requests to backend services from the browser and server-side rendering environment.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Backend integration
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Authentication flows call the auth microservice (sign in, sign up, refresh tokens).
+- Feed, profile, post, comment, like, follow, chat, and notification features call the core microservice.
+- JWTs issued by the auth microservice are included in requests, typically via cookies or authorization headers.
 
-## Deploy on Vercel
+### API documentation references
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+For detailed information about the backend endpoints used by this app, see:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Core microservice Swagger UI: `http://localhost:3000/api`
+- Auth microservice Swagger UI: `http://localhost:3001/api-docs`

@@ -1,0 +1,42 @@
+FROM node:20-alpine AS base
+
+FROM base AS builder
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+RUN npm install -g turbo
+COPY . .
+ARG APP_NAME
+RUN turbo prune ${APP_NAME} --docker
+
+FROM base AS installer
+WORKDIR /app
+RUN apk add --no-cache libc6-compat
+
+COPY --from=builder /app/out/json/ .
+COPY --from=builder /app/out/package-lock.json ./package-lock.json
+
+RUN npm ci
+
+COPY --from=builder /app/out/full/ .
+
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+
+RUN npm run db:generate --workspaces --if-present
+
+ARG APP_NAME
+RUN npx turbo run build --filter=${APP_NAME}...
+
+FROM base AS runner
+WORKDIR /app
+ARG APP_NAME
+ENV NODE_ENV=production
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 appuser
+USER appuser
+
+COPY --from=installer --chown=appuser:nodejs /app .
+
+ENV RUN_APP_NAME=${APP_NAME}
+
+CMD npm run start --workspace=apps/${RUN_APP_NAME}

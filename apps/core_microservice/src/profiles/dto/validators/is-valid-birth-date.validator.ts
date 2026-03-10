@@ -27,7 +27,6 @@ export function IsValidBirthDate(validationOptions?: ValidationOptions) {
           } else if (typeof value === 'number' && !Number.isNaN(value)) {
             dateStr = String(value);
           } else {
-            // Reject objects (except Date which is handled above) and other types
             return false;
           }
           const date = new Date(dateStr);

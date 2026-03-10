@@ -62,7 +62,7 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
       setFiles(prev => [...prev, ...valid]);
       setPreviews(prev => [...prev, ...previewsArr]);
       setFileTypes(prev => [...prev, ...typesArr]);
-      setCurrentIndex(previews.length); // jump to first newly added
+      setCurrentIndex(previews.length);
     }
   };
 
@@ -91,7 +91,6 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
       
       await api.post('/posts', fd);
       
-      // Сброс состояния
       setStep('upload');
       setFiles([]);
       setPreviews([]);
@@ -127,7 +126,7 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
             </button>
           )}
           <h2 className="text-lg font-semibold mx-auto text-gray-600">
-            {step === 'upload' ? 'Создать новый пост' : 'Добавить описание'}
+            {step === 'upload' ? 'Create new post' : 'Add description'}
           </h2>
           <button onClick={handleClose} className="p-1">
             <X className="w-5 h-5 text-gray-600" />
@@ -175,7 +174,7 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
                         setPreviews(nextPreviews);
                         setFileTypes(nextTypes);
                         setCurrentIndex(i => Math.max(0, Math.min(i, nextPreviews.length - 1)));
-                      }} className="absolute top-2 right-2 text-sm text-red-600 bg-white/30 rounded px-2">Удалить</button>
+                      }} className="absolute top-2 right-2 text-sm text-red-600 bg-white/30 rounded px-2">Delete</button>
 
                       {previews.length > 1 && (
                         <div className="absolute left-1/2 -translate-x-1/2 bottom-2 flex gap-2">
@@ -191,7 +190,7 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
                 <div className="space-y-4 pt-4">
                   <Upload className="w-12 h-12 mx-auto text-gray-400" />
                   <div>
-                    <p className="text-lg font-medium text-gray-600">Выберите фото или видео</p>
+                    <p className="text-lg font-medium text-gray-600">Select photo or video</p>
                     <p className="text-sm text-gray-500 mt-1">или перетащите файл сюда</p>
                   </div>
                   <input
@@ -211,10 +210,10 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
                         : 'bg-blue-600 text-white cursor-pointer hover:bg-blue-700'
                     }`}
                   >
-                    {previews.length > 0 ? `Добавить ещё (${previews.length}/10)` : 'Выбрать файл'}
+                    {previews.length > 0 ? `Add more (${previews.length}/10)` : 'Select file'}
                   </label>
                   {previews.length >= 10 && (
-                    <p className="text-sm text-gray-500 mt-2">Достигнуто максимальное количество файлов (10)</p>
+                    <p className="text-sm text-gray-500 mt-2">Maximum number of files reached (10)</p>
                   )}
                 </div>
               </div>
@@ -224,13 +223,13 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
                   onClick={handleSkipUpload}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-gray-600"
                 >
-                  Пропустить
+                  Skip
                 </button>
                 <button
                   onClick={handleNextStep}
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  Далее
+                  Next
                 </button>
               </div>
             </div>
@@ -259,19 +258,19 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
               <div className="flex items-center gap-3 text-gray-600">
                 <Image
                   src={user?.profile?.avatarUrl || '/default-avatar.svg'}
-                  alt={user?.username || 'Пользователь'}
+                  alt={user?.username || 'User'}
                   width={40}
                   height={40}
                   className="rounded-full object-cover"
                 />
-                <span className="font-medium">{user?.username || 'Пользователь'}</span>
+                <span className="font-medium">{user?.username || 'User'}</span>
               </div>
 
               <div>
                 <MentionTextarea
                   value={caption}
                   onChange={setCaption}
-                  placeholder="Напишите описание... (используйте @ для упоминания)"
+                  placeholder="Write description... (use @ for mention)"
                   className="w-full h-32 p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
                 />
                 <div className="text-right text-sm text-gray-500 mt-1">

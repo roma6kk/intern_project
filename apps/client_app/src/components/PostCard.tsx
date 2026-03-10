@@ -183,7 +183,6 @@ export default function PostCard({ post, fullView = false }: { post: Post; fullV
       const newComments = await processComments(res.data || []);
   
       setComments(prev => {
-        // Убираем дубликаты
         const map = new Map(prev.map(c => [c.id, c]));
         newComments.forEach(c => map.set(c.id, c));
         return Array.from(map.values());
@@ -237,7 +236,7 @@ export default function PostCard({ post, fullView = false }: { post: Post; fullV
     const remainingSlots = MAX_FILES - currentFileCount;
     
     if (remainingSlots <= 0) {
-      alert(`Максимальное количество файлов: ${MAX_FILES}`);
+      alert(`Maximum number of files: ${MAX_FILES}`);
       return;
     }
 
@@ -247,7 +246,7 @@ export default function PostCard({ post, fullView = false }: { post: Post; fullV
 
     const filesToProcess = selected.slice(0, remainingSlots);
     if (selected.length > remainingSlots) {
-      alert(`Можно добавить только ${remainingSlots} файл(ов). Остальные будут проигнорированы.`);
+      alert(`You can only add ${remainingSlots} file(s). The rest will be ignored.`);
     }
 
     await Promise.all(filesToProcess.map(async (f) => {
@@ -310,13 +309,12 @@ export default function PostCard({ post, fullView = false }: { post: Post; fullV
       );
       setShowEditModal(false);
       setShowMenu(false);
-      // Reset edit state
       setEditFiles([]);
       setEditPreviews([]);
       setEditFileTypes([]);
       setEditCurrentIndex(0);
       setEditAssetsToDelete([]);
-      window.location.reload(); // Reload to show updated assets
+      window.location.reload();
     } catch (error) {
       console.error('Failed to update post:', error);
       alert('Failed to update post');
@@ -501,7 +499,6 @@ export default function PostCard({ post, fullView = false }: { post: Post; fullV
   return (
     <>
       <article className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-200 p-3" ref={articleRef}>
-        {/* Header */}
         <header className="flex items-center mb-3">
           <button
             onClick={() => window.location.href = `/profile/${post.author?.username || 'unknown'}`}
@@ -525,7 +522,6 @@ export default function PostCard({ post, fullView = false }: { post: Post; fullV
             <div className="text-xs text-gray-500">{post.author?.profile?.firstName || ''}</div>
           </div>
   
-          {/* Menu */}
           {user?.id === post.author?.id && (
             <div className="relative" ref={menuRef}>
               <button
@@ -593,7 +589,6 @@ export default function PostCard({ post, fullView = false }: { post: Post; fullV
             </div>
         )}
   
-        {/* Media */}
         {post.assets && post.assets.length > 0 && (
           <div 
             className="relative w-full bg-black rounded-lg overflow-hidden group"
@@ -628,7 +623,6 @@ export default function PostCard({ post, fullView = false }: { post: Post; fullV
                     />
                   )}
   
-                  {/* Navigation arrows */}
                   {post.assets.length > 1 && (
                     <>
                       <button
@@ -648,7 +642,6 @@ export default function PostCard({ post, fullView = false }: { post: Post; fullV
                     </>
                   )}
   
-                  {/* Dots indicator */}
                   {post.assets.length > 1 && (
                     <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
                       {post.assets.map((_, index) => (
@@ -680,7 +673,6 @@ export default function PostCard({ post, fullView = false }: { post: Post; fullV
           </div>
         )}
 
-        {/* Description for posts without media - shown before actions */}
         {(!post.assets || post.assets.length === 0) && post.description && (
           <div className="mt-3 mb-3 px-4 py-3 bg-gray-50 rounded-xl border border-gray-100">
             <p className="text-base text-gray-800 leading-relaxed">
@@ -700,7 +692,6 @@ export default function PostCard({ post, fullView = false }: { post: Post; fullV
           </div>
         )}
   
-        {/* Actions */}
         <div className="flex items-center justify-between mt-3 mb-2">
           <div className="flex items-center gap-4">
             <button

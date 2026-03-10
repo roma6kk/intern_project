@@ -13,7 +13,6 @@ export default function AuthCallbackPage() {
 
     if (accessToken) {
       Cookies.set('accessToken', accessToken);
-      // Force AuthProvider to re-check auth by clearing the init flag
       sessionStorage.removeItem('auth_initialized');
       router.replace('/feed');
     } else {

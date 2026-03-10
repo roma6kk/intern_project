@@ -40,7 +40,6 @@ const participantIncludeShort = {
   },
 };
 
-/** Map participants to members-like shape for API response (id, role, account, profile) */
 function toMembersWithRole(
   participants: Array<{ userId: string; role: string; user: unknown }>,
 ) {
@@ -286,7 +285,6 @@ export class ChatService {
     const isAdmin = currentParticipant.role === 'ADMIN';
     const participantCount = chat.participants.length;
 
-    // Leave chat
     if (updateChatDto.leaveChat) {
       const otherAdmins = chat.participants.filter(
         (p) => p.userId !== currentUserId && p.role === 'ADMIN',
@@ -327,7 +325,6 @@ export class ChatService {
       return this.findOne(id);
     }
 
-    // Name/description — only ADMIN
     if (
       updateChatDto.name !== undefined ||
       updateChatDto.description !== undefined
@@ -357,7 +354,6 @@ export class ChatService {
       });
     }
 
-    // Add members — only ADMIN, GROUP, and only when participants > 2
     if (updateChatDto.addMemberIds?.length) {
       if (!isAdmin) {
         throw new ForbiddenException('Only admins can add participants');
@@ -385,7 +381,6 @@ export class ChatService {
       }
     }
 
-    // Remove members — only ADMIN, cannot remove self
     if (updateChatDto.removeMemberIds?.length) {
       if (!isAdmin) {
         throw new ForbiddenException('Only admins can remove participants');
@@ -401,7 +396,6 @@ export class ChatService {
       });
     }
 
-    // Promote participant to ADMIN — only ADMIN can do this
     if (updateChatDto.promoteToAdminId) {
       if (!isAdmin) {
         throw new ForbiddenException(

@@ -29,6 +29,7 @@ interface Author {
 interface Post {
   id: string;
   description: string;
+  isArchived: boolean;
   assets: Asset[];
   author: Author;
   authorId?: string;
@@ -190,7 +191,6 @@ export default function ProfilePage() {
             setPosts(userPosts);
           } else setPosts([]);
 
-          // Load archived posts only for own profile
           if (isMyProfile) {
             try {
               const archivedResponse = await api.get('/posts', {
@@ -210,7 +210,6 @@ export default function ProfilePage() {
               setArchivedPosts([]);
             }
 
-            // Load liked posts for own profile
             try {
               const likedResponse = await api.get('/posts', {
                 params: { page: 1, limit: 50, likedByUserId: profileData.userId }
@@ -220,7 +219,6 @@ export default function ProfilePage() {
               setLikedPosts([]);
             }
 
-            // Load commented posts for own profile
             try {
               const commentedResponse = await api.get('/posts', {
                 params: { page: 1, limit: 50, commentedByUserId: profileData.userId }
