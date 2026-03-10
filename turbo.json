@@ -5,6 +5,13 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
     },
+    "globalEnv":[
+      "DATABASE_URL",
+      "REDIS_URL",
+      "RABBITMQ_URL",
+      "JWT_ACCESS_SECRET",
+      "JWT_REFRESH_SECRET"
+    ],
     "lint": {},
     "dev": {
       "cache": false,
