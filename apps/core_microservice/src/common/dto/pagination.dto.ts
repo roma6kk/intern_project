@@ -1,9 +1,20 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Min, IsIn, IsBoolean } from 'class-validator';
+import {
+  IsBoolean,
+  IsInt,
+  IsIn,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 
 export class PaginationDto {
-  @ApiPropertyOptional({ default: 1, description: 'Page number' })
+  @ApiPropertyOptional({
+    default: 1,
+    description:
+      'Page number (used only for trending sort with offset-based pagination)',
+  })
   @Type(() => Number)
   @IsInt()
   @Min(1)
@@ -16,6 +27,14 @@ export class PaginationDto {
   @Min(1)
   @IsOptional()
   limit?: number = 10;
+
+  @ApiPropertyOptional({
+    description:
+      'Opaque cursor token for cursor-based pagination (all sorts except trending)',
+  })
+  @IsOptional()
+  @IsString()
+  cursor?: string;
 
   @ApiPropertyOptional({ description: 'Search term' })
   @IsOptional()

@@ -5,6 +5,8 @@ import { UpdateNotificationDto } from './dto/update-notification.dto';
 import { PrismaService } from '../database/prisma.service';
 import { ChatGateway } from '../chat/chat.gateway';
 import { PaginationDto } from '../common/dto/pagination.dto';
+import { decodeCursor, encodeCursor } from '../common/utils/cursor.helper';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class NotificationService {
@@ -53,49 +55,71 @@ export class NotificationService {
   }
 
   async findByRecipient(recipientId: string, pagination?: PaginationDto) {
-    const page = pagination?.page ?? 1;
     const limit = pagination?.limit ?? 20;
-    const skip = (page - 1) * limit;
+    const cursor = pagination?.cursor;
 
-    const [notifications, total] = await Promise.all([
-      this.prisma.notification.findMany({
-        where: { recipientId },
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-        skip: skip,
-        include: {
-          actor: {
-            select: {
-              id: true,
-              account: {
-                select: {
-                  username: true,
-                },
+    const take = limit + 1;
+
+    let cursorFilter: Prisma.NotificationWhereInput | undefined;
+
+    if (cursor) {
+      const { createdAt, id } = decodeCursor(cursor);
+      const createdAtDate = new Date(createdAt);
+
+      cursorFilter = {
+        OR: [
+          { createdAt: { lt: createdAtDate } },
+          {
+            createdAt: createdAtDate,
+            id: { lt: id },
+          },
+        ],
+      };
+    }
+
+    const notifications = await this.prisma.notification.findMany({
+      where: cursorFilter
+        ? { recipientId, AND: cursorFilter }
+        : { recipientId },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take,
+      include: {
+        actor: {
+          select: {
+            id: true,
+            account: {
+              select: {
+                username: true,
               },
-              profile: {
-                select: {
-                  firstName: true,
-                  avatarUrl: true,
-                },
+            },
+            profile: {
+              select: {
+                firstName: true,
+                avatarUrl: true,
               },
             },
           },
         },
-      }),
-      this.prisma.notification.count({
-        where: { recipientId },
-      }),
-    ]);
+      },
+    });
 
-    const totalPages = Math.ceil(total / limit);
+    const hasNextPage = notifications.length > limit;
+    const items = hasNextPage ? notifications.slice(0, limit) : notifications;
+
+    const nextCursor =
+      hasNextPage && items.length > 0
+        ? encodeCursor({
+            id: items[items.length - 1].id,
+            createdAt: items[items.length - 1].createdAt.toISOString(),
+          })
+        : null;
 
     return {
-      data: notifications,
+      data: items,
       meta: {
-        page,
+        cursor: nextCursor,
+        hasNextPage,
         limit,
-        total,
-        totalPages,
       },
     };
   }

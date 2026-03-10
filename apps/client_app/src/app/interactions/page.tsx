@@ -73,10 +73,10 @@ interface PostPreview {
 interface PaginationResponse<T> {
   data: T[];
   meta: {
-    page: number;
+    cursor: string | null;
+    hasNextPage: boolean;
     limit: number;
-    total: number;
-    totalPages: number;
+    total?: number;
   };
 }
 
@@ -464,7 +464,7 @@ export default function InteractionsPage() {
   const [displayLimit, setDisplayLimit] = useState<number>(
     INITIAL_DISPLAY_LIMIT
   );
-  const [page, setPage] = useState(1);
+  const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -472,13 +472,19 @@ export default function InteractionsPage() {
   const isExpandedRef = useRef<boolean>(false);
 
   const loadNotifications = useCallback(
-    async (pageNum: number, append: boolean = false) => {
-      if (loadingMore || (!hasMore && pageNum > 1)) return;
+    async (append: boolean = false) => {
+      if (loadingMore || (!hasMore && append)) return;
 
       setLoadingMore(true);
       try {
+        const params = new URLSearchParams();
+        params.set('limit', String(PAGE_SIZE));
+        if (cursor) {
+          params.set('cursor', cursor);
+        }
+
         const res = await api.get<PaginationResponse<Notification>>(
-          `/notification/me?page=${pageNum}&limit=${PAGE_SIZE}`
+          `/notification/me?${params.toString()}`
         );
 
         const newNotifications = res.data.data || [];
@@ -496,8 +502,8 @@ export default function InteractionsPage() {
           return newNotifications;
         });
 
-        setHasMore(pageNum < meta.totalPages);
-        setPage(pageNum + 1);
+        setHasMore(Boolean(meta.hasNextPage));
+        setCursor(meta.cursor ?? null);
 
         // Автоматически отмечаем как прочитанные
         const unreadIds = newNotifications
@@ -516,7 +522,7 @@ export default function InteractionsPage() {
         setLoadingMore(false);
       }
     },
-    [hasMore, loadingMore]
+    [hasMore, loadingMore, cursor]
   );
 
   const loadRequests = useCallback(async () => {
@@ -542,7 +548,7 @@ export default function InteractionsPage() {
 
     async function init() {
       setLoading(true);
-      await Promise.all([loadRequests(), loadNotifications(1, false)]);
+      await Promise.all([loadRequests(), loadNotifications(false)]);
       if (mounted) setLoading(false);
     }
 
@@ -602,7 +608,7 @@ export default function InteractionsPage() {
 
     observerRef.current = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting && hasMore && !loadingMore) {
-        loadNotifications(page, true);
+        loadNotifications(true);
       }
     });
 
@@ -615,7 +621,7 @@ export default function InteractionsPage() {
         observerRef.current.disconnect();
       }
     };
-  }, [hasMore, loadingMore, page, loadNotifications, displayLimit, groupedNotifications.length]);
+  }, [hasMore, loadingMore, loadNotifications, displayLimit, groupedNotifications.length]);
 
   const displayedNotifications = groupedNotifications.slice(0, displayLimit);
   const hasMoreToShow = displayLimit < groupedNotifications.length;

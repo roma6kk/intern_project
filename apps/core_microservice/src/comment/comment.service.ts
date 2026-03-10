@@ -9,7 +9,8 @@ import { UpdateCommentDto } from './dto/update-comment.dto';
 import { PrismaService } from '../database/prisma.service';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { NotificationService } from '../notification/notification.service';
-import { NotificationType } from '@prisma/client';
+import { NotificationType, Prisma } from '@prisma/client';
+import { decodeCursor, encodeCursor } from '../common/utils/cursor.helper';
 
 @Injectable()
 export class CommentService {
@@ -90,38 +91,69 @@ export class CommentService {
   }
 
   async findByPostId(postId: string, pagination: PaginationDto) {
-    const { page = 1, limit = 20 } = pagination;
-    const skip = (page - 1) * limit;
+    const { limit = 20, cursor } = pagination;
 
-    const [comments, total] = await Promise.all([
-      this.prisma.comment.findMany({
-        where: {
-          postId,
-          parentId: null,
-        },
-        take: limit,
-        skip: skip,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          author: {
-            select: {
-              id: true,
-              account: { select: { username: true } },
-              profile: { select: { firstName: true, avatarUrl: true } },
-            },
-          },
-          _count: {
-            select: {
-              likes: true,
-              children: true,
-            },
-          },
-        },
-      }),
-      this.prisma.comment.count({ where: { postId, parentId: null } }),
-    ]);
+    const take = limit + 1;
 
-    return { data: comments, meta: { total, page, limit } };
+    let cursorFilter: Prisma.CommentWhereInput | undefined;
+
+    if (cursor) {
+      const { createdAt, id } = decodeCursor(cursor);
+      const createdAtDate = new Date(createdAt);
+
+      cursorFilter = {
+        OR: [
+          { createdAt: { lt: createdAtDate } },
+          {
+            createdAt: createdAtDate,
+            id: { lt: id },
+          },
+        ],
+      };
+    }
+
+    const comments = await this.prisma.comment.findMany({
+      where: cursorFilter
+        ? { postId, parentId: null, AND: cursorFilter }
+        : { postId, parentId: null },
+      take,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      include: {
+        author: {
+          select: {
+            id: true,
+            account: { select: { username: true } },
+            profile: { select: { firstName: true, avatarUrl: true } },
+          },
+        },
+        _count: {
+          select: {
+            likes: true,
+            children: true,
+          },
+        },
+      },
+    });
+
+    const hasNextPage = comments.length > limit;
+    const items = hasNextPage ? comments.slice(0, limit) : comments;
+
+    const nextCursor =
+      hasNextPage && items.length > 0
+        ? encodeCursor({
+            id: items[items.length - 1].id,
+            createdAt: items[items.length - 1].createdAt.toISOString(),
+          })
+        : null;
+
+    return {
+      data: items,
+      meta: {
+        cursor: nextCursor,
+        hasNextPage,
+        limit,
+      },
+    };
   }
 
   async findReplies(commentId: string) {

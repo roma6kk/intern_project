@@ -69,6 +69,8 @@ model Follow {
   follower    User     @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
   following   User     @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
   
+  @@index([followerId])
+  @@index([followingId])
   @@unique([followerId, followingId])
   @@map("follows")
 }
@@ -86,6 +88,7 @@ model Post {
   likes       Like[]
 
   author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  @@index([authorId, createdAt])
   @@map("posts")
 }
 
@@ -114,6 +117,8 @@ model Comment {
 
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  @@index([postId])
+  @@index([parentId])
   @@map("comments")
 }
 
@@ -194,6 +199,7 @@ model Notification {
 
   recipient   User             @relation("recipient", fields: [recipientId], references: [id], onDelete: Cascade)
   actor       User             @relation("actor", fields: [actorId], references: [id], onDelete: Cascade)
+  @@index([recipientId, createdAt])
   @@map("notifications")
 }
 

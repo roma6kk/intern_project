@@ -215,14 +215,14 @@ export default function Feed() {
               <div className="flex justify-center py-6">
                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm px-6 py-4 flex items-center gap-3">
                   <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-                  <span className="text-sm text-gray-600">Загрузка постов...</span>
+                  <span className="text-sm text-gray-600">Loading posts...</span>
                 </div>
               </div>
             )}
             
             {!hasMore && normalizedPosts.length > 0 && (
               <div className="text-center py-6">
-                <p className="text-sm text-gray-500">Вы просмотрели все посты</p>
+                <p className="text-sm text-gray-500">You have viewed all posts</p>
               </div>
             )}
           </div>
