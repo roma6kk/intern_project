@@ -1,4 +1,20 @@
 services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres_container
+    environment:
+      DATABASE_URL="postgresql://postgres:Jadirus33@localhost:5432/innogram?schema=main"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - innogram-network
+    healthcheck:
+      test:["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   redis:
     image: redis:latest
     container_name: redis_container
