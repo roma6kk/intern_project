@@ -8,9 +8,9 @@ import {
 import { CreateChatDto } from './dto/create-chat.dto';
 import { UpdateChatDto } from './dto/update-chat.dto';
 import { PrismaService } from '../database/prisma.service';
-import { ChatType } from '@prisma/client';
+import { ChatType, Prisma } from '@prisma/client';
 
-const participantInclude = {
+const participantInclude = Prisma.validator<Prisma.Chat$participantsArgs>()({
   select: {
     userId: true,
     role: true,
@@ -24,27 +24,35 @@ const participantInclude = {
       },
     },
   },
-};
+});
 
-const participantIncludeShort = {
-  select: {
-    userId: true,
-    role: true,
-    user: {
-      select: {
-        id: true,
-        account: { select: { username: true } },
-        profile: { select: { firstName: true, avatarUrl: true } },
+const participantIncludeShort =
+  Prisma.validator<Prisma.Chat$participantsArgs>()({
+    select: {
+      userId: true,
+      role: true,
+      user: {
+        select: {
+          id: true,
+          account: { select: { username: true } },
+          profile: { select: { firstName: true, avatarUrl: true } },
+        },
       },
     },
-  },
-};
+  });
+
+type ParticipantForMembers = Prisma.ChatParticipantGetPayload<
+  typeof participantInclude
+>;
+type ParticipantForMembersShort = Prisma.ChatParticipantGetPayload<
+  typeof participantIncludeShort
+>;
 
 function toMembersWithRole(
-  participants: Array<{ userId: string; role: string; user: unknown }>,
+  participants: Array<ParticipantForMembers | ParticipantForMembersShort>,
 ) {
   return participants.map((p) => ({
-    ...(p.user as Record<string, unknown>),
+    ...p.user,
     role: p.role,
   }));
 }
@@ -233,22 +241,20 @@ export class ChatService {
       throw new NotFoundException('Chat not found');
     }
 
-    const messages = (chat.messages as Array<Record<string, unknown>>).map(
-      (msg) => {
-        const replyTo = msg.replyTo as Record<string, unknown> | null;
-        if (replyTo && replyTo.deletedAt != null) {
-          return {
-            ...msg,
-            replyTo: {
-              ...replyTo,
-              content: null,
-              assets: [],
-            },
-          };
-        }
-        return msg;
-      },
-    );
+    const messages = chat.messages.map((msg) => {
+      const replyTo = msg.replyTo;
+      if (replyTo && replyTo.deletedAt != null) {
+        return {
+          ...msg,
+          replyTo: {
+            ...replyTo,
+            content: null,
+            assets: [],
+          },
+        };
+      }
+      return msg;
+    });
 
     return {
       ...chat,
