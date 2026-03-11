@@ -683,14 +683,14 @@ export class PostService {
     actorId: string,
     itemId: string,
   ) {
-    const accounts = (await this.prisma.account.findMany({
+    const accounts = await this.prisma.account.findMany({
       where: {
         OR: usernames.map((u) => ({
           username: { equals: u, mode: 'insensitive' },
         })),
       },
       select: { userId: true, username: true },
-    })) as Array<{ userId: string; username: string }>;
+    });
 
     for (const account of accounts) {
       if (account.userId !== actorId) {
