@@ -1,0 +1,103 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres_container
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Jadirus33
+      POSTGRES_DB: innogram
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - innogram-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d innogram"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  redis:
+    image: redis:latest
+    container_name: redis_container
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - innogram-network
+  minio:
+      image: minio/minio
+      container_name: minio_container
+      ports:
+        - "9000:9000"
+        - "9001:9001"
+      environment:
+        MINIO_ROOT_USER: minioadmin
+        MINIO_ROOT_PASSWORD: minioadmin
+      volumes:
+        - minio_data:/data
+      command: server /data --console-address ":9001"
+      networks:
+        - innogram-network
+  createbuckets:
+    image: minio/mc
+    depends_on:
+      - minio
+    networks:
+      - innogram-network
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        echo "Waiting for MinIO..."
+        until /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin; do
+          sleep 1
+        done
+        
+        echo "MinIO is UP!"
+        /usr/bin/mc mb
+        /usr/bin/mc anonymous set public myminio/innogram-bucket
+        
+        echo "Bucket created."
+        exit 0
+  rabbitmq:
+    image: rabbitmq:3
+    container_name: rabbitmq-container
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - innogram-network
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus-container
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - innogram-network
+    extra_hosts:
+        - "host.docker.internal:host-gateway"
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana-container
+    ports:
+      - "3004:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+    networks:
+      - innogram-network
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  innogram-network:
