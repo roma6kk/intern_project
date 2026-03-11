@@ -36,8 +36,25 @@ export default function SignUpForm({ onSwitch }: SignUpFormProps) {
       const res = await api.post('/auth/signup', data);
       login(res.data.accessToken, res.data.user);
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      alert(err.response?.data?.message || 'Signup failed');
+      const apiError = error as { message?: string };
+      const fallbackError = error as {
+        response?: { data?: { message?: string } | string };
+      };
+
+      let message: string | undefined;
+
+      if (apiError?.message) {
+        message = apiError.message;
+      } else if (fallbackError.response?.data) {
+        const data = fallbackError.response.data;
+        if (typeof data === 'string') {
+          message = data;
+        } else if (typeof data === 'object' && 'message' in data) {
+          message = (data as { message?: string }).message;
+        }
+      }
+
+      alert(message || 'Signup failed');
     }
   };
 
