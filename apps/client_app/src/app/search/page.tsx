@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Search, Loader2, LogIn } from 'lucide-react';
@@ -19,7 +19,7 @@ interface SearchParams {
   followingOnly?: boolean;
 }
 
-export default function SearchPage() {
+function SearchPageContent() {
   const { user, isLoading } = useAuth();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(searchParams.get('q') || '');
@@ -302,5 +302,22 @@ export default function SearchPage() {
       
       <BottomNav />
     </div>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 flex flex-col items-center gap-4 max-w-sm w-full">
+            <Loader2 className="w-10 h-10 animate-spin text-gray-400" />
+            <p className="text-gray-600 font-medium">Загрузка...</p>
+          </div>
+        </div>
+      }
+    >
+      <SearchPageContent />
+    </Suspense>
   );
 }

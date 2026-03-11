@@ -120,7 +120,6 @@ export class FollowService {
         data: { status: 'ACCEPTED' },
       });
 
-      // Отправляем уведомление фолловеру, что его запрос принят
       await this.notificationService.create({
         type: NotificationType.FOLLOW,
         recipientId: followerId,

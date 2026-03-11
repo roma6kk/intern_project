@@ -37,7 +37,7 @@ interface ChatResult {
 
 export default function SharePostModal({ postId, onClose }: SharePostModalProps) {
   const { user: currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<'people' | 'chats'>('chats'); // По умолчанию показываем чаты
+  const [activeTab, setActiveTab] = useState<'people' | 'chats'>('chats');
   
   const [query, setQuery] = useState('');
   const [userResults, setUserResults] = useState<UserResult[]>([]);
@@ -142,7 +142,6 @@ export default function SharePostModal({ postId, onClose }: SharePostModalProps)
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl w-full max-w-md flex flex-col max-h-[80vh]">
-        {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-semibold text-gray-500">Share</h2>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full text-gray-500">
@@ -150,7 +149,6 @@ export default function SharePostModal({ postId, onClose }: SharePostModalProps)
           </button>
         </div>
 
-        {/* Tabs */}
         <div className="flex border-b">
           <button
             onClick={() => setActiveTab('chats')}
@@ -172,7 +170,6 @@ export default function SharePostModal({ postId, onClose }: SharePostModalProps)
           </button>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto p-2 min-h-[300px]">
           
           {activeTab === 'people' && (

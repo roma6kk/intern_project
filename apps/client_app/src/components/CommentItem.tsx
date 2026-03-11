@@ -61,7 +61,6 @@ export default function CommentItem({
         parentId: comment.id,
       });
 
-      // Нормализация данных автора
       const author = reply.author || { id: reply.authorId };
       const username = author.username || author?.account?.username || author?.profile?.firstName || 'Unknown';
       const profile = author.profile || {};
@@ -134,7 +133,6 @@ export default function CommentItem({
       className="relative"
       style={{ marginLeft: `${marginLeft}px`, marginTop: level > 0 ? '8px' : '0' }}
     >
-      {/* Линия иерархии */}
       {level > 0 && (
         <div
           className="absolute border-l-2 border-gray-200"
@@ -255,7 +253,6 @@ export default function CommentItem({
               </>
             )}
 
-            {/* Показываем кнопку загрузки только если есть дети И они еще не загружены */}
             {(comment._count?.children ?? 0) > 0 && !hasLoadedReplies && (
               <button
                 onClick={() => onLoadReplies?.(comment.id)}
@@ -305,7 +302,6 @@ export default function CommentItem({
         </div>
       </div>
 
-      {/* Рендеринг вложенных комментариев */}
       {hasLoadedReplies && (
         <div className="mt-2">
           {comment.replies!.map((reply) => (

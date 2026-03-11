@@ -85,7 +85,6 @@ export class PostController {
     @Body() updatePostDto: UpdatePostDto,
     @UploadedFiles() files?: Array<Express.Multer.File>,
   ) {
-    // Handle array from FormData - can come as string[] or single string
     let deleteAssetIds: string[] = [];
     if (updatePostDto.deleteAssetIds) {
       if (Array.isArray(updatePostDto.deleteAssetIds)) {

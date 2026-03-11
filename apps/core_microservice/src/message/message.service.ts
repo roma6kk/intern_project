@@ -99,7 +99,9 @@ export class MessageService {
         },
       });
 
-      const memberIds = chat?.participants.map((p) => p.userId) || [];
+      const memberIds: string[] = chat
+        ? (chat.participants as { userId: string }[]).map((p) => p.userId)
+        : [];
       this.chatGateway.sendNewMessage(
         createMessageDto.chatId,
         newMessage,

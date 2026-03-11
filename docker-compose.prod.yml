@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: innogram-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password123}
+      POSTGRES_DB: ${POSTGRES_DB:-innogram}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - innogram_network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: innogram-redis
+    volumes:
+      - redis_data:/data
+    networks:
+      - innogram_network
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: innogram-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
+    networks:
+      - innogram_network
+    restart: unless-stopped
+
+  core-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: core_microservice
+    container_name: innogram-core
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./apps/core_microservice/.env
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    networks:
+      - innogram_network
+    restart: unless-stopped
+
+  auth-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: auth_microservice
+    container_name: innogram-auth
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./apps/auth_microservice/.env
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - innogram_network
+    restart: unless-stopped
+
+  notification-consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: notifications_consumer_microservice
+    container_name: innogram-consumer
+    env_file:
+      - ./apps/notifications_consumer_microservice/.env
+    depends_on:
+      - postgres
+      - rabbitmq
+    networks:
+      - innogram_network
+    restart: unless-stopped
+
+volumes:
+  pg_data:
+  redis_data:
+
+networks:
+  innogram_network:
+    driver: bridge

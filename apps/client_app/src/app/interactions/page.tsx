@@ -87,7 +87,6 @@ function groupNotifications(notifications: Notification[]): GroupedNotification[
   const groupedMap = new Map<string, GroupedNotification>();
 
   notifications.forEach((notification) => {
-    // Для FOLLOW и MENTION не группируем
     if (notification.type === 'FOLLOW' || notification.type === 'MENTION') {
       const key = notification.id;
       groupedMap.set(key, {
@@ -109,13 +108,11 @@ function groupNotifications(notifications: Notification[]): GroupedNotification[
       return;
     }
 
-    // Для LIKE и COMMENT группируем по postId/itemId
     if (notification.type === 'LIKE' || notification.type === 'COMMENT') {
       const key = `${notification.type}-${notification.postId ?? notification.itemId ?? 'unknown'}`;
       const existing = groupedMap.get(key);
 
       if (existing) {
-        // Проверяем, нет ли уже этого актора в группе
         const actorExists = existing.actors.some(
           (a) => a.id === notification.actor.id
         );
@@ -129,12 +126,10 @@ function groupNotifications(notifications: Notification[]): GroupedNotification[
           existing.count++;
         }
 
-        // Обновляем время на самое позднее
         if (new Date(notification.createdAt) > new Date(existing.createdAt)) {
           existing.createdAt = notification.createdAt;
         }
 
-        // Если хотя бы одно уведомление не прочитано, группа не прочитана
         if (!notification.isRead) {
           existing.isRead = false;
         }
@@ -157,7 +152,6 @@ function groupNotifications(notifications: Notification[]): GroupedNotification[
         });
       }
     } else {
-      // Для остальных типов не группируем
       const key = notification.id;
       groupedMap.set(key, {
         id: notification.id,
@@ -221,21 +215,20 @@ function NotificationItem({
   const loadedPostIdRef = useRef<string | null>(null);
 
   const typeLabels: Record<string, string> = {
-    LIKE: 'лайкнул',
-    COMMENT: 'прокомментировал',
-    FOLLOW: 'подписался на вас',
-    MENTION: 'упомянул вас',
-    FOLLOW_REQUEST: 'запросил подписку',
+    LIKE: 'liked',
+    COMMENT: 'commented',
+    FOLLOW: 'followed you',
+    MENTION: 'mentioned you',
+    FOLLOW_REQUEST: 'requested follow',
   };
 
-  const displayText = typeLabels[n.type] || 'взаимодействовал с вами';
+  const displayText = typeLabels[n.type] || 'interacted with you';
 
   const getNotificationLink = () => {
     if (n.type === 'FOLLOW' || n.type === 'FOLLOW_REQUEST') {
       return `/profile/${n.actors[0].username}`;
     }
 
-    // Используем postId для ссылки на пост (itemId может быть ID комментария)
     const post = n.postId;
     if (post && (n.type === 'LIKE' || n.type === 'COMMENT' || n.type === 'MENTION')) {
       return `/post/${post}`;
@@ -244,13 +237,10 @@ function NotificationItem({
     return `/profile/${n.actors[0].username}`;
   };
 
-  // Загружаем предпросмотр поста для уведомлений, которые ссылаются на пост
-  // Используем только postId, так как itemId может быть ID комментария для лайков на комментарии
   useEffect(() => {
-    const postId = n.postId; // Используем только postId, не itemId
+    const postId = n.postId;
     const shouldLoadPost = postId && (n.type === 'LIKE' || n.type === 'COMMENT' || n.type === 'MENTION');
 
-    // Сбрасываем состояние при изменении postId или если не нужно загружать
     if (!shouldLoadPost) {
       loadedPostIdRef.current = null;
       queueMicrotask(() => {
@@ -260,7 +250,6 @@ function NotificationItem({
       return;
     }
 
-    // Если postId изменился, сбрасываем состояние
     if (loadedPostIdRef.current && loadedPostIdRef.current !== postId) {
       queueMicrotask(() => {
         setPostPreview(null);
@@ -268,21 +257,16 @@ function NotificationItem({
       });
     }
 
-    // Загружаем только один раз для каждого postId
     if (shouldLoadPost && loadedPostIdRef.current !== postId) {
       loadedPostIdRef.current = postId;
       api
         .get<PostPreview>(`/posts/${postId}`)
         .then((res) => {
-          // Проверяем, что postId не изменился во время загрузки
-          // Загружаем пост даже если нет медиа, чтобы показать текстовый предпросмотр
           if (loadedPostIdRef.current === postId && res.data) {
             setPostPreview(res.data);
           }
         })
         .catch(() => {
-          // Помечаем, что загрузка не удалась только если postId не изменился
-          // Это нормально, если пост был удален или недоступен
           if (loadedPostIdRef.current === postId) {
             setPostLoadFailed(true);
           }
@@ -318,7 +302,7 @@ function NotificationItem({
             {n.actors[0].username}
           </span>{' '}
           <span className="text-gray-600">
-            и {othersCount} {othersCount === 1 ? 'другой' : 'других'}{' '}
+            and {othersCount} {othersCount === 1 ? 'other' : 'others'}{' '}
             {displayText}
           </span>
         </>
@@ -358,7 +342,7 @@ function NotificationItem({
               }}
               className="text-xs font-medium text-blue-600 px-3 py-1.5 hover:bg-blue-100 rounded-md transition-colors flex-shrink-0"
             >
-              Прочитано
+              Read
             </button>
           )}
           {n.isFollowRequest && n.followRequestId && (
@@ -372,7 +356,7 @@ function NotificationItem({
                 aria-label={`Accept ${n.actors[0].username}`}
               >
                 <Check className="w-4 h-4" />
-                Принять
+                Accept
               </button>
               <button
                 onClick={(e) => {
@@ -383,7 +367,7 @@ function NotificationItem({
                 aria-label={`Decline ${n.actors[0].username}`}
               >
                 <X className="w-4 h-4" />
-                Отклонить
+                Decline
               </button>
             </div>
           )}
@@ -492,7 +476,6 @@ export default function InteractionsPage() {
 
         setNotifications((prev) => {
           if (append) {
-            // Объединяем, избегая дубликатов
             const existingIds = new Set(prev.map((n) => n.id));
             const unique = newNotifications.filter(
               (n) => !existingIds.has(n.id)
@@ -505,7 +488,6 @@ export default function InteractionsPage() {
         setHasMore(Boolean(meta.hasNextPage));
         setCursor(meta.cursor ?? null);
 
-        // Автоматически отмечаем как прочитанные
         const unreadIds = newNotifications
           .filter((n) => !n.isRead)
           .map((n) => n.id);
@@ -559,7 +541,6 @@ export default function InteractionsPage() {
     };
   }, [loadNotifications, loadRequests]);
 
-  // Группируем уведомления при изменении
   useEffect(() => {
     const followRequestNotifications = requests.map((req) =>
       convertFollowRequestToNotification(req)
@@ -568,7 +549,6 @@ export default function InteractionsPage() {
     const allNotifications = [...notifications, ...followRequestNotifications];
     const grouped = groupNotifications(allNotifications);
 
-    // Добавляем информацию о follow requests
     const groupedWithFollowRequests = grouped.map((g) => {
       if (g.type === 'FOLLOW_REQUEST') {
         const request = requests.find(
@@ -694,7 +674,7 @@ export default function InteractionsPage() {
               <div className="flex flex-col items-center justify-center py-12">
                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm px-6 py-4 flex items-center gap-3">
                   <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-                  <span className="text-sm text-gray-600">Загрузка уведомлений...</span>
+                  <span className="text-sm text-gray-600">Loading notifications...</span>
                 </div>
               </div>
             ) : groupedNotifications.length === 0 ? (
@@ -702,8 +682,8 @@ export default function InteractionsPage() {
                 <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
                   <Bell className="w-8 h-8 text-gray-400" />
                 </div>
-                <p className="text-gray-600 font-medium">Нет уведомлений</p>
-                <p className="text-sm text-gray-500 mt-1">Здесь появятся новые уведомления</p>
+                <p className="text-gray-600 font-medium">No notifications</p>
+                <p className="text-sm text-gray-500 mt-1">New notifications will appear here</p>
               </div>
             ) : (
               <>
@@ -727,8 +707,8 @@ export default function InteractionsPage() {
                       }}
                       className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                     >
-                      Показать все ({groupedNotifications.length - displayLimit}{' '}
-                      еще)
+                      Show all ({groupedNotifications.length - displayLimit}{' '}
+                      more)
                     </button>
                   </div>
                 )}
@@ -739,7 +719,7 @@ export default function InteractionsPage() {
                   <div className="flex justify-center py-4">
                     <div className="flex items-center gap-2 text-gray-500">
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      <span className="text-sm">Загрузка...</span>
+                      <span className="text-sm">Loading...</span>
                     </div>
                   </div>
                 )}

@@ -84,8 +84,13 @@ export class CommentService {
 
       this.logger.log(`Comment created. ID: ${comment.id}`);
       return comment;
-    } catch (error) {
-      this.logger.error('Failed to create comment', (error as Error).stack);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        this.logger.error('Failed to create comment', error.stack);
+        throw error;
+      }
+
+      this.logger.error('Failed to create comment', String(error));
       throw error;
     }
   }
@@ -212,11 +217,13 @@ export class CommentService {
       });
 
       return updated;
-    } catch (error) {
-      this.logger.error(
-        `Failed to update comment ${id}`,
-        (error as Error).stack,
-      );
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        this.logger.error(`Failed to update comment ${id}`, error.stack);
+        throw error;
+      }
+
+      this.logger.error(`Failed to update comment ${id}`, String(error));
       throw error;
     }
   }
@@ -232,11 +239,13 @@ export class CommentService {
       await this.prisma.comment.delete({ where: { id } });
       this.logger.log(`Comment ${id} deleted`);
       return { id, deleted: true };
-    } catch (error) {
-      this.logger.error(
-        `Failed to delete comment ${id}`,
-        (error as Error).stack,
-      );
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        this.logger.error(`Failed to delete comment ${id}`, error.stack);
+        throw error;
+      }
+
+      this.logger.error(`Failed to delete comment ${id}`, String(error));
       throw error;
     }
   }
@@ -273,14 +282,15 @@ export class CommentService {
   ) {
     if (usernames.length === 0) return;
 
-    const accounts = await this.prisma.account.findMany({
-      where: {
-        OR: usernames.map((u) => ({
-          username: { equals: u, mode: 'insensitive' },
-        })),
-      },
-      select: { userId: true, username: true },
-    });
+    const accounts: Array<{ userId: string; username: string }> =
+      await this.prisma.account.findMany({
+        where: {
+          OR: usernames.map((u) => ({
+            username: { equals: u, mode: 'insensitive' },
+          })),
+        },
+        select: { userId: true, username: true },
+      });
 
     for (const account of accounts) {
       if (account.userId !== actorId && account.userId !== excludeUserId) {

@@ -1,4 +1,4 @@
-import { Inject, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PostModule } from './post/post.module';
@@ -50,7 +50,7 @@ import { PrometheusModule } from '@willsoto/nestjs-prometheus';
     CacheModule.registerAsync({
       isGlobal: true,
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => {
+      useFactory: (configService: ConfigService) => {
         const redisUrl = configService.getOrThrow<string>('REDIS_URL');
         return {
           stores: [new KeyvRedis(redisUrl)],
@@ -58,7 +58,7 @@ import { PrometheusModule } from '@willsoto/nestjs-prometheus';
         };
       },
       inject: [ConfigService],
-    })
+    }),
   ],
   controllers: [AppController],
   providers: [AppService],

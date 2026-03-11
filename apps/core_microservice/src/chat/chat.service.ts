@@ -8,9 +8,24 @@ import {
 import { CreateChatDto } from './dto/create-chat.dto';
 import { UpdateChatDto } from './dto/update-chat.dto';
 import { PrismaService } from '../database/prisma.service';
-import { ChatType } from '@prisma/client';
+import { ChatType, Prisma } from '@prisma/client';
 
-const participantInclude = {
+interface ChatParticipantDelegate {
+  updateMany(args: {
+    where: { chatId: string; userId: string };
+    data: { role: string };
+  }): Promise<unknown>;
+  deleteMany(
+    args:
+      | { where: { chatId: string; userId: string } }
+      | { where: { chatId: string; userId: { in: string[] } } },
+  ): Promise<unknown>;
+  createMany(args: {
+    data: Array<{ chatId: string; userId: string; role: string }>;
+  }): Promise<unknown>;
+}
+
+const participantInclude = Prisma.validator<Prisma.Chat$participantsArgs>()({
   select: {
     userId: true,
     role: true,
@@ -24,28 +39,49 @@ const participantInclude = {
       },
     },
   },
-};
+});
 
-const participantIncludeShort = {
-  select: {
-    userId: true,
-    role: true,
-    user: {
-      select: {
-        id: true,
-        account: { select: { username: true } },
-        profile: { select: { firstName: true, avatarUrl: true } },
+const participantIncludeShort =
+  Prisma.validator<Prisma.Chat$participantsArgs>()({
+    select: {
+      userId: true,
+      role: true,
+      user: {
+        select: {
+          id: true,
+          account: { select: { username: true } },
+          profile: { select: { firstName: true, avatarUrl: true } },
+        },
       },
     },
-  },
-};
+  });
 
-/** Map participants to members-like shape for API response (id, role, account, profile) */
-function toMembersWithRole(
-  participants: Array<{ userId: string; role: string; user: unknown }>,
-) {
+interface ParticipantWithUser {
+  userId: string;
+  role: string;
+  user: {
+    id: string;
+    account: { username: string };
+    profile: {
+      firstName: string;
+      secondName?: string;
+      avatarUrl?: string | null;
+    };
+  };
+}
+
+function toMembersWithRole(participants: Array<ParticipantWithUser>): Array<{
+  id: string;
+  account: { username: string };
+  profile: {
+    firstName: string;
+    secondName?: string;
+    avatarUrl?: string | null;
+  };
+  role: string;
+}> {
   return participants.map((p) => ({
-    ...(p.user as Record<string, unknown>),
+    ...p.user,
     role: p.role,
   }));
 }
@@ -69,7 +105,9 @@ export class ChatService {
         participants: { select: { userId: true } },
       },
     });
-    const withExactlyTwo = chats.find((c) => c.participants.length === 2);
+    const withExactlyTwo = chats.find(
+      (c) => (c.participants as { userId: string }[]).length === 2,
+    );
     return withExactlyTwo ?? null;
   }
 
@@ -137,7 +175,7 @@ export class ChatService {
     this.logger.log(`Chat "${chat.id}" created by ${currentUserId}`);
     return {
       ...chat,
-      members: toMembersWithRole(chat.participants),
+      members: toMembersWithRole(chat.participants as ParticipantWithUser[]),
     };
   }
 
@@ -175,7 +213,7 @@ export class ChatService {
     });
     return chats.map((c) => ({
       ...c,
-      members: toMembersWithRole(c.participants),
+      members: toMembersWithRole(c.participants as ParticipantWithUser[]),
     }));
   }
 
@@ -234,27 +272,30 @@ export class ChatService {
       throw new NotFoundException('Chat not found');
     }
 
-    const messages = (chat.messages as Array<Record<string, unknown>>).map(
-      (msg) => {
-        const replyTo = msg.replyTo as Record<string, unknown> | null;
-        if (replyTo && replyTo.deletedAt != null) {
-          return {
-            ...msg,
-            replyTo: {
-              ...replyTo,
-              content: null,
-              assets: [],
-            },
-          };
-        }
-        return msg;
-      },
-    );
+    const messages = (
+      chat.messages as Array<{
+        replyTo: { deletedAt: Date | null } | null;
+        [k: string]: unknown;
+      }>
+    ).map((msg) => {
+      const replyTo = msg.replyTo;
+      if (replyTo && replyTo.deletedAt != null) {
+        return {
+          ...msg,
+          replyTo: {
+            ...replyTo,
+            content: null,
+            assets: [],
+          },
+        };
+      }
+      return msg;
+    });
 
     return {
       ...chat,
       messages,
-      members: toMembersWithRole(chat.participants),
+      members: toMembersWithRole(chat.participants as ParticipantWithUser[]),
     };
   }
 
@@ -276,7 +317,11 @@ export class ChatService {
       throw new NotFoundException('Chat not found');
     }
 
-    const currentParticipant = chat.participants.find(
+    const participants = chat.participants as Array<{
+      userId: string;
+      role: string;
+    }>;
+    const currentParticipant = participants.find(
       (p) => p.userId === currentUserId,
     );
     if (!currentParticipant) {
@@ -284,11 +329,13 @@ export class ChatService {
     }
 
     const isAdmin = currentParticipant.role === 'ADMIN';
-    const participantCount = chat.participants.length;
+    const participantCount = participants.length;
 
-    // Leave chat
+    const chatParticipant = this.prisma
+      .chatParticipant as unknown as ChatParticipantDelegate;
+
     if (updateChatDto.leaveChat) {
-      const otherAdmins = chat.participants.filter(
+      const otherAdmins = participants.filter(
         (p) => p.userId !== currentUserId && p.role === 'ADMIN',
       );
       const isLastAdmin = isAdmin && otherAdmins.length === 0;
@@ -299,7 +346,7 @@ export class ChatService {
             'You must select a participant to transfer ADMIN role to before leaving',
           );
         }
-        const target = chat.participants.find(
+        const target = participants.find(
           (p) => p.userId === updateChatDto.newAdminId,
         );
         if (!target || target.userId === currentUserId) {
@@ -308,17 +355,21 @@ export class ChatService {
           );
         }
 
-        await this.prisma.$transaction([
-          this.prisma.chatParticipant.updateMany({
+        await (
+          this.prisma.$transaction as (
+            arg: [Promise<unknown>, Promise<unknown>],
+          ) => Promise<unknown>
+        )([
+          chatParticipant.updateMany({
             where: { chatId: id, userId: updateChatDto.newAdminId },
             data: { role: 'ADMIN' },
           }),
-          this.prisma.chatParticipant.deleteMany({
+          chatParticipant.deleteMany({
             where: { chatId: id, userId: currentUserId },
           }),
         ]);
       } else {
-        await this.prisma.chatParticipant.deleteMany({
+        await chatParticipant.deleteMany({
           where: { chatId: id, userId: currentUserId },
         });
       }
@@ -327,7 +378,6 @@ export class ChatService {
       return this.findOne(id);
     }
 
-    // Name/description — only ADMIN
     if (
       updateChatDto.name !== undefined ||
       updateChatDto.description !== undefined
@@ -357,7 +407,6 @@ export class ChatService {
       });
     }
 
-    // Add members — only ADMIN, GROUP, and only when participants > 2
     if (updateChatDto.addMemberIds?.length) {
       if (!isAdmin) {
         throw new ForbiddenException('Only admins can add participants');
@@ -370,12 +419,12 @@ export class ChatService {
           'Cannot add members: group must have more than 2 participants first',
         );
       }
-      const existingUserIds = new Set(chat.participants.map((p) => p.userId));
+      const existingUserIds = new Set(participants.map((p) => p.userId));
       const toAdd = updateChatDto.addMemberIds.filter(
         (id) => !existingUserIds.has(id),
       );
       if (toAdd.length) {
-        await this.prisma.chatParticipant.createMany({
+        await chatParticipant.createMany({
           data: toAdd.map((userId) => ({
             chatId: id,
             userId,
@@ -385,7 +434,6 @@ export class ChatService {
       }
     }
 
-    // Remove members — only ADMIN, cannot remove self
     if (updateChatDto.removeMemberIds?.length) {
       if (!isAdmin) {
         throw new ForbiddenException('Only admins can remove participants');
@@ -393,7 +441,7 @@ export class ChatService {
       if (updateChatDto.removeMemberIds.includes(currentUserId)) {
         throw new BadRequestException('Use leaveChat to leave the chat');
       }
-      await this.prisma.chatParticipant.deleteMany({
+      await chatParticipant.deleteMany({
         where: {
           chatId: id,
           userId: { in: updateChatDto.removeMemberIds },
@@ -401,14 +449,13 @@ export class ChatService {
       });
     }
 
-    // Promote participant to ADMIN — only ADMIN can do this
     if (updateChatDto.promoteToAdminId) {
       if (!isAdmin) {
         throw new ForbiddenException(
           'Only admins can promote members to admin',
         );
       }
-      const target = chat.participants.find(
+      const target = participants.find(
         (p) => p.userId === updateChatDto.promoteToAdminId,
       );
       if (!target) {
@@ -420,7 +467,7 @@ export class ChatService {
       if (target.role === 'ADMIN') {
         throw new BadRequestException('User is already an admin');
       }
-      await this.prisma.chatParticipant.updateMany({
+      await chatParticipant.updateMany({
         where: { chatId: id, userId: updateChatDto.promoteToAdminId },
         data: { role: 'ADMIN' },
       });
@@ -444,7 +491,11 @@ export class ChatService {
       throw new NotFoundException('Chat not found');
     }
 
-    const currentParticipant = chat.participants.find(
+    const participants = chat.participants as Array<{
+      userId: string;
+      role: string;
+    }>;
+    const currentParticipant = participants.find(
       (p) => p.userId === currentUserId,
     );
     if (!currentParticipant) {

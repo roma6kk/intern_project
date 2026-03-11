@@ -5,12 +5,25 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RedisIoAdapter } from './common/adapters/redis-io.adapter';
 import cookieParser from 'cookie-parser';
+import Sentry from '@sentry/node';
+import { SentryInterceptor } from './common/interceptors/sentry.interceptor';
+import { nodeProfilingIntegration } from '@sentry/profiling-node';
 
 async function bootstrap() {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    integrations: [nodeProfilingIntegration()],
+    tracesSampleRate: 1.0,
+    profilesSampleRate: 1.0,
+  });
+
   const app = await NestFactory.create(AppModule);
+
   const configService = app.get(ConfigService);
   const redisIoAdapter = new RedisIoAdapter(app, configService);
   await redisIoAdapter.connectToRedis();
+
+  app.useGlobalInterceptors(new SentryInterceptor());
   app.useWebSocketAdapter(redisIoAdapter);
   app.use(cookieParser());
   app.enableCors({ credentials: true, origin: 'http://localhost:3002' });

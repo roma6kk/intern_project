@@ -14,7 +14,10 @@ export default function ChatMessageToast({ message }: ChatMessageToastProps) {
     || message.sender?.account?.username
     || 'Someone';
   const avatarUrl = message.sender?.profile?.avatarUrl ?? null;
-  const preview = message.content?.slice(0, 60) + (message.content?.length > 60 ? '…' : '') || 'Photo';
+  const preview =
+    message.content && message.content.length > 0
+      ? `${message.content.slice(0, 60)}${message.content.length > 60 ? '…' : ''}`
+      : 'Photo';
 
   return (
     <Link href={`/chat?chatId=${message.chatId}`} className="flex items-center gap-3 p-2 min-w-0">

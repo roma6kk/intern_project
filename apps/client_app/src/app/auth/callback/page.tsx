@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Cookies from 'js-cookie';
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -13,7 +13,6 @@ export default function AuthCallbackPage() {
 
     if (accessToken) {
       Cookies.set('accessToken', accessToken);
-      // Force AuthProvider to re-check auth by clearing the init flag
       sessionStorage.removeItem('auth_initialized');
       router.replace('/feed');
     } else {
@@ -25,5 +24,19 @@ export default function AuthCallbackPage() {
     <div className="flex min-h-screen items-center justify-center">
       <div className="text-xl">Authorizing...</div>
     </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <div className="text-xl">Authorizing...</div>
+        </div>
+      }
+    >
+      <AuthCallbackContent />
+    </Suspense>
   );
 }

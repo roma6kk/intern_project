@@ -29,7 +29,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (token: string, user: User) => void;
+  login: (token: string, user?: User) => void;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -37,7 +37,6 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // Start with server-matching initial state to avoid hydration mismatch
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const router = useRouter();
@@ -87,11 +86,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
   }, [checkAuth]);
 
-  const login = (token: string, userData: User) => {
+  const login = (token: string, userData?: User) => {
     Cookies.set('accessToken', token);
+    if (!userData) {
+      setIsLoading(false);
+      window.location.href = '/feed';
+      return;
+    }
+
     const normalized = {
       ...userData,
-      username: userData.username || userData.account?.username || userData.profile?.firstName || '',
+      username:
+        userData.username ||
+        userData.account?.username ||
+        userData.profile?.firstName ||
+        '',
     };
     setUser(normalized);
     localStorage.setItem('user', JSON.stringify(normalized));

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import ChatList from '@/components/chat/ChatList';
 import ChatWindow from '@/components/chat/ChatWindow';
@@ -22,7 +22,7 @@ function normalizeMessage(payload: unknown): Message | null {
   return { ...m, chatId, senderId } as Message;
 }
 
-export default function ChatPage() {
+function ChatPageContent() {
   const { user } = useAuth();
   const socket = useSocket();
   const searchParams = useSearchParams();
@@ -94,18 +94,14 @@ export default function ChatPage() {
 
   const selectedChat = chats.find(c => c.id === selectedChatId);
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[calc(100vh-4rem)] items-center justify-center p-4 bg-gray-50">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 flex flex-col items-center gap-4 max-w-sm w-full">
-          <Loader2 className="w-10 h-10 animate-spin text-gray-400" />
-          <p className="text-gray-600 font-medium">Загрузка чатов...</p>
-        </div>
+  const content = isLoading ? (
+    <div className="flex h-[calc(100vh-4rem)] items-center justify-center p-4 bg-gray-50">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 flex flex-col items-center gap-4 max-w-sm w-full">
+        <Loader2 className="w-10 h-10 animate-spin text-gray-400" />
+        <p className="text-gray-600 font-medium">Loading chats...</p>
       </div>
-    );
-  }
-
-  return (
+    </div>
+  ) : (
     <div className="flex h-[calc(100vh-4rem)] border rounded-lg overflow-hidden bg-white shadow-sm mt-4 mx-4">
       <div className={`w-full md:w-1/3 border-r ${selectedChatId ? 'hidden md:block' : 'block'}`}>
         <div className="h-full flex flex-col">
@@ -120,10 +116,10 @@ export default function ChatPage() {
               New chat
             </button>
           </div>
-          <ChatList 
-            chats={chats} 
-            selectedChatId={selectedChatId} 
-            onSelectChat={setSelectedChatId} 
+          <ChatList
+            chats={chats}
+            selectedChatId={selectedChatId}
+            onSelectChat={setSelectedChatId}
           />
         </div>
       </div>
@@ -138,7 +134,7 @@ export default function ChatPage() {
                 getUserChats().then(setChats);
               }}
               onChatUpdated={(updatedChat) => {
-                setChats(prev => prev.map(c => c.id === updatedChat.id ? updatedChat : c));
+                setChats(prev => prev.map(c => (c.id === updatedChat.id ? updatedChat : c)));
               }}
               onLeftChat={() => {
                 getUserChats().then(setChats);
@@ -154,15 +150,31 @@ export default function ChatPage() {
         )}
       </div>
       <CreateChatModal
-      open={showCreateModal}
-      onClose={() => setShowCreateModal(false)}
-      onCreated={(chat) => {
-        setChats(prev => [chat, ...prev]);
-        setSelectedChatId(chat.id);
-      }}
-    />
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreated={(chat) => {
+          setChats(prev => [chat, ...prev]);
+          setSelectedChatId(chat.id);
+        }}
+      />
     </div>
-    
+  );
+  return content;
+}
 
+export default function ChatPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-[calc(100vh-4rem)] items-center justify-center p-4 bg-gray-50">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 flex flex-col items-center gap-4 max-w-sm w-full">
+            <Loader2 className="w-10 h-10 animate-spin text-gray-400" />
+            <p className="text-gray-600 font-medium">Loading chats...</p>
+          </div>
+        </div>
+      }
+    >
+      <ChatPageContent />
+    </Suspense>
   );
 }

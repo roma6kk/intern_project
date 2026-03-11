@@ -100,10 +100,16 @@ export class PostService {
         }
       }
 
-      this.logger.log(`Post created by user ${userId}, ID: ${newPost.id}`);
+      this.logger.log(`Post created by user ${userId}, ID:  ${newPost.id}`);
+
       return newPost;
-    } catch (error) {
-      this.logger.error('Failed to create post', (error as Error).stack);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        this.logger.error('Failed to create post', error.stack);
+        throw error;
+      }
+
+      this.logger.error('Failed to create post', String(error));
       throw error;
     }
   }
@@ -209,7 +215,9 @@ export class PostService {
 
     const [posts] = await Promise.all([
       this.prisma.post.findMany({
-        where: cursorFilter ? { AND: [whereClause, cursorFilter] } : whereClause,
+        where: cursorFilter
+          ? { AND: [whereClause, cursorFilter] }
+          : whereClause,
         take,
         orderBy,
         include: {
@@ -396,7 +404,9 @@ export class PostService {
 
     const [posts] = await Promise.all([
       this.prisma.post.findMany({
-        where: cursorFilter ? { AND: [whereClause, cursorFilter] } : whereClause,
+        where: cursorFilter
+          ? { AND: [whereClause, cursorFilter] }
+          : whereClause,
         take,
         orderBy,
         include: {
@@ -584,8 +594,13 @@ export class PostService {
 
       this.logger.log(`Post ${id} updated by user ${userId}`);
       return updatedPost;
-    } catch (error) {
-      this.logger.error(`Failed to update post ${id}`, (error as Error).stack);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        this.logger.error(`Failed to update post ${id}`, error.stack);
+        throw error;
+      }
+
+      this.logger.error(`Failed to update post ${id}`, String(error));
       throw error;
     }
   }
@@ -629,8 +644,13 @@ export class PostService {
 
       this.logger.log(`Post ${id} deleted by user ${userId}`);
       return { id, deleted: true };
-    } catch (error) {
-      this.logger.error(`Failed to delete post ${id}`, (error as Error).stack);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        this.logger.error(`Failed to delete post ${id}`, error.stack);
+        throw error;
+      }
+
+      this.logger.error(`Failed to delete post ${id}`, String(error));
       throw error;
     }
   }
@@ -663,14 +683,15 @@ export class PostService {
     actorId: string,
     itemId: string,
   ) {
-    const accounts = await this.prisma.account.findMany({
-      where: {
-        OR: usernames.map((u) => ({
-          username: { equals: u, mode: 'insensitive' },
-        })),
-      },
-      select: { userId: true, username: true },
-    });
+    const accounts: Array<{ userId: string; username: string }> =
+      await this.prisma.account.findMany({
+        where: {
+          OR: usernames.map((u) => ({
+            username: { equals: u, mode: 'insensitive' },
+          })),
+        },
+        select: { userId: true, username: true },
+      });
 
     for (const account of accounts) {
       if (account.userId !== actorId) {

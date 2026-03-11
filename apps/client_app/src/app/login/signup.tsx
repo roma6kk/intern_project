@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import api from '@/lib/api';
-import { useAuth } from '@/context/AuthContext'; // Исправлен путь
+import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 
@@ -33,11 +33,28 @@ export default function SignUpForm({ onSwitch }: SignUpFormProps) {
 
   const onSubmit = async (data: SignupForm) => {
     try {
-      const res = await api.post('/auth/signup', data); // Или /auth/register в зависимости от бэкенда
+      const res = await api.post('/auth/signup', data);
       login(res.data.accessToken, res.data.user);
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      alert(err.response?.data?.message || 'Signup failed');
+      const apiError = error as { message?: string };
+      const fallbackError = error as {
+        response?: { data?: { message?: string } | string };
+      };
+
+      let message: string | undefined;
+
+      if (apiError?.message) {
+        message = apiError.message;
+      } else if (fallbackError.response?.data) {
+        const data = fallbackError.response.data;
+        if (typeof data === 'string') {
+          message = data;
+        } else if (typeof data === 'object' && 'message' in data) {
+          message = (data as { message?: string }).message;
+        }
+      }
+
+      alert(message || 'Signup failed');
     }
   };
 
