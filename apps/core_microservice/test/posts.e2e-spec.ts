@@ -4,7 +4,7 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { AuthService } from '../src/auth/auth.service';
 import { PrismaService } from '../src/database/prisma.service';
-import { ChatGateway } from 'src/chat/chat.gateway';
+import { ChatGateway } from '../src/chat/chat.gateway';
 
 jest.mock('redis', () => ({
   createClient: jest.fn(() => ({
@@ -46,6 +46,12 @@ describe('Posts Controller (e2e)', () => {
   };
 
   const mockPrismaService = {
+    user: {
+      findUnique: jest.fn().mockResolvedValue({
+        id: 'user-123',
+        deletedAt: null,
+      }),
+    },
     post: {
       create: jest.fn().mockResolvedValue({
         id: 'post-1',
@@ -92,11 +98,11 @@ describe('Posts Controller (e2e)', () => {
       });
   });
 
-  it('/posts (POST) - should fail without description', () => {
+  it('/posts (POST) - should fail when description is not a string', () => {
     return request(app.getHttpServer())
       .post('/posts')
       .set('Authorization', 'Bearer fake_token')
-      .send({})
+      .send({ description: 123 })
       .expect(400);
   });
 });
