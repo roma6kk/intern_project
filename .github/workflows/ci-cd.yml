@@ -11,6 +11,7 @@ env:
   TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
   JWT_ACCESS_SECRET: ${{ secrets.JWT_ACCESS_SECRET }}
   JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+  AUTH_MICROSERVICE_URL: http://localhost:3001/internal/auth
   DATABASE_URL: postgresql://postgres:Jadirus33@localhost:5432/innogram?schema=public
   REDIS_URL: redis://localhost:6379
   RABBITMQ_URL: amqp://guest:guest@localhost:5672
