@@ -42,8 +42,10 @@ class ApiErrorHandler {
   }
 }
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  baseURL: API_BASE_URL,
   withCredentials: true,
   timeout: 10000,
 });
@@ -70,7 +72,7 @@ api.interceptors.response.use(
 
       try {
         const refreshResponse = await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`, 
+          `${API_BASE_URL}/auth/refresh`, 
           {}, 
           { withCredentials: true, timeout: 5000 }
         );
