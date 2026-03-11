@@ -10,6 +10,21 @@ import { UpdateChatDto } from './dto/update-chat.dto';
 import { PrismaService } from '../database/prisma.service';
 import { ChatType, Prisma } from '@prisma/client';
 
+interface ChatParticipantDelegate {
+  updateMany(args: {
+    where: { chatId: string; userId: string };
+    data: { role: string };
+  }): Promise<unknown>;
+  deleteMany(
+    args:
+      | { where: { chatId: string; userId: string } }
+      | { where: { chatId: string; userId: { in: string[] } } },
+  ): Promise<unknown>;
+  createMany(args: {
+    data: Array<{ chatId: string; userId: string; role: string }>;
+  }): Promise<unknown>;
+}
+
 const participantInclude = Prisma.validator<Prisma.Chat$participantsArgs>()({
   select: {
     userId: true,
@@ -316,7 +331,8 @@ export class ChatService {
     const isAdmin = currentParticipant.role === 'ADMIN';
     const participantCount = participants.length;
 
-    const chatParticipant = this.prisma.chatParticipant;
+    const chatParticipant = this.prisma
+      .chatParticipant as unknown as ChatParticipantDelegate;
 
     if (updateChatDto.leaveChat) {
       const otherAdmins = participants.filter(
@@ -339,7 +355,11 @@ export class ChatService {
           );
         }
 
-        await this.prisma.$transaction([
+        await (
+          this.prisma.$transaction as (
+            arg: [Promise<unknown>, Promise<unknown>],
+          ) => Promise<unknown>
+        )([
           chatParticipant.updateMany({
             where: { chatId: id, userId: updateChatDto.newAdminId },
             data: { role: 'ADMIN' },
