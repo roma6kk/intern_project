@@ -41,16 +41,30 @@ const participantIncludeShort =
     },
   });
 
-type ParticipantForMembers = Prisma.ChatParticipantGetPayload<
-  typeof participantInclude
->;
-type ParticipantForMembersShort = Prisma.ChatParticipantGetPayload<
-  typeof participantIncludeShort
->;
+interface ParticipantWithUser {
+  userId: string;
+  role: string;
+  user: {
+    id: string;
+    account: { username: string };
+    profile: {
+      firstName: string;
+      secondName?: string;
+      avatarUrl?: string | null;
+    };
+  };
+}
 
-function toMembersWithRole(
-  participants: Array<ParticipantForMembers | ParticipantForMembersShort>,
-) {
+function toMembersWithRole(participants: Array<ParticipantWithUser>): Array<{
+  id: string;
+  account: { username: string };
+  profile: {
+    firstName: string;
+    secondName?: string;
+    avatarUrl?: string | null;
+  };
+  role: string;
+}> {
   return participants.map((p) => ({
     ...p.user,
     role: p.role,
@@ -76,7 +90,9 @@ export class ChatService {
         participants: { select: { userId: true } },
       },
     });
-    const withExactlyTwo = chats.find((c) => c.participants.length === 2);
+    const withExactlyTwo = chats.find(
+      (c) => (c.participants as { userId: string }[]).length === 2,
+    );
     return withExactlyTwo ?? null;
   }
 
@@ -144,7 +160,7 @@ export class ChatService {
     this.logger.log(`Chat "${chat.id}" created by ${currentUserId}`);
     return {
       ...chat,
-      members: toMembersWithRole(chat.participants),
+      members: toMembersWithRole(chat.participants as ParticipantWithUser[]),
     };
   }
 
@@ -182,7 +198,7 @@ export class ChatService {
     });
     return chats.map((c) => ({
       ...c,
-      members: toMembersWithRole(c.participants),
+      members: toMembersWithRole(c.participants as ParticipantWithUser[]),
     }));
   }
 
@@ -241,7 +257,12 @@ export class ChatService {
       throw new NotFoundException('Chat not found');
     }
 
-    const messages = chat.messages.map((msg) => {
+    const messages = (
+      chat.messages as Array<{
+        replyTo: { deletedAt: Date | null } | null;
+        [k: string]: unknown;
+      }>
+    ).map((msg) => {
       const replyTo = msg.replyTo;
       if (replyTo && replyTo.deletedAt != null) {
         return {
@@ -259,7 +280,7 @@ export class ChatService {
     return {
       ...chat,
       messages,
-      members: toMembersWithRole(chat.participants),
+      members: toMembersWithRole(chat.participants as ParticipantWithUser[]),
     };
   }
 
@@ -281,7 +302,11 @@ export class ChatService {
       throw new NotFoundException('Chat not found');
     }
 
-    const currentParticipant = chat.participants.find(
+    const participants = chat.participants as Array<{
+      userId: string;
+      role: string;
+    }>;
+    const currentParticipant = participants.find(
       (p) => p.userId === currentUserId,
     );
     if (!currentParticipant) {
@@ -289,10 +314,10 @@ export class ChatService {
     }
 
     const isAdmin = currentParticipant.role === 'ADMIN';
-    const participantCount = chat.participants.length;
+    const participantCount = participants.length;
 
     if (updateChatDto.leaveChat) {
-      const otherAdmins = chat.participants.filter(
+      const otherAdmins = participants.filter(
         (p) => p.userId !== currentUserId && p.role === 'ADMIN',
       );
       const isLastAdmin = isAdmin && otherAdmins.length === 0;
@@ -303,7 +328,7 @@ export class ChatService {
             'You must select a participant to transfer ADMIN role to before leaving',
           );
         }
-        const target = chat.participants.find(
+        const target = participants.find(
           (p) => p.userId === updateChatDto.newAdminId,
         );
         if (!target || target.userId === currentUserId) {
@@ -372,7 +397,7 @@ export class ChatService {
           'Cannot add members: group must have more than 2 participants first',
         );
       }
-      const existingUserIds = new Set(chat.participants.map((p) => p.userId));
+      const existingUserIds = new Set(participants.map((p) => p.userId));
       const toAdd = updateChatDto.addMemberIds.filter(
         (id) => !existingUserIds.has(id),
       );
@@ -408,7 +433,7 @@ export class ChatService {
           'Only admins can promote members to admin',
         );
       }
-      const target = chat.participants.find(
+      const target = participants.find(
         (p) => p.userId === updateChatDto.promoteToAdminId,
       );
       if (!target) {
@@ -444,7 +469,11 @@ export class ChatService {
       throw new NotFoundException('Chat not found');
     }
 
-    const currentParticipant = chat.participants.find(
+    const participants = chat.participants as Array<{
+      userId: string;
+      role: string;
+    }>;
+    const currentParticipant = participants.find(
       (p) => p.userId === currentUserId,
     );
     if (!currentParticipant) {
