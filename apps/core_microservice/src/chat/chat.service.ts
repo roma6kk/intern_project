@@ -316,6 +316,8 @@ export class ChatService {
     const isAdmin = currentParticipant.role === 'ADMIN';
     const participantCount = participants.length;
 
+    const chatParticipant = this.prisma.chatParticipant;
+
     if (updateChatDto.leaveChat) {
       const otherAdmins = participants.filter(
         (p) => p.userId !== currentUserId && p.role === 'ADMIN',
@@ -338,16 +340,16 @@ export class ChatService {
         }
 
         await this.prisma.$transaction([
-          this.prisma.chatParticipant.updateMany({
+          chatParticipant.updateMany({
             where: { chatId: id, userId: updateChatDto.newAdminId },
             data: { role: 'ADMIN' },
           }),
-          this.prisma.chatParticipant.deleteMany({
+          chatParticipant.deleteMany({
             where: { chatId: id, userId: currentUserId },
           }),
         ]);
       } else {
-        await this.prisma.chatParticipant.deleteMany({
+        await chatParticipant.deleteMany({
           where: { chatId: id, userId: currentUserId },
         });
       }
@@ -402,7 +404,7 @@ export class ChatService {
         (id) => !existingUserIds.has(id),
       );
       if (toAdd.length) {
-        await this.prisma.chatParticipant.createMany({
+        await chatParticipant.createMany({
           data: toAdd.map((userId) => ({
             chatId: id,
             userId,
@@ -419,7 +421,7 @@ export class ChatService {
       if (updateChatDto.removeMemberIds.includes(currentUserId)) {
         throw new BadRequestException('Use leaveChat to leave the chat');
       }
-      await this.prisma.chatParticipant.deleteMany({
+      await chatParticipant.deleteMany({
         where: {
           chatId: id,
           userId: { in: updateChatDto.removeMemberIds },
@@ -445,7 +447,7 @@ export class ChatService {
       if (target.role === 'ADMIN') {
         throw new BadRequestException('User is already an admin');
       }
-      await this.prisma.chatParticipant.updateMany({
+      await chatParticipant.updateMany({
         where: { chatId: id, userId: updateChatDto.promoteToAdminId },
         data: { role: 'ADMIN' },
       });
