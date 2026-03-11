@@ -88,7 +88,15 @@ jobs:
           pm2 start "npx turbo dev --filter=auth_microservice" --name auth
           pm2 start "npx turbo dev --filter=notifications_consumer_microservice" --name consumer
           pm2 start "npx turbo dev --filter=client_app" --name client
-          sleep 15 # Ждем пока сервисы поднимутся
+          echo "Waiting for core and auth services to be healthy..."
+          for i in {1..30}; do
+            if curl -fsS http://localhost:3000/health && curl -fsS http://localhost:3001/health; then
+              echo "Core and Auth services are up."
+              break
+            fi
+            echo "Services not ready yet, retrying in 5s... (attempt $i/30)"
+            sleep 5
+          done
 
       - name: Run Playwright Tests
         run: npx playwright test
