@@ -86,7 +86,6 @@ function toMembersWithRole(participants: Array<ParticipantWithUser>): Array<{
   }));
 }
 
-
 @Injectable()
 export class ChatService {
   private readonly logger = new Logger(ChatService.name);

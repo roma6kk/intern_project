@@ -84,9 +84,10 @@ export class CommentService {
 
       this.logger.log(`Comment created. ID: ${comment.id}`);
       return comment;
-    } catch (error) {
-      this.logger.error('Failed to create comment', (error as Error).stack);
-      throw error;
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.logger.error('Failed to create comment', err.stack);
+      throw err;
     }
   }
 
@@ -212,12 +213,10 @@ export class CommentService {
       });
 
       return updated;
-    } catch (error) {
-      this.logger.error(
-        `Failed to update comment ${id}`,
-        (error as Error).stack,
-      );
-      throw error;
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.logger.error(`Failed to update comment ${id}`, err.stack);
+      throw err;
     }
   }
 
@@ -232,12 +231,10 @@ export class CommentService {
       await this.prisma.comment.delete({ where: { id } });
       this.logger.log(`Comment ${id} deleted`);
       return { id, deleted: true };
-    } catch (error) {
-      this.logger.error(
-        `Failed to delete comment ${id}`,
-        (error as Error).stack,
-      );
-      throw error;
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.logger.error(`Failed to delete comment ${id}`, err.stack);
+      throw err;
     }
   }
 
