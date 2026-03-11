@@ -11,18 +11,15 @@ test('User can sign up and see feed', async ({ page }) => {
 
   await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30_000 });
 
-  // Switch signin -> signup (same /login route, rerenders content)
   await expect(page).toHaveURL(/\/login/, { timeout: 30_000 });
   const firstNameInput = page.getByPlaceholder(/first name/i);
 
-  // Ensure page is interactive before toggling.
   await expect(
     page.getByRole('button', { name: 'Log In', exact: true }),
   ).toBeVisible({
     timeout: 30_000,
   });
 
-  // Some browsers occasionally miss the first click (hydration/rerender); retry.
   const signUpToggle = page.getByRole('button', { name: /^sign up$/i });
   await expect(signUpToggle).toBeVisible({ timeout: 30_000 });
 
@@ -62,8 +59,10 @@ test('User can sign up and see feed', async ({ page }) => {
 
   try {
     const [, resp] = await Promise.all([submit, signupResponse]);
-    if (!resp.ok()) {
-      throw new Error(`Signup request failed: ${resp.status()} ${resp.statusText()}`);
+    if (resp.status() >= 400) {
+      throw new Error(
+        `Signup request failed: ${resp.status()} ${resp.statusText()}`,
+      );
     }
 
     await page.waitForURL(/\/feed/, { timeout: 30_000 });
