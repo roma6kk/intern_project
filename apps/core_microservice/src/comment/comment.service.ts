@@ -282,15 +282,14 @@ export class CommentService {
   ) {
     if (usernames.length === 0) return;
 
-    const accounts: Array<{ userId: string; username: string }> =
-      await this.prisma.account.findMany({
-        where: {
-          OR: usernames.map((u) => ({
-            username: { equals: u, mode: 'insensitive' },
-          })),
-        },
-        select: { userId: true, username: true },
-      });
+    const accounts = await this.prisma.account.findMany({
+      where: {
+        OR: usernames.map((u) => ({
+          username: { equals: u, mode: 'insensitive' },
+        })),
+      },
+      select: { userId: true, username: true },
+    });
 
     for (const account of accounts) {
       if (account.userId !== actorId && account.userId !== excludeUserId) {
