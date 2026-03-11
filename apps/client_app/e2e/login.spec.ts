@@ -1,9 +1,43 @@
 import { test, expect } from '@playwright/test';
 
 test('User can sign up and see feed', async ({ page }) => {
-  await page.goto('/login');
+  test.setTimeout(60_000);
 
-  await page.getByRole('button', { name: 'Sign up', exact: true }).click();
+  let signupAlertMessage: string | null = null;
+  page.once('dialog', async (dialog) => {
+    signupAlertMessage = dialog.message();
+    await dialog.dismiss();
+  });
+
+  await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30_000 });
+
+  // Switch signin -> signup (same /login route, rerenders content)
+  await expect(page).toHaveURL(/\/login/, { timeout: 30_000 });
+  const firstNameInput = page.getByPlaceholder(/first name/i);
+
+  // Ensure page is interactive before toggling.
+  await expect(
+    page.getByRole('button', { name: 'Log In', exact: true }),
+  ).toBeVisible({
+    timeout: 30_000,
+  });
+
+  // Some browsers occasionally miss the first click (hydration/rerender); retry.
+  const signUpToggle = page.getByRole('button', { name: /^sign up$/i });
+  await expect(signUpToggle).toBeVisible({ timeout: 30_000 });
+
+  for (let attempt = 0; attempt < 6; attempt++) {
+    await signUpToggle.click();
+
+    try {
+      await firstNameInput.waitFor({ state: 'visible', timeout: 2_000 });
+      break;
+    } catch {
+      await page.waitForTimeout(750);
+    }
+  }
+
+  await expect(firstNameInput).toBeVisible({ timeout: 30_000 });
 
   const unique = Date.now();
   const firstName = `User${unique}`;
@@ -11,14 +45,34 @@ test('User can sign up and see feed', async ({ page }) => {
   const email = `user_${unique}@example.com`;
   const password = '12345678';
 
-  await page.getByPlaceholder('First Name').fill(firstName);
-  await page.getByPlaceholder('Username').fill(username);
-  await page.getByPlaceholder('Email').fill(email);
-  await page.getByPlaceholder('Password').fill(password);
+  await firstNameInput.fill(firstName);
+  await page.getByPlaceholder(/username/i).fill(username);
+  await page.getByPlaceholder(/^email$/i).fill(email);
+  await page.getByPlaceholder(/^password$/i).fill(password);
 
-  await page.getByRole('button', { name: 'Create Account', exact: true }).click();
+  const signUpSubmit = page.locator('button').filter({ hasText: /create account/i });
+  await expect(signUpSubmit.first()).toBeVisible({ timeout: 30_000 });
 
-  await expect(page).toHaveURL(/\/feed/);
+  const signupResponse = page.waitForResponse(
+    (resp) => resp.url().includes('/auth/signup'),
+    { timeout: 30_000 },
+  );
+
+  const submit = signUpSubmit.first().click();
+
+  try {
+    const [, resp] = await Promise.all([submit, signupResponse]);
+    if (!resp.ok()) {
+      throw new Error(`Signup request failed: ${resp.status()} ${resp.statusText()}`);
+    }
+
+    await page.waitForURL(/\/feed/, { timeout: 30_000 });
+  } catch (e) {
+    if (signupAlertMessage) {
+      throw new Error(`Signup failed: ${signupAlertMessage}`);
+    }
+    throw e;
+  }
 
   await expect(page.getByText('Innogram')).toBeVisible();
 });
