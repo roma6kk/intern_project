@@ -3,6 +3,7 @@ import { test, expect } from '@playwright/test';
 test('User can sign up and see feed', async ({ page }) => {
   test.setTimeout(60_000);
 
+  
   let signupAlertMessage: string | null = null;
   page.once('dialog', async (dialog) => {
     signupAlertMessage = dialog.message();
