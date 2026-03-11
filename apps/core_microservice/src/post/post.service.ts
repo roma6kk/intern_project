@@ -101,7 +101,7 @@ export class PostService {
       }
 
       this.logger.log(`Post created by user ${userId}, ID:  ${newPost.id}`);
-      
+
       return newPost;
     } catch (error: unknown) {
       if (error instanceof Error) {
