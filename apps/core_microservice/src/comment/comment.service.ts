@@ -85,9 +85,13 @@ export class CommentService {
       this.logger.log(`Comment created. ID: ${comment.id}`);
       return comment;
     } catch (error: unknown) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      this.logger.error('Failed to create comment', err.stack);
-      throw err;
+      if (error instanceof Error) {
+        this.logger.error('Failed to create comment', error.stack);
+        throw error;
+      }
+
+      this.logger.error('Failed to create comment', String(error));
+      throw error;
     }
   }
 
@@ -214,9 +218,13 @@ export class CommentService {
 
       return updated;
     } catch (error: unknown) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      this.logger.error(`Failed to update comment ${id}`, err.stack);
-      throw err;
+      if (error instanceof Error) {
+        this.logger.error(`Failed to update comment ${id}`, error.stack);
+        throw error;
+      }
+
+      this.logger.error(`Failed to update comment ${id}`, String(error));
+      throw error;
     }
   }
 
@@ -232,9 +240,13 @@ export class CommentService {
       this.logger.log(`Comment ${id} deleted`);
       return { id, deleted: true };
     } catch (error: unknown) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      this.logger.error(`Failed to delete comment ${id}`, err.stack);
-      throw err;
+      if (error instanceof Error) {
+        this.logger.error(`Failed to delete comment ${id}`, error.stack);
+        throw error;
+      }
+
+      this.logger.error(`Failed to delete comment ${id}`, String(error));
+      throw error;
     }
   }
 
