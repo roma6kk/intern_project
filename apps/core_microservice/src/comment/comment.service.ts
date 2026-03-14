@@ -90,8 +90,16 @@ export class CommentService {
         throw error;
       }
 
-      this.logger.error('Failed to create comment', String(error));
-      throw error;
+      const message =
+        typeof error === 'string'
+          ? error
+          : error !== null && typeof error === 'object' && 'toString' in error
+            ? // eslint-disable-next-line @typescript-eslint/no-base-to-string
+              String(error)
+            : 'Unknown error';
+
+      this.logger.error('Failed to create comment', message);
+      throw new Error(message);
     }
   }
 
@@ -223,8 +231,9 @@ export class CommentService {
         throw error;
       }
 
-      this.logger.error(`Failed to update comment ${id}`, String(error));
-      throw error;
+      const message = String(error);
+      this.logger.error(`Failed to update comment ${id}`, message);
+      throw new Error(message);
     }
   }
 
@@ -245,8 +254,9 @@ export class CommentService {
         throw error;
       }
 
-      this.logger.error(`Failed to delete comment ${id}`, String(error));
-      throw error;
+      const message = String(error);
+      this.logger.error(`Failed to delete comment ${id}`, message);
+      throw new Error(message);
     }
   }
 
