@@ -16,7 +16,7 @@ jest.mock('next/link', () => ({
   default: (props: { href: string; children: ReactNode } & AnchorHTMLAttributes<HTMLAnchorElement>) => {
     const { href, children, ...rest } = props;
     return (
-      // eslint-disable-next-line jsx-a11y/anchor-has-content
+       
       <a href={href} {...rest}>
         {children}
       </a>

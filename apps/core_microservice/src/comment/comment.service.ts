@@ -90,8 +90,9 @@ export class CommentService {
         throw error;
       }
 
-      this.logger.error('Failed to create comment', String(error));
-      throw error;
+      const message = String(error);
+      this.logger.error('Failed to create comment', message);
+      throw new Error(message);
     }
   }
 
@@ -223,8 +224,9 @@ export class CommentService {
         throw error;
       }
 
-      this.logger.error(`Failed to update comment ${id}`, String(error));
-      throw error;
+      const message = String(error);
+      this.logger.error(`Failed to update comment ${id}`, message);
+      throw new Error(message);
     }
   }
 
@@ -245,8 +247,9 @@ export class CommentService {
         throw error;
       }
 
-      this.logger.error(`Failed to delete comment ${id}`, String(error));
-      throw error;
+      const message = String(error);
+      this.logger.error(`Failed to delete comment ${id}`, message);
+      throw new Error(message);
     }
   }
 
