@@ -90,14 +90,7 @@ export class CommentService {
         throw error;
       }
 
-      const message =
-        typeof error === 'string'
-          ? error
-          : error !== null && typeof error === 'object' && 'toString' in error
-            ? // eslint-disable-next-line @typescript-eslint/no-base-to-string
-              String(error)
-            : 'Unknown error';
-
+      const message = this.getErrorMessage(error);
       this.logger.error('Failed to create comment', message);
       throw new Error(message);
     }
@@ -231,7 +224,7 @@ export class CommentService {
         throw error;
       }
 
-      const message = String(error);
+      const message = this.getErrorMessage(error);
       this.logger.error(`Failed to update comment ${id}`, message);
       throw new Error(message);
     }
@@ -254,7 +247,7 @@ export class CommentService {
         throw error;
       }
 
-      const message = String(error);
+      const message = this.getErrorMessage(error);
       this.logger.error(`Failed to delete comment ${id}`, message);
       throw new Error(message);
     }
@@ -312,5 +305,17 @@ export class CommentService {
         });
       }
     }
+  }
+
+  private getErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    if (typeof error === 'string') {
+      return error;
+    }
+
+    return 'Unknown error';
   }
 }

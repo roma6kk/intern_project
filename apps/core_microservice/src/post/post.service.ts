@@ -109,14 +109,7 @@ export class PostService {
         throw error;
       }
 
-      const message =
-        typeof error === 'string'
-          ? error
-          : error !== null && typeof error === 'object' && 'toString' in error
-            ? // eslint-disable-next-line @typescript-eslint/no-base-to-string
-              String(error)
-            : 'Unknown error';
-
+      const message = this.getErrorMessage(error);
       this.logger.error('Failed to create post', message);
       throw new Error(message);
     }
@@ -608,14 +601,7 @@ export class PostService {
         throw error;
       }
 
-      const message =
-        typeof error === 'string'
-          ? error
-          : error !== null && typeof error === 'object' && 'toString' in error
-            ? // eslint-disable-next-line @typescript-eslint/no-base-to-string
-              String(error)
-            : 'Unknown error';
-
+      const message = this.getErrorMessage(error);
       this.logger.error(`Failed to update post ${id}`, message);
       throw new Error(message);
     }
@@ -666,14 +652,7 @@ export class PostService {
         throw error;
       }
 
-      const message =
-        typeof error === 'string'
-          ? error
-          : error !== null && typeof error === 'object' && 'toString' in error
-            ? // eslint-disable-next-line @typescript-eslint/no-base-to-string
-              String(error)
-            : 'Unknown error';
-
+      const message = this.getErrorMessage(error);
       this.logger.error(`Failed to delete post ${id}`, message);
       throw new Error(message);
     }
@@ -727,5 +706,17 @@ export class PostService {
         });
       }
     }
+  }
+
+  private getErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    if (typeof error === 'string') {
+      return error;
+    }
+
+    return 'Unknown error';
   }
 }
