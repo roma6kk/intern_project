@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import type { ImgHTMLAttributes } from 'react';
+import type { AnchorHTMLAttributes, ImgHTMLAttributes, ReactNode } from 'react';
 import '@testing-library/jest-dom';
 import NotificationToast from './NotificationToast';
 
@@ -8,6 +8,19 @@ jest.mock('next/image', () => ({
   default: (props: ImgHTMLAttributes<HTMLImageElement>) => {
     // eslint-disable-next-line @next/next/no-img-element
     return <img {...props} alt={props.alt} />;
+  },
+}));
+
+jest.mock('next/link', () => ({
+  __esModule: true,
+  default: (props: { href: string; children: ReactNode } & AnchorHTMLAttributes<HTMLAnchorElement>) => {
+    const { href, children, ...rest } = props;
+    return (
+      // eslint-disable-next-line jsx-a11y/anchor-has-content
+      <a href={href} {...rest}>
+        {children}
+      </a>
+    );
   },
 }));
 
