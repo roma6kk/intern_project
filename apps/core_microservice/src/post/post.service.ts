@@ -109,8 +109,9 @@ export class PostService {
         throw error;
       }
 
-      this.logger.error('Failed to create post', String(error));
-      throw error;
+      const message = this.getErrorMessage(error);
+      this.logger.error('Failed to create post', message);
+      throw new Error(message);
     }
   }
 
@@ -600,8 +601,9 @@ export class PostService {
         throw error;
       }
 
-      this.logger.error(`Failed to update post ${id}`, String(error));
-      throw error;
+      const message = this.getErrorMessage(error);
+      this.logger.error(`Failed to update post ${id}`, message);
+      throw new Error(message);
     }
   }
 
@@ -650,8 +652,9 @@ export class PostService {
         throw error;
       }
 
-      this.logger.error(`Failed to delete post ${id}`, String(error));
-      throw error;
+      const message = this.getErrorMessage(error);
+      this.logger.error(`Failed to delete post ${id}`, message);
+      throw new Error(message);
     }
   }
 
@@ -703,5 +706,17 @@ export class PostService {
         });
       }
     }
+  }
+
+  private getErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    if (typeof error === 'string') {
+      return error;
+    }
+
+    return 'Unknown error';
   }
 }
