@@ -1,4 +1,8 @@
-import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
@@ -21,10 +25,12 @@ export class FilesService {
       endpoint: this.endpoint, // Должно быть https://storage.yandexcloud.net
       credentials: {
         accessKeyId: this.configService.getOrThrow<string>('AWS_ACCESS_KEY_ID'),
-        secretAccessKey: this.configService.getOrThrow<string>('AWS_SECRET_ACCESS_KEY'),
+        secretAccessKey: this.configService.getOrThrow<string>(
+          'AWS_SECRET_ACCESS_KEY',
+        ),
       },
       // КРИТИЧЕСКИ ВАЖНО для совместимости с Yandex Cloud
-      forcePathStyle: true, 
+      forcePathStyle: true,
     });
   }
 
@@ -39,7 +45,7 @@ export class FilesService {
         Key: fileName,
         Body: file.buffer,
         ContentType: file.mimetype,
-        // ВАЖНО: Мы полностью убрали ACL. Yandex Cloud будет использовать 
+        // ВАЖНО: Мы полностью убрали ACL. Yandex Cloud будет использовать
         // настройки публичного доступа, которые вы задали в панели управления.
       });
 
@@ -50,14 +56,28 @@ export class FilesService {
       // Для Яндекса получится: https://storage.yandexcloud.net/ваше-имя-бакета/имя-файла.jpg
       return `${this.endpoint.replace(/\/$/, '')}/${this.bucketName}/${fileName}`;
     } catch (error) {
-      const err = error as any;
-      const httpStatusCode = err?.$metadata?.httpStatusCode;
-      const requestId = err?.$metadata?.requestId ?? err?.RequestId;
-      const code = err?.Code ?? err?.name;
+      const err = (error ?? {}) as Record<string, unknown>;
+      const metadata =
+        typeof err.$metadata === 'object' && err.$metadata !== null
+          ? (err.$metadata as Record<string, unknown>)
+          : undefined;
+      const httpStatusCode =
+        typeof metadata?.httpStatusCode === 'number'
+          ? metadata.httpStatusCode
+          : undefined;
+      const requestId =
+        (typeof metadata?.requestId === 'string'
+          ? metadata.requestId
+          : undefined) ??
+        (typeof err.RequestId === 'string' ? err.RequestId : undefined);
+      const code =
+        (typeof err.Code === 'string' ? err.Code : undefined) ??
+        (typeof err.name === 'string' ? err.name : undefined);
+      const message = typeof err.message === 'string' ? err.message : undefined;
 
       this.logger.error('Error uploading file to S3', {
         code,
-        message: err?.message,
+        message,
         httpStatusCode,
         requestId,
         bucket: this.bucketName,
