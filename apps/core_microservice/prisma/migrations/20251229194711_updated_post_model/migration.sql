@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "posts" ADD COLUMN     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN     "is_archived" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "updated_at" TIMESTAMP(3);

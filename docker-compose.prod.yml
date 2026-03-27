@@ -1,0 +1,128 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: innogram-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password123}
+      POSTGRES_DB: ${POSTGRES_DB:-innogram}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - innogram_network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: innogram-redis
+    volumes:
+      - redis_data:/data
+    networks:
+      - innogram_network
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: innogram-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
+    networks:
+      - innogram_network
+    restart: unless-stopped
+
+  core-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: core_microservice
+    container_name: innogram-core
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/${POSTGRES_DB:-innogram}?schema=public
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672
+      SENTRY_DSN: ${CORE_SENTRY_DSN:-${SENTRY_DSN}}
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    networks:
+      - innogram_network
+    restart: unless-stopped
+
+  auth-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: auth_microservice
+    container_name: innogram-auth
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env
+    environment:
+      PORT: "3001"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/${POSTGRES_DB:-innogram}?schema=public
+      REDIS_URL: redis://redis:6379
+      SENTRY_DSN: ${AUTH_SENTRY_DSN:-${SENTRY_DSN}}
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - innogram_network
+    restart: unless-stopped
+
+  notification-consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: notifications_consumer_microservice
+    container_name: innogram-consumer
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/${POSTGRES_DB:-innogram}?schema=public
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672
+    depends_on:
+      - postgres
+      - rabbitmq
+    networks:
+      - innogram_network
+    restart: unless-stopped
+
+  client-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: client_app
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-http://localhost:3000}
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+    container_name: innogram-client
+    ports:
+      - "3002:3002"
+    environment:
+      PORT: "3002"
+      HOSTNAME: "0.0.0.0"
+    depends_on:
+      - core-api
+      - auth-api
+    networks:
+      - innogram_network
+    restart: unless-stopped
+
+volumes:
+  pg_data:
+  redis_data:
+
+networks:
+  innogram_network:
+    driver: bridge
