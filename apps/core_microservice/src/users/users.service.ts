@@ -4,6 +4,7 @@ import {
   Logger,
   BadRequestException,
 } from '@nestjs/common';
+import { AccountState } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 
 const RECOVERY_WINDOW_DAYS = 30;
@@ -15,11 +16,33 @@ export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
   async isDeleted(userId: string): Promise<boolean> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { deletedAt: true },
+    const account = await this.prisma.account.findUnique({
+      where: { userId },
+      select: { state: true },
     });
-    return user?.deletedAt != null;
+    return account?.state === AccountState.DELETED;
+  }
+
+  async getAccountState(userId: string): Promise<AccountState | null> {
+    const account = await this.prisma.account.findUnique({
+      where: { userId },
+      select: { state: true },
+    });
+    return account?.state ?? null;
+  }
+
+  async getAccountAccessMeta(userId: string): Promise<{
+    state: AccountState | null;
+    suspendedUntil: Date | null;
+  }> {
+    const account = await this.prisma.account.findUnique({
+      where: { userId },
+      select: { state: true, suspendedUntil: true },
+    });
+    return {
+      state: account?.state ?? null,
+      suspendedUntil: account?.suspendedUntil ?? null,
+    };
   }
 
   async softDeleteProfile(userId: string) {
@@ -27,6 +50,18 @@ export class UsersService {
       await this.prisma.user.update({
         where: { id: userId },
         data: { deletedAt: new Date() },
+      });
+      await this.prisma.account.update({
+        where: { userId },
+        data: {
+          state: AccountState.DELETED,
+          stateChangedAt: new Date(),
+          stateReason: 'USER_SELF_DELETE',
+          deletionRequestedAt: new Date(),
+          recoveryDeadline: new Date(
+            Date.now() + RECOVERY_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+          ),
+        },
       });
       this.logger.log(`User ${userId} soft-deleted successfully`);
     } catch (error) {
@@ -62,6 +97,16 @@ export class UsersService {
       where: { id: userId },
       data: { deletedAt: null },
     });
+    await this.prisma.account.update({
+      where: { userId },
+      data: {
+        state: AccountState.ACTIVE,
+        stateChangedAt: new Date(),
+        stateReason: 'USER_RECOVER',
+        deletionRequestedAt: null,
+        recoveryDeadline: null,
+      },
+    });
     this.logger.log(`User ${userId} recovered successfully`);
   }
 
@@ -75,6 +120,9 @@ export class UsersService {
               email: true,
               username: true,
               phoneNumber: true,
+              role: true,
+              state: true,
+              suspendedUntil: true,
             },
           },
           profile: true,

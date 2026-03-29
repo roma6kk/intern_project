@@ -3,7 +3,12 @@ import {
   Logger,
   InternalServerErrorException,
 } from '@nestjs/common';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+} from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -13,12 +18,17 @@ export class FilesService {
   private readonly bucketName: string;
   private readonly region: string;
   private readonly endpoint: string;
+  private readonly signedUrlTtlSeconds: number;
   private readonly logger = new Logger(FilesService.name);
 
   constructor(private readonly configService: ConfigService) {
     this.bucketName = this.configService.getOrThrow<string>('AWS_BUCKET_NAME');
     this.region = this.configService.getOrThrow<string>('AWS_REGION');
     this.endpoint = this.configService.getOrThrow<string>('AWS_ENDPOINT');
+    this.signedUrlTtlSeconds = this.configService.get<number>(
+      'AWS_SIGNED_URL_TTL_SECONDS',
+      3600,
+    );
 
     this.s3Client = new S3Client({
       region: this.region, // Должно быть ru-central1 в .env
@@ -87,6 +97,66 @@ export class FilesService {
       });
 
       throw new InternalServerErrorException('File upload failed');
+    }
+  }
+
+  async getReadableUrl(originalUrl: string): Promise<string> {
+    if (!originalUrl) {
+      return originalUrl;
+    }
+
+    if (this.isAlreadySignedUrl(originalUrl)) {
+      return originalUrl;
+    }
+
+    const key = this.extractObjectKey(originalUrl);
+    if (!key) {
+      return originalUrl;
+    }
+
+    try {
+      const command = new GetObjectCommand({
+        Bucket: this.bucketName,
+        Key: key,
+      });
+
+      return await getSignedUrl(this.s3Client, command, {
+        expiresIn: this.signedUrlTtlSeconds,
+      });
+    } catch {
+      this.logger.warn(
+        `Failed to create signed URL for key "${key}", falling back to original URL`,
+      );
+      return originalUrl;
+    }
+  }
+
+  private isAlreadySignedUrl(url: string): boolean {
+    return /[?&]X-Amz-Signature=/i.test(url);
+  }
+
+  private extractObjectKey(urlOrKey: string): string | null {
+    try {
+      const parsed = new URL(urlOrKey);
+      const cleanPath = parsed.pathname.replace(/^\/+/, '');
+      if (!cleanPath) {
+        return null;
+      }
+
+      if (cleanPath.startsWith(`${this.bucketName}/`)) {
+        return cleanPath.slice(this.bucketName.length + 1);
+      }
+
+      return cleanPath;
+    } catch {
+      const clean = urlOrKey.replace(/^\/+/, '');
+      if (!clean) {
+        return null;
+      }
+      if (clean.startsWith(`${this.bucketName}/`)) {
+        return clean.slice(this.bucketName.length + 1);
+      }
+      return clean;
     }
   }
 }

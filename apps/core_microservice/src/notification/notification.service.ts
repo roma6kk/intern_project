@@ -6,7 +6,7 @@ import { PrismaService } from '../database/prisma.service';
 import { ChatGateway } from '../chat/chat.gateway';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { decodeCursor, encodeCursor } from '../common/utils/cursor.helper';
-import { Prisma } from '@prisma/client';
+import { NotificationType, Prisma } from '@prisma/client';
 
 @Injectable()
 export class NotificationService {
@@ -19,7 +19,10 @@ export class NotificationService {
   ) {}
 
   async create(dto: CreateNotificationDto) {
-    if (dto.actorId === dto.recipientId) {
+    if (
+      dto.actorId === dto.recipientId &&
+      dto.type !== NotificationType.SYSTEM
+    ) {
       return;
     }
 
@@ -35,6 +38,7 @@ export class NotificationService {
         type: dto.type,
         itemId: dto.itemId,
         postId: dto.postId,
+        message: dto.message,
         actor: {
           username: actor?.account?.username,
           avatarUrl: actor?.profile?.avatarUrl,

@@ -41,7 +41,9 @@ describe('Posts Controller (e2e)', () => {
     validateToken: jest.fn().mockResolvedValue({ 
       userId: 'user-123', 
       username: 'tester', 
-      email: 'test@test.com' 
+      email: 'test@test.com',
+      role: 'USER',
+      accountState: 'ACTIVE',
     }),
   };
 
@@ -50,6 +52,11 @@ describe('Posts Controller (e2e)', () => {
       findUnique: jest.fn().mockResolvedValue({
         id: 'user-123',
         deletedAt: null,
+      }),
+    },
+    account: {
+      findUnique: jest.fn().mockResolvedValue({
+        state: 'ACTIVE',
       }),
     },
     post: {

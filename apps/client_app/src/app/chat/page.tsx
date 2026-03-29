@@ -2,16 +2,16 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import ChatList from '@/components/chat/ChatList';
-import ChatWindow from '@/components/chat/ChatWindow';
-import { getUserChats } from '@/lib/services/chat.service';
-import { Chat } from '@/types/index';
-import type { Message } from '@/types/index';
+import ChatList from '@/widgets/chat/ChatList';
+import ChatWindow from '@/widgets/chat/ChatWindow';
+import { getUserChats } from '@/entities/chat';
+import type { Chat } from '@/entities/chat';
+import type { Message } from '@/entities/chat';
 import { MessageSquarePlus, Loader2 } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
-import CreateChatModal from '@/components/chat/CreateChatModal';
-import { currentChatIdRef } from '@/lib/currentChatId';
-import { useSocket } from '@/context/SocketContext';
+import { useAuth } from '@/entities/session';
+import CreateChatModal from '@/widgets/chat/CreateChatModal';
+import { currentChatIdRef } from '@/shared/lib/current-chat-id';
+import { useSocket } from '@/entities/session';
 
 function normalizeMessage(payload: unknown): Message | null {
   if (!payload || typeof payload !== 'object') return null;
@@ -58,10 +58,13 @@ function ChatPageContent() {
     if (selectedChatId && user) {
       getUserChats().then(setChats);
     }
+  }, [selectedChatId, user]);
+
+  useEffect(() => {
     return () => {
       currentChatIdRef.current = null;
     };
-  }, [selectedChatId, user]);
+  }, []);
 
   useEffect(() => {
     if (!socket) return;
@@ -95,18 +98,18 @@ function ChatPageContent() {
   const selectedChat = chats.find(c => c.id === selectedChatId);
 
   const content = isLoading ? (
-    <div className="flex h-[calc(100vh-4rem)] items-center justify-center p-4 bg-gray-50">
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 flex flex-col items-center gap-4 max-w-sm w-full">
-        <Loader2 className="w-10 h-10 animate-spin text-gray-400" />
-        <p className="text-gray-600 font-medium">Loading chats...</p>
+    <div className="flex h-[calc(100vh-4rem)] items-center justify-center p-4 bg-muted/50">
+      <div className="bg-card rounded-lg shadow-sm border border-border p-8 flex flex-col items-center gap-4 max-w-sm w-full">
+        <Loader2 className="w-10 h-10 animate-spin text-muted-foreground" />
+        <p className="text-muted-foreground font-medium">Loading chats...</p>
       </div>
     </div>
   ) : (
-    <div className="flex h-[calc(100vh-4rem)] border rounded-lg overflow-hidden bg-white shadow-sm mt-4 mx-4">
+    <div className="flex h-[calc(100vh-4rem)] border rounded-lg overflow-hidden bg-card shadow-sm mt-4 mx-4">
       <div className={`w-full md:w-1/3 border-r ${selectedChatId ? 'hidden md:block' : 'block'}`}>
         <div className="h-full flex flex-col">
           <div className="p-3 border-b flex justify-between">
-            <div className="flex items-center font-bold text-lg text-gray-600 ml-3">
+            <div className="flex items-center font-bold text-lg text-muted-foreground ml-3">
             Chats
             </div>
             <button
@@ -143,7 +146,7 @@ function ChatPageContent() {
             />
           </div>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-gray-400 bg-gray-50">
+          <div className="h-full flex flex-col items-center justify-center text-muted-foreground bg-muted/50">
             <MessageSquarePlus size={64} className="mb-4 opacity-50" />
             <p className="text-lg">Select a chat to start messaging</p>
           </div>
@@ -166,10 +169,10 @@ export default function ChatPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex h-[calc(100vh-4rem)] items-center justify-center p-4 bg-gray-50">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 flex flex-col items-center gap-4 max-w-sm w-full">
-            <Loader2 className="w-10 h-10 animate-spin text-gray-400" />
-            <p className="text-gray-600 font-medium">Loading chats...</p>
+        <div className="flex h-[calc(100vh-4rem)] items-center justify-center p-4 bg-muted/50">
+          <div className="bg-card rounded-lg shadow-sm border border-border p-8 flex flex-col items-center gap-4 max-w-sm w-full">
+            <Loader2 className="w-10 h-10 animate-spin text-muted-foreground" />
+            <p className="text-muted-foreground font-medium">Loading chats...</p>
           </div>
         </div>
       }

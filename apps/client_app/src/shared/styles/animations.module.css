@@ -1,0 +1,19 @@
+.fadeIn {
+  animation: rika-fade-in 0.25s ease-out forwards;
+}
+
+.slideUp {
+  animation: rika-slide-up 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.scaleIn {
+  animation: rika-scale-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fadeIn,
+  .slideUp,
+  .scaleIn {
+    animation: none;
+  }
+}

@@ -25,6 +25,24 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@/shared/*": [
+        "./src/shared/*"
+      ],
+      "@/entities/*": [
+        "./src/entities/*"
+      ],
+      "@/features/*": [
+        "./src/features/*"
+      ],
+      "@/widgets/*": [
+        "./src/widgets/*"
+      ],
+      "@/views/*": [
+        "./src/views/*"
+      ],
+      "@/application/*": [
+        "./src/application/*"
       ]
     }
   },
@@ -34,7 +52,6 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "**/*.mts",
-    "src/context",
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [

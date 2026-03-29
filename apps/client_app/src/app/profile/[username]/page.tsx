@@ -3,16 +3,16 @@
 import { useState, useEffect } from 'react';
 import { Loader2, UserX } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
-import api from '@/lib/api';
-import { useAuth } from '@/context/AuthContext';
-import { useToast } from '@/context/ToastContext';
+import api from '@/shared/api';
+import { useAuth } from '@/entities/session';
+import { useToast } from '@/application/providers/toast-provider';
 
-import ProfileHeader from '@/components/profile/ProfileHeader';
-import ProfileTabs from '@/components/profile/ProfileTabs';
-import PostsGrid from '@/components/profile/PostsGrid';
-import FollowersModal from '@/components/profile/FollowersModal';
-import FollowingModal from '@/components/profile/FollowingModal';
-import EmptyState from '@/components/profile/EmptyState';
+import ProfileHeader from '@/widgets/profile/ProfileHeader';
+import ProfileTabs from '@/widgets/profile/ProfileTabs';
+import PostsGrid from '@/widgets/profile/PostsGrid';
+import FollowersModal from '@/widgets/profile/FollowersModal';
+import FollowingModal from '@/widgets/profile/FollowingModal';
+import EmptyState from '@/widgets/profile/EmptyState';
 
 interface Asset {
   id: string;
@@ -372,10 +372,10 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 flex flex-col items-center gap-4 max-w-sm w-full">
-          <Loader2 className="w-10 h-10 animate-spin text-gray-400" />
-          <p className="text-gray-600 font-medium">Загрузка профиля...</p>
+      <div className="min-h-screen bg-muted/50 flex items-center justify-center p-4">
+        <div className="bg-card rounded-lg shadow-sm border border-border p-8 flex flex-col items-center gap-4 max-w-sm w-full">
+          <Loader2 className="w-10 h-10 animate-spin text-muted-foreground" />
+          <p className="text-muted-foreground font-medium">Загрузка профиля...</p>
         </div>
       </div>
     );
@@ -383,12 +383,12 @@ export default function ProfilePage() {
 
   if (error || !userProfile) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 flex flex-col items-center gap-4 max-w-sm w-full">
-          <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
-            <UserX className="w-7 h-7 text-gray-400" />
+      <div className="min-h-screen bg-muted/50 flex items-center justify-center p-4">
+        <div className="bg-card rounded-lg shadow-sm border border-border p-8 flex flex-col items-center gap-4 max-w-sm w-full">
+          <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+            <UserX className="w-7 h-7 text-muted-foreground" />
           </div>
-          <p className="text-gray-600 font-medium text-center">{error || 'Профиль не найден'}</p>
+          <p className="text-muted-foreground font-medium text-center">{error || 'Профиль не найден'}</p>
           <button
             onClick={() => router.back()}
             className="text-sm text-blue-600 hover:text-blue-700 font-medium"
@@ -407,7 +407,7 @@ export default function ProfilePage() {
     !isPendingFollowRequest;
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-card">
 
       <ProfileHeader
         userProfile={userProfile}
