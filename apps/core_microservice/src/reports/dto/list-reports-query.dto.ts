@@ -1,12 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ReportPriority, ReportStatus } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import {
-  IsBoolean,
-  IsEnum,
-  IsOptional,
-  IsUUID,
-} from 'class-validator';
+import { IsBoolean, IsEnum, IsOptional, IsUUID } from 'class-validator';
 
 export class ListReportsQueryDto {
   @ApiPropertyOptional({ enum: ReportStatus })

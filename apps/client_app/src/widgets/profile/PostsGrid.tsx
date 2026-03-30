@@ -34,7 +34,7 @@ const isVideoAsset = (asset?: Asset) => {
 
 export default function PostsGrid({ posts, router }: PostsGridProps) {
   return (
-    <div className="grid grid-cols-3 gap-1 md:gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4">
       {posts.map((post) => {
         const firstAsset = post.assets?.[0];
         const isVideo = isVideoAsset(firstAsset);
@@ -43,7 +43,7 @@ export default function PostsGrid({ posts, router }: PostsGridProps) {
         return (
           <div
             key={post.id}
-            className="group relative overflow-hidden bg-muted aspect-square cursor-pointer"
+            className="group relative overflow-hidden bg-muted aspect-square cursor-pointer rounded-2xl border border-border/60"
             onClick={() => router.push(`/post/${post.id}`)}
           >
             {firstAsset ? (
@@ -54,7 +54,7 @@ export default function PostsGrid({ posts, router }: PostsGridProps) {
                   preload="metadata"
                   muted
                   playsInline
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none"
                   onLoadedData={(e) => {
                     const v = e.currentTarget;
                     v.pause();
@@ -73,7 +73,7 @@ export default function PostsGrid({ posts, router }: PostsGridProps) {
                   src={firstAsset.url}
                   alt={post.description || 'Post image'}
                   fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
                   sizes="(max-width: 768px) 33vw, (max-width: 1200px) 25vw, 20vw"
                   unoptimized
                   onError={() => {

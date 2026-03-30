@@ -5,6 +5,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Check, X, User, Bell, Play, Grid, Loader2 } from 'lucide-react';
 import api from '@/shared/api';
+import { cn } from '@/shared/lib/cn';
+import surface from '@/shared/styles/surface.module.css';
+import animations from '@/shared/styles/animations.module.css';
 
 interface FollowRequest {
   id: string;
@@ -338,9 +341,11 @@ function NotificationItem({
 
   const content = (
     <div
-      className={`flex items-start gap-4 w-full py-4 px-3 rounded-lg transition-colors ${
-        !n.isRead ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-muted/50'
-      }`}
+      className={cn(
+        'flex items-start gap-4 w-full py-4 px-3 rounded-2xl transition-all',
+        !n.isRead ? 'bg-primary/10 hover:bg-primary/15 ring-1 ring-primary/15' : 'hover:bg-muted/50'
+      )}
+      
     >
       <div className="w-12 h-12 rounded-full overflow-hidden bg-card shadow-sm flex items-center justify-center hover:opacity-80 flex-shrink-0">
         {n.actors[0].avatarUrl ? (
@@ -364,7 +369,7 @@ function NotificationItem({
                 e.preventDefault();
                 onMarkRead(n.id);
               }}
-              className="text-xs font-medium text-blue-600 px-3 py-1.5 hover:bg-blue-100 rounded-md transition-colors flex-shrink-0"
+              className="text-xs font-medium text-primary px-3 py-1.5 hover:bg-primary/10 rounded-md transition-colors flex-shrink-0"
             >
               Read
             </button>
@@ -376,7 +381,7 @@ function NotificationItem({
                   e.preventDefault();
                   onAcceptFollowRequest?.(n.followRequestId!);
                 }}
-                className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                className="flex items-center gap-1 px-3 py-1.5 bg-primary text-white rounded text-sm hover:opacity-90"
                 aria-label={`Accept ${n.actors[0].username}`}
               >
                 <Check className="w-4 h-4" />
@@ -404,7 +409,7 @@ function NotificationItem({
               year: 'numeric',
             })}
           </div>
-          {!n.isRead && <div className="w-2 h-2 bg-blue-600 rounded-full"></div>}
+          {!n.isRead && <div className="w-2 h-2 bg-primary rounded-full"></div>}
         </div>
       </div>
       {showPostPreview && (
@@ -693,15 +698,15 @@ export default function InteractionsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-card">
-      <div className="border-b border-border">
-        <div className="max-w-4xl mx-auto px-4 py-4">
+    <div className="min-h-screen bg-transparent">
+      <div className="border-b border-border/60">
+        <div className="max-w-5xl mx-auto px-4 py-5">
           <h1 className="text-xl font-semibold text-foreground">Interactions</h1>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-6 pb-20 md:pb-2">
-        <div className="bg-card border rounded-md">
+      <div className="max-w-5xl mx-auto px-4 py-6 pb-20 md:pb-2">
+        <div className={cn(surface.card, animations.slideUp, 'rounded-3xl p-2 rika-glow-edge')}>
 
 
           <div className="px-4 py-3">
@@ -740,7 +745,7 @@ export default function InteractionsPage() {
                         isExpandedRef.current = true;
                         setDisplayLimit(groupedNotifications.length);
                       }}
-                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                      className="text-sm text-primary hover:opacity-80 font-medium"
                     >
                       Show all ({groupedNotifications.length - displayLimit}{' '}
                       more)

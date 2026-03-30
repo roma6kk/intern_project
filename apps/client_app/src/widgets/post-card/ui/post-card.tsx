@@ -22,6 +22,7 @@ import { ReportPostModal } from '@/features/post-report';
 import { createReport } from '@/entities/report';
 import { cn } from '@/shared/lib/cn';
 import surface from '@/shared/styles/surface.module.css';
+import animations from '@/shared/styles/animations.module.css';
 
 function timeAgo(date?: string) {
   if (!date) return '';
@@ -418,13 +419,13 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
   return (
     <>
       <article
-        className={cn(surface.card, 'p-3 shadow-sm hover:shadow-md transition-shadow')}
+        className={cn(surface.card, animations.slideUp, animations.hoverLift, 'p-3 sm:p-4 rika-glow-edge overflow-hidden')}
         ref={articleRef}
       >
         <header className="flex items-center mb-3">
           <button
             onClick={() => window.location.href = `/profile/${post.author?.username || 'unknown'}`}
-            className="shrink-0 mr-3 w-10 h-10 rounded-full overflow-hidden"
+            className="shrink-0 mr-3 w-10 h-10 rounded-full overflow-hidden ring-2 ring-primary/25"
           >
             <Image
               src={post.author?.profile?.avatarUrl || '/default-avatar.svg'}
@@ -437,7 +438,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
           <div className="flex-1">
             <button
               onClick={() => window.location.href = `/profile/${post.author?.username || 'unknown'}`}
-              className="font-semibold text-muted-foreground hover:underline"
+            className="font-semibold text-foreground hover:underline"
             >
               {post.author?.username || 'Unknown'}
             </button>
@@ -448,12 +449,12 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
             <div className="relative" ref={menuRef}>
               <button
                 onClick={() => setShowMenu(!showMenu)}
-                className="p-1 rounded-full hover:bg-muted active:bg-muted transition"
+                className="p-1 rounded-xl hover:bg-muted active:bg-muted transition-colors"
               >
                 <MoreHorizontal size={18} className="text-muted-foreground" />
               </button>
               {showMenu && (
-                <div className="absolute right-0 mt-1 bg-popover text-popover-foreground border border-border rounded-xl shadow-lg z-10 min-w-[150px] overflow-hidden">
+                <div className="absolute right-0 mt-1 bg-popover/98 text-popover-foreground border border-border rounded-2xl shadow-lg z-10 min-w-[170px] overflow-hidden backdrop-blur-md">
                   {user?.id === post.author?.id ? (
                     <>
                       <button
@@ -516,7 +517,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
   
         {post.assets && post.assets.length > 0 && (
           <div 
-            className="relative w-full bg-black rounded-lg overflow-hidden group"
+            className="relative w-full bg-black rounded-2xl overflow-hidden group border border-border/40"
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
@@ -533,7 +534,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
                       key={asset.url}
                       ref={videoRef}
                       src={asset.url}
-                      className="w-full max-h-[70vh] object-contain h-auto"
+                      className="w-full max-h-[72vh] object-contain h-auto"
                       muted={isMuted}
                       loop
                     />
@@ -544,7 +545,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
                       alt={'post'}
                       width={600}
                       height={400}
-                      className="w-full h-auto max-h-[70vh] object-contain"
+                      className="w-full h-auto max-h-[72vh] object-contain transition-transform duration-700 group-hover:scale-[1.015]"
                     />
                   )}
   
@@ -552,14 +553,14 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
                     <>
                       <button
                         onClick={goToPrev}
-                        className="absolute left-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-75 text-white rounded-full p-2 transition-all opacity-0 group-hover:opacity-100"
+                        className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/45 hover:bg-black/70 text-white rounded-xl p-2 transition-all opacity-0 group-hover:opacity-100 backdrop-blur-sm"
                         aria-label="Previous image"
                       >
                         <ChevronLeft size={24} />
                       </button>
                       <button
                         onClick={goToNext}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-75 text-white rounded-full p-2 transition-all opacity-0 group-hover:opacity-100"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/45 hover:bg-black/70 text-white rounded-xl p-2 transition-all opacity-0 group-hover:opacity-100 backdrop-blur-sm"
                         aria-label="Next image"
                       >
                         <ChevronRight size={24} />
@@ -568,7 +569,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
                   )}
   
                   {post.assets.length > 1 && (
-                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 bg-black/30 rounded-full px-2 py-1 backdrop-blur-sm">
                       {post.assets.map((_, index) => (
                         <button
                           key={index}
@@ -587,7 +588,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
                   {isVideo && (
                     <button
                       onClick={handleToggleMute}
-                      className="absolute bottom-3 right-3 bg-black bg-opacity-50 hover:bg-opacity-75 text-white rounded-full p-2 transition-all"
+                      className="absolute bottom-3 right-3 bg-black/50 hover:bg-black/75 text-white rounded-xl p-2 transition-all backdrop-blur-sm"
                     >
                       {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
                     </button>
@@ -599,7 +600,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
         )}
 
         {(!post.assets || post.assets.length === 0) && post.description && (
-          <div className="mt-3 mb-3 px-4 py-3 bg-muted/50 rounded-xl border border-border">
+          <div className="mt-3 mb-3 px-4 py-3 bg-muted/45 rounded-2xl border border-border/80">
             <p className="text-base text-foreground leading-relaxed">
               <button
                 onClick={() => window.location.href = `/profile/${post.author?.username || 'unknown'}`}
@@ -609,7 +610,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
               </button>
               <MentionText text={showFull ? post.description : descShort} />
               {post.description.length > 120 && (
-                <button className="ml-2 text-sm text-muted-foreground hover:text-foreground" onClick={() => setShowFull(s => !s)}>
+                <button className="ml-2 text-sm text-primary hover:text-primary/80 transition-colors" onClick={() => setShowFull(s => !s)}>
                   {showFull ? 'less' : 'more'}
                 </button>
               )}
@@ -617,7 +618,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
           </div>
         )}
   
-        <div className="flex items-center justify-between mt-3 mb-2">
+        <div className="flex items-center justify-between mt-3 mb-2 p-1.5 rounded-2xl bg-background/45 border border-border/50">
           <div className="flex items-center gap-4">
             <button
               onClick={async () => {
@@ -631,7 +632,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
                   setLikesCount((c) => (nowLiked ? (c || 0) + 1 : Math.max((c || 0) - 1, 0)));
                 } finally { setIsLiking(false); }
               }}
-              className="p-2 rounded-full hover:bg-muted transition"
+              className="p-2 rounded-xl hover:bg-muted transition"
             >
               <Heart size={24} className={liked ? 'text-red-500 fill-red-500' : 'text-foreground'} />
             </button>
@@ -641,7 +642,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
                 const el = document.querySelector<HTMLTextAreaElement>(`#comment-input-${post.id}`);
                 el?.focus();
               }}
-              className="p-2 rounded-full hover:bg-muted transition"
+              className="p-2 rounded-xl hover:bg-muted transition"
             >
               <MessageCircle size={24} className="text-foreground" />
             </button>
@@ -649,13 +650,13 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
             <button
                 aria-label="Send"
                 onClick={() => setShowShareModal(true)}
-                className="p-2 rounded-full hover:bg-muted active:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="p-2 rounded-xl hover:bg-muted active:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 <Send size={24} className="text-foreground" />
               </button>
             </div>
 
-          <button className="p-2 rounded-full hover:bg-muted transition">
+          <button className="p-2 rounded-xl hover:bg-muted transition">
             <Bookmark size={20} className="text-foreground" />
           </button>
         </div>
@@ -676,7 +677,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
                 </button>
                 <MentionText text={showFull ? post.description : descShort} />
                 {post.description.length > 120 && (
-                  <button className="ml-2 text-sm text-muted-foreground" onClick={() => setShowFull(s => !s)}>
+                  <button className="ml-2 text-sm text-primary hover:text-primary/80 transition-colors" onClick={() => setShowFull(s => !s)}>
                     {showFull ? 'less' : 'more'}
                   </button>
                 )}
@@ -707,7 +708,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
         </div>
   
         {/* Add Comment */}
-        <div className="pt-2 border-t flex items-start gap-3">
+        <div className="pt-3 mt-2 border-t border-border/70 flex items-start gap-3">
           <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
             <Image
               src={user?.profile?.avatarUrl || '/default-avatar.svg'}
@@ -722,7 +723,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
               value={commentText}
               onChange={setCommentText}
               placeholder="Add a comment... (use @ to mention)"
-              className="flex-1 text-sm bg-muted text-muted-foreground placeholder:text-muted-foreground px-3 py-2 rounded-xl border border-border resize-none min-h-[40px] mb-1 box-border focus:outline-none focus:ring-2 focus:ring-primary/25"
+              className="flex-1 text-sm bg-muted/80 text-foreground placeholder:text-muted-foreground px-3 py-2.5 rounded-2xl border border-border resize-none min-h-[42px] mb-1 box-border focus:outline-none focus:ring-2 focus:ring-primary/25"
               inputId={`comment-input-${post.id}`}
             />
             <button

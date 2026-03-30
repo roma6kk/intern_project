@@ -64,7 +64,10 @@ export class AdminSystemService {
     return { checkedAt, services };
   }
 
-  private async pingHttp(name: string, url: string): Promise<HealthCheckResult> {
+  private async pingHttp(
+    name: string,
+    url: string,
+  ): Promise<HealthCheckResult> {
     const t0 = Date.now();
     try {
       const res = await firstValueFrom(

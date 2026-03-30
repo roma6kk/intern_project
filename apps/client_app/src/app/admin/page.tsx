@@ -2,6 +2,9 @@
 
 import Link from 'next/link';
 import { BarChart3, ChevronRight, Shield, Users } from 'lucide-react';
+import { cn } from '@/shared/lib/cn';
+import surface from '@/shared/styles/surface.module.css';
+import animations from '@/shared/styles/animations.module.css';
 
 const links = [
   {
@@ -22,8 +25,8 @@ const links = [
 
 export default function AdminPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b bg-background">
-      <div className="mx-auto max-w-2xl px-4 py-12">
+    <div className="min-h-screen bg-transparent">
+      <div className="mx-auto max-w-3xl px-4 py-12">
         <div className="mb-10 flex items-start gap-4">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-700 text-white shadow-lg shadow-indigo-500/25">
             <Shield className="h-7 w-7" aria-hidden />
@@ -43,7 +46,7 @@ export default function AdminPage() {
             <li key={href}>
               <Link
                 href={href}
-                className="group flex items-center gap-4 rounded-2xl border border-border/80 bg-card p-5 shadow-sm transition-all duration-200 hover:border-indigo-200 hover:shadow-md"
+                className={cn(surface.card, animations.slideUp, 'group flex items-center gap-4 rounded-3xl border border-border/80 p-5 transition-all duration-200 hover:border-indigo-200 hover:shadow-md rika-glow-edge')}
               >
                 <div
                   className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${accent} text-white shadow-md`}

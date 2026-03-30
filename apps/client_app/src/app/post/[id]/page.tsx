@@ -6,6 +6,9 @@ import { Loader2 } from 'lucide-react';
 import { PostCard } from '@/widgets/post-card';
 import type { Post } from '@/entities/post';
 import api from '@/shared/api';
+import { cn } from '@/shared/lib/cn';
+import surface from '@/shared/styles/surface.module.css';
+import animations from '@/shared/styles/animations.module.css';
 
 export default function PostPage() {
   const params = useParams();
@@ -50,8 +53,8 @@ export default function PostPage() {
   if (!post) return null;
 
   return (
-    <div className="min-h-screen bg-muted/50 flex justify-center py-6">
-      <div className="w-full max-w-2xl px-4">
+    <div className="min-h-screen bg-transparent flex justify-center py-6">
+      <div className={cn(surface.card, animations.slideUp, 'w-full max-w-3xl px-4 sm:px-6 py-4 sm:py-6 rounded-3xl rika-glow-edge')}>
         <PostCard post={post} fullView={true} />
       </div>
     </div>

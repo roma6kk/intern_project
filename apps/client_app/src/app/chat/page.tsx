@@ -12,6 +12,9 @@ import { useAuth } from '@/entities/session';
 import CreateChatModal from '@/widgets/chat/CreateChatModal';
 import { currentChatIdRef } from '@/shared/lib/current-chat-id';
 import { useSocket } from '@/entities/session';
+import { cn } from '@/shared/lib/cn';
+import surface from '@/shared/styles/surface.module.css';
+import animations from '@/shared/styles/animations.module.css';
 
 function normalizeMessage(payload: unknown): Message | null {
   if (!payload || typeof payload !== 'object') return null;
@@ -98,23 +101,23 @@ function ChatPageContent() {
   const selectedChat = chats.find(c => c.id === selectedChatId);
 
   const content = isLoading ? (
-    <div className="flex h-[calc(100vh-4rem)] items-center justify-center p-4 bg-muted/50">
-      <div className="bg-card rounded-lg shadow-sm border border-border p-8 flex flex-col items-center gap-4 max-w-sm w-full">
+    <div className="flex h-[calc(100vh-4rem)] items-center justify-center p-4 bg-transparent">
+      <div className={cn(surface.card, 'rounded-3xl p-8 flex flex-col items-center gap-4 max-w-sm w-full')}>
         <Loader2 className="w-10 h-10 animate-spin text-muted-foreground" />
         <p className="text-muted-foreground font-medium">Loading chats...</p>
       </div>
     </div>
   ) : (
-    <div className="flex h-[calc(100vh-4rem)] border rounded-lg overflow-hidden bg-card shadow-sm mt-4 mx-4">
+    <div className={cn(surface.card, animations.slideUp, 'flex h-[calc(100vh-5.5rem)] border rounded-3xl overflow-hidden mt-4 mx-1 sm:mx-2 rika-glow-edge')}>
       <div className={`w-full md:w-1/3 border-r ${selectedChatId ? 'hidden md:block' : 'block'}`}>
         <div className="h-full flex flex-col">
-          <div className="p-3 border-b flex justify-between">
+          <div className="p-3 border-b border-border/70 flex justify-between bg-background/45">
             <div className="flex items-center font-bold text-lg text-muted-foreground ml-3">
             Chats
             </div>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition">
+              className="flex items-center gap-2 bg-primary text-white px-3 py-2 rounded-xl hover:opacity-90 transition">
               <MessageSquarePlus size={18} />
               New chat
             </button>
@@ -146,7 +149,7 @@ function ChatPageContent() {
             />
           </div>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-muted-foreground bg-muted/50">
+          <div className="h-full flex flex-col items-center justify-center text-muted-foreground bg-muted/30">
             <MessageSquarePlus size={64} className="mb-4 opacity-50" />
             <p className="text-lg">Select a chat to start messaging</p>
           </div>

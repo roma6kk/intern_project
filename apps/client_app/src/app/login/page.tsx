@@ -8,8 +8,8 @@ export default function AuthPage() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <div className="hidden lg:flex lg:flex-1 items-center justify-center relative overflow-hidden bg-gradient-to-br from-[var(--hero-from)] via-[var(--hero-via)] to-[var(--hero-to)]">
+    <div className="flex min-h-screen bg-transparent">
+      <div className="hidden lg:flex lg:flex-1 items-center justify-center relative overflow-hidden bg-gradient-to-br from-[var(--hero-from)] via-[var(--hero-via)] to-[var(--hero-to)] auroraSweep">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.12),_transparent_55%)] pointer-events-none" />
         <div className="absolute top-8 left-8 z-10">
           <div className="w-12 h-12 bg-card/15 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/20 shadow-lg">
@@ -19,11 +19,12 @@ export default function AuthPage() {
           </div>
         </div>
 
-        <div className="text-center text-white px-12 max-w-lg relative z-10">
-          <h1 className="text-4xl font-light mb-4 leading-tight drop-shadow-sm">
+        <div className="text-center text-white px-12 max-w-xl relative z-10">
+          <h1 className="text-5xl font-light mb-4 leading-tight drop-shadow-sm">
             Посмотрите, какими моментами из жизни поделились ваши{' '}
             <span className="text-amber-200 font-normal">близкие друзья</span>.
           </h1>
+          <p className="text-white/80">Сцена нового поколения: визуальная лента, живые реакции и кинематографичный ритм интерфейса.</p>
         </div>
 
         <div className="absolute bottom-20 right-20 z-10">
@@ -52,7 +53,7 @@ export default function AuthPage() {
         </div>
       </div>
 
-      <div className="flex-1 lg:flex-none lg:w-96 flex items-center justify-center p-8">
+      <div className="flex-1 lg:flex-none lg:w-[27rem] flex items-center justify-center p-8">
         <div className="w-full max-w-sm animate-[rika-slide-up_0.4s_ease-out_both]">
           {mode === 'signin' ? (
             <SignInForm onSwitch={() => setMode('signup')} />

@@ -13,6 +13,9 @@ import PostsGrid from '@/widgets/profile/PostsGrid';
 import FollowersModal from '@/widgets/profile/FollowersModal';
 import FollowingModal from '@/widgets/profile/FollowingModal';
 import EmptyState from '@/widgets/profile/EmptyState';
+import { cn } from '@/shared/lib/cn';
+import surface from '@/shared/styles/surface.module.css';
+import animations from '@/shared/styles/animations.module.css';
 
 interface Asset {
   id: string;
@@ -407,7 +410,7 @@ export default function ProfilePage() {
     !isPendingFollowRequest;
 
   return (
-    <div className="min-h-screen bg-card">
+    <div className="min-h-screen bg-transparent">
 
       <ProfileHeader
         userProfile={userProfile}
@@ -435,7 +438,8 @@ export default function ProfilePage() {
         showArchived={isMyProfile}
       />
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-5xl mx-auto px-4 py-8">
+        <div className={cn(surface.card, animations.slideUp, 'rounded-3xl p-5 sm:p-6 rika-glow-edge')}>
 
         {activeTab==='posts' && (
           isPrivateAndNotFollowing
@@ -468,7 +472,7 @@ export default function ProfilePage() {
               : <PostsGrid posts={archivedPosts} router={router}/>
             : <EmptyState type="private"/>
         )}
-
+        </div>
       </div>
 
       <FollowersModal

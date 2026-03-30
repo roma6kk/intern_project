@@ -18,6 +18,9 @@ import {
 } from 'lucide-react';
 import { SimpleDistributionBars } from '@/widgets/admin-charts/SimpleDistributionBars';
 import type { DistributionRow } from '@/widgets/admin-charts/SimpleDistributionBars';
+import { cn } from '@/shared/lib/cn';
+import surface from '@/shared/styles/surface.module.css';
+import animations from '@/shared/styles/animations.module.css';
 
 type StatsSnapshot = {
   generatedAt: string;
@@ -125,7 +128,7 @@ export default function AdminSystemPage() {
     })) ?? [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b bg-background">
+    <div className="min-h-screen bg-transparent">
       <div className="mx-auto max-w-5xl px-4 py-8 pb-16">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -163,7 +166,7 @@ export default function AdminSystemPage() {
             {stats && (
               <>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
+                  <div className={cn(surface.card, animations.slideUp, 'rounded-2xl border border-border/80 p-5 transition-shadow hover:shadow-md')}>
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700">
                         <Inbox className="h-5 w-5" />
@@ -178,7 +181,7 @@ export default function AdminSystemPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
+                  <div className={cn(surface.card, animations.slideUp, 'rounded-2xl border border-border/80 p-5 transition-shadow hover:shadow-md')}>
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
                         <AlertTriangle className="h-5 w-5" />
@@ -193,7 +196,7 @@ export default function AdminSystemPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-sm transition-shadow hover:shadow-md sm:col-span-2">
+                  <div className={cn(surface.card, animations.slideUp, 'rounded-2xl border border-border/80 p-5 transition-shadow hover:shadow-md sm:col-span-2')}>
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-foreground">
                         <Activity className="h-5 w-5" />
@@ -240,7 +243,7 @@ export default function AdminSystemPage() {
                   {health.services.map((svc) => (
                     <div
                       key={svc.name}
-                      className="flex items-start justify-between gap-3 rounded-xl border border-border/80 bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
+                      className={cn(surface.card, animations.slideUp, 'flex items-start justify-between gap-3 rounded-xl border border-border/80 p-4 transition-shadow hover:shadow-md')}
                     >
                       <div className="flex min-w-0 items-start gap-3">
                         <div

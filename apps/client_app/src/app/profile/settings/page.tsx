@@ -10,6 +10,7 @@ import { useTheme } from '@/application/providers/theme-provider';
 import { cn } from '@/shared/lib/cn';
 import modal from '@/shared/styles/modal.module.css';
 import surface from '@/shared/styles/surface.module.css';
+import animations from '@/shared/styles/animations.module.css';
 
 interface ProfileData {
   id: string;
@@ -173,9 +174,9 @@ const SettingsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="border-b border-border">
-        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-4">
+    <div className="min-h-screen bg-transparent">
+      <div className="border-b border-border/70">
+        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-4">
           <button
             type="button"
             onClick={() => router.back()}
@@ -187,8 +188,8 @@ const SettingsPage = () => {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-8 pb-24 md:pb-8">
-        <div className={cn(surface.card, 'p-5 mb-8 space-y-3')}>
+      <div className="max-w-3xl mx-auto px-4 py-8 pb-24 md:pb-8">
+        <div className={cn(surface.card, animations.slideUp, 'p-5 mb-8 space-y-3 rika-glow-edge')}>
           <h2 className="text-sm font-semibold text-foreground">Оформление</h2>
           <p className="text-xs text-muted-foreground">Как отображать приложение на этом устройстве.</p>
           <div className="flex flex-wrap gap-2">
@@ -210,11 +211,11 @@ const SettingsPage = () => {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className={cn(surface.card, animations.slideUp, 'space-y-6 p-6 sm:p-7 rounded-3xl rika-glow-edge')}>
           <div className="space-y-3">
             <label className="block text-sm font-semibold text-foreground">Profile Photo</label>
             <div className="flex items-end gap-4">
-              <div className="w-24 h-24 relative rounded-full bg-muted overflow-hidden border border-border">
+              <div className="w-24 h-24 relative rounded-full bg-muted overflow-hidden border border-border ring-2 ring-primary/20">
                 <Image
                   src={avatarPreview || '/default-avatar.svg'}
                   alt="Avatar preview"

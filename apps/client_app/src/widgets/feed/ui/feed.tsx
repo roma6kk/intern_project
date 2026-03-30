@@ -11,6 +11,7 @@ import { useAuth } from '@/entities/session';
 import { useInfiniteScroll } from '@/shared/lib/use-infinite-scroll';
 import { cn } from '@/shared/lib/cn';
 import surface from '@/shared/styles/surface.module.css';
+import animations from '@/shared/styles/animations.module.css';
 
 interface SuggestionUser {
   id: string;
@@ -160,20 +161,20 @@ export function Feed() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <div className={cn(surface.card, 'p-4 mb-6')}>
+    <div className="min-h-screen bg-transparent">
+      <div className="max-w-7xl mx-auto py-2 sm:py-4 grid grid-cols-1 xl:grid-cols-12 gap-5 lg:gap-6">
+        <div className="xl:col-span-8">
+          <div className={cn(surface.card, animations.slideUp, 'p-4 sm:p-5 mb-6 rika-glow-edge')}>
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-foreground">Stories</h2>
-              <button type="button" className="text-sm text-primary font-medium">
+              <button type="button" className="text-sm text-primary font-medium hover:opacity-80">
                 See all
               </button>
             </div>
 
             <div className="flex gap-4 overflow-x-auto py-2">
-              <div className="shrink-0 text-center w-20 ">
-                <div className="w-14 h-14 rounded-full overflow-hidden mx-auto border-2 border-pink-500">
+              <div className="shrink-0 text-center w-20">
+                <div className="w-14 h-14 rounded-full overflow-hidden mx-auto border-2 border-primary shadow-[0_8px_20px_-12px_var(--primary)]">
                   <Image
                     src={user?.profile?.avatarUrl || '/default-avatar.svg'}
                     alt={user?.username || 'You'}
@@ -187,7 +188,7 @@ export function Feed() {
 
               {storyAuthors.map((a, index) => (
                 <div key={`story-${a.id || a.username}-${index}`} className="shrink-0 text-center w-20">
-                  <div className="w-14 h-14 rounded-full overflow-hidden mx-auto border-2 border-yellow-400">
+                  <div className="w-14 h-14 rounded-full overflow-hidden mx-auto border-2 border-fuchsia-400 shadow-[0_8px_20px_-12px_var(--hero-to)]">
                     <Image
                       src={a.avatarUrl || '/default-avatar.svg'}
                       alt={a.username}
@@ -232,9 +233,9 @@ export function Feed() {
           </div>
         </div>
 
-        <aside className="hidden lg:block">
-          <div className="sticky top-6 space-y-4">
-            <div className={cn(surface.card, 'p-3 flex items-center justify-between')}>
+        <aside className="hidden xl:block xl:col-span-4">
+          <div className="sticky top-28 space-y-4">
+            <div className={cn(surface.card, animations.slideUp, 'p-4 flex items-center justify-between rika-glow-edge')}>
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full overflow-hidden">
                   <Image
@@ -255,7 +256,7 @@ export function Feed() {
               </button>
             </div>
 
-            <div className={cn(surface.card, 'p-3')}>
+            <div className={cn(surface.card, animations.slideUp, 'p-4 rika-glow-edge')}>
               <div className="flex items-center justify-between mb-3">
                 <div className="text-sm text-muted-foreground font-semibold">Suggestions For You</div>
                 <button
@@ -299,7 +300,7 @@ export function Feed() {
                       <button
                         onClick={() => handleFollowSuggestion(s.userId)}
                         disabled={followLoadingId === s.userId}
-                        className="text-xs text-primary hover:opacity-90 shrink-0 disabled:opacity-50"
+                        className="text-xs text-primary hover:opacity-90 shrink-0 disabled:opacity-50 px-2.5 py-1 rounded-lg bg-primary/10"
                       >
                         {followLoadingId === s.userId ? '...' : 'Follow'}
                       </button>

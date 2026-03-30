@@ -19,10 +19,7 @@ import { CreateWarningDto } from './dto/create-warning.dto';
 import { SuspendUserDto } from './dto/suspend-user.dto';
 import { UnsuspendUserDto } from './dto/unsuspend-user.dto';
 import { SanctionsPolicyService } from './sanctions-policy.service';
-import {
-  BulkAdminAction,
-  BulkAdminUsersDto,
-} from './dto/bulk-admin-users.dto';
+import { BulkAdminAction, BulkAdminUsersDto } from './dto/bulk-admin-users.dto';
 
 @Injectable()
 export class AdminUsersService {
@@ -140,8 +137,7 @@ export class AdminUsersService {
           comment: { select: { postId: true } },
         },
       });
-      postIdForNotification =
-        r?.postId ?? r?.comment?.postId ?? undefined;
+      postIdForNotification = r?.postId ?? r?.comment?.postId ?? undefined;
     }
 
     const text = `Moderation warning: ${dto.reason}`;
@@ -332,7 +328,9 @@ export class AdminUsersService {
         break;
       case BulkAdminAction.SUSPEND:
         if (!dto.suspend?.until || !dto.suspend?.reason) {
-          throw new BadRequestException('suspend.until and suspend.reason are required');
+          throw new BadRequestException(
+            'suspend.until and suspend.reason are required',
+          );
         }
         break;
       case BulkAdminAction.UNSUSPEND:
@@ -353,11 +351,9 @@ export class AdminUsersService {
       try {
         switch (dto.action) {
           case BulkAdminAction.WARN:
-            await this.createWarning(
-              targetUserId,
-              adminUserId,
-              { reason: dto.warn!.reason },
-            );
+            await this.createWarning(targetUserId, adminUserId, {
+              reason: dto.warn!.reason,
+            });
             break;
           case BulkAdminAction.SUSPEND:
             await this.suspendUser(targetUserId, adminUserId, {

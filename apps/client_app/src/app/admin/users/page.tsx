@@ -9,6 +9,9 @@ import {
 } from '@/entities/admin-users';
 import { useAuth } from '@/entities/session';
 import { ArrowLeft, Loader2, Shield } from 'lucide-react';
+import { cn } from '@/shared/lib/cn';
+import surface from '@/shared/styles/surface.module.css';
+import animations from '@/shared/styles/animations.module.css';
 
 type AdminUserRow = {
   userId: string;
@@ -138,7 +141,7 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b bg-background">
+    <div className="min-h-screen bg-transparent">
       <div className="mx-auto max-w-4xl px-4 py-8 pb-16">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -161,7 +164,7 @@ export default function AdminUsersPage() {
           </Link>
         </div>
 
-        <div className="mb-6 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/90 to-white p-4 shadow-sm ring-1 ring-indigo-500/5">
+        <div className={cn(surface.card, animations.slideUp, 'mb-6 rounded-3xl border border-indigo-100 p-4 ring-1 ring-indigo-500/5 rika-glow-edge')}>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <span className="text-sm font-medium text-foreground">
               Bulk actions
@@ -225,7 +228,7 @@ export default function AdminUsersPage() {
             {rows.map((row) => (
               <li
                 key={row.userId}
-                className="flex gap-3 rounded-2xl border border-border/80 bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
+                className={cn(surface.card, animations.slideUp, 'flex gap-3 rounded-2xl border border-border/80 p-4 transition-shadow hover:shadow-md')}
               >
                 <input
                   type="checkbox"

@@ -83,10 +83,7 @@ export class ReportsService {
 
     return this.prisma.report.findMany({
       where,
-      orderBy: [
-        { priority: 'desc' },
-        { createdAt: 'desc' },
-      ],
+      orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
       include: {
         reporter: {
           select: {
@@ -140,11 +137,7 @@ export class ReportsService {
     });
   }
 
-  async assign(
-    reportId: string,
-    actorUserId: string,
-    dto: AssignReportDto,
-  ) {
+  async assign(reportId: string, actorUserId: string, dto: AssignReportDto) {
     const existing = await this.prisma.report.findUnique({
       where: { id: reportId },
       include: {
@@ -196,10 +189,7 @@ export class ReportsService {
     return updated;
   }
 
-  async updatePriority(
-    reportId: string,
-    dto: UpdateReportPriorityDto,
-  ) {
+  async updatePriority(reportId: string, dto: UpdateReportPriorityDto) {
     const r = await this.prisma.report.findUnique({ where: { id: reportId } });
     if (!r) throw new NotFoundException('Report not found');
     return this.prisma.report.update({
@@ -219,9 +209,7 @@ export class ReportsService {
 
     const action = dto.action ?? ModerationAction.NONE;
     const effectiveStatus =
-      action === ModerationAction.WARN
-        ? ReportStatus.IN_REVIEW
-        : dto.status;
+      action === ModerationAction.WARN ? ReportStatus.IN_REVIEW : dto.status;
 
     const resolvedAt =
       effectiveStatus === ReportStatus.RESOLVED ||

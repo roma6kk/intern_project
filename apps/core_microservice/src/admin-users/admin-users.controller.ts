@@ -37,10 +37,7 @@ export class AdminUsersController {
   }
 
   @Post('bulk')
-  bulk(
-    @CurrentUser() admin: ICurrentUser,
-    @Body() dto: BulkAdminUsersDto,
-  ) {
+  bulk(@CurrentUser() admin: ICurrentUser, @Body() dto: BulkAdminUsersDto) {
     return this.adminUsersService.bulkApply(admin.userId, dto);
   }
 

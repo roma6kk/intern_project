@@ -9,6 +9,7 @@ import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { cn } from '@/shared/lib/cn';
 import surface from '@/shared/styles/surface.module.css';
+import animations from '@/shared/styles/animations.module.css';
 
 const signupSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -72,7 +73,7 @@ export default function SignUpForm({ onSwitch }: SignUpFormProps) {
   };
 
   return (
-    <div className={cn(surface.card, surface.elevated, 'w-full max-w-sm mx-auto p-8')}>
+    <div className={cn(surface.card, surface.elevated, animations.scaleIn, 'w-full max-w-sm mx-auto p-8 backdrop-blur-sm')}>
       <div className="text-center mb-6">
         <h1
           className="text-3xl font-light text-foreground mb-1"
@@ -129,7 +130,7 @@ export default function SignUpForm({ onSwitch }: SignUpFormProps) {
         <button
           onClick={handleGoogleSignup}
           type="button"
-          className="w-full mt-2 flex items-center justify-center gap-2 text-foreground font-semibold text-sm hover:opacity-80"
+          className="w-full mt-2 flex items-center justify-center gap-2 text-foreground font-semibold text-sm hover:opacity-80 rounded-xl py-2.5 hover:bg-muted/60 transition-colors"
         >
           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
             <path

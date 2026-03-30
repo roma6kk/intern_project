@@ -20,6 +20,9 @@ import {
   Loader2,
   UserCheck,
 } from 'lucide-react';
+import { cn } from '@/shared/lib/cn';
+import surface from '@/shared/styles/surface.module.css';
+import animations from '@/shared/styles/animations.module.css';
 
 type AccountRef = { username: string } | null;
 type ReportItem = {
@@ -240,7 +243,7 @@ export default function ModerationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-amber-50/40 via-white to-slate-50/80">
+    <div className="min-h-screen bg-transparent">
       <div className="border-b border-amber-200/40 bg-gradient-to-r from-amber-50/90 to-orange-50/50">
         <div className="mx-auto max-w-4xl px-4 py-8">
           <div className="flex flex-wrap items-start gap-4">
@@ -259,8 +262,8 @@ export default function ModerationPage() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-4xl px-4 py-6 pb-24">
-        <div className="mb-6 flex flex-wrap items-center gap-2 rounded-2xl border border-border/80 bg-card p-4 shadow-sm">
+      <div className="mx-auto max-w-5xl px-4 py-6 pb-24">
+        <div className={cn(surface.card, animations.slideUp, 'mb-6 flex flex-wrap items-center gap-2 rounded-3xl border border-border/80 p-4 rika-glow-edge')}>
           <div className="flex items-center gap-2 text-sm font-medium text-foreground">
             <Filter className="h-4 w-4 text-muted-foreground" />
             Filters
@@ -387,7 +390,7 @@ export default function ModerationPage() {
               return (
                 <li
                   key={report.id}
-                  className={`overflow-hidden rounded-2xl border border-border/80 border-l-4 bg-card shadow-sm ring-1 transition-shadow hover:shadow-md ${priorityAccent(report.priority)} ${overdue ? 'ring-rose-500/20' : ''}`}
+                  className={cn(surface.card, `overflow-hidden rounded-3xl border border-border/80 border-l-4 ring-1 transition-shadow hover:shadow-md ${priorityAccent(report.priority)} ${overdue ? 'ring-rose-500/20' : ''}`)}
                 >
                   <div className="space-y-4 p-5">
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">

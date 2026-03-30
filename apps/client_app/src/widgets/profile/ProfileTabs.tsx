@@ -22,17 +22,17 @@ export default function ProfileTabs({ activeTab, setActiveTab, showLikedCommente
   ];
 
   return (
-    <div className="border-b border-border sticky top-0 bg-card z-10">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="flex gap-8 justify-center">
+    <div className="border-b border-border/70 sticky top-[4.8rem] bg-background/70 backdrop-blur-md z-20">
+      <div className="max-w-5xl mx-auto px-4">
+        <div className="flex gap-5 justify-center">
           {tabs.map((t) => {
             const Icon = t.icon;
             return (
               <button
                 key={t.key}
                 onClick={() => setActiveTab(t.key)}
-                className={`py-4 px-2 font-semibold text-sm uppercase tracking-wider transition-colors relative ${
-                  activeTab === t.key ? 'text-black' : 'text-muted-foreground hover:text-foreground'
+                className={`py-4 px-3 font-semibold text-sm uppercase tracking-wider transition-colors relative ${
+                  activeTab === t.key ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 <div className="flex items-center gap-2">
@@ -40,7 +40,7 @@ export default function ProfileTabs({ activeTab, setActiveTab, showLikedCommente
                   {t.label}
                 </div>
                 {activeTab === t.key && (
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-black"></div>
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-primary"></div>
                 )}
               </button>
             );

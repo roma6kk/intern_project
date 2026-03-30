@@ -9,6 +9,7 @@ import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { cn } from '@/shared/lib/cn';
 import surface from '@/shared/styles/surface.module.css';
+import animations from '@/shared/styles/animations.module.css';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email'),
@@ -53,7 +54,7 @@ export default function SignInForm({ onSwitch }: SignInFormProps) {
   };
 
   return (
-    <div className={cn(surface.card, surface.elevated, 'w-full max-w-sm mx-auto p-8')}>
+    <div className={cn(surface.card, surface.elevated, animations.scaleIn, 'w-full max-w-sm mx-auto p-8 backdrop-blur-sm')}>
       <div className="text-center mb-8">
         <h1
           className="text-4xl font-light text-foreground mb-2"
@@ -110,7 +111,7 @@ export default function SignInForm({ onSwitch }: SignInFormProps) {
         <button
           onClick={handleGoogleLogin}
           type="button"
-          className="w-full mt-6 flex items-center justify-center gap-2 text-foreground font-semibold text-sm hover:opacity-80 transition-opacity"
+          className="w-full mt-6 flex items-center justify-center gap-2 text-foreground font-semibold text-sm hover:opacity-80 transition-opacity rounded-xl py-2.5 hover:bg-muted/60"
         >
           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
             <path

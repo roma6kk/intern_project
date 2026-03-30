@@ -20,7 +20,7 @@ export default function EmptyState({ type }: EmptyStateProps) {
 
   if (type === 'private') {
     return (
-      <div className="flex flex-col items-center justify-center py-16">
+      <div className="flex flex-col items-center justify-center py-16 rounded-2xl border border-border/70 bg-muted/30">
         <div className="w-16 h-16 rounded-full border-2 border-border flex items-center justify-center mb-4">
           <svg className="w-8 h-8 text-muted-foreground" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
@@ -33,7 +33,7 @@ export default function EmptyState({ type }: EmptyStateProps) {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center py-16">
+    <div className="flex flex-col items-center justify-center py-16 rounded-2xl border border-border/70 bg-muted/30">
       {Icon && <Icon className="w-16 h-16 text-muted-foreground mb-4" />}
       <p className="text-muted-foreground text-lg">{config?.text}</p>
     </div>

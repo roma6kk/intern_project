@@ -11,6 +11,9 @@ import {
 } from '@/entities/admin-users';
 import { useAuth } from '@/entities/session';
 import { ArrowLeft, Clock, Loader2, ShieldAlert } from 'lucide-react';
+import { cn } from '@/shared/lib/cn';
+import surface from '@/shared/styles/surface.module.css';
+import animations from '@/shared/styles/animations.module.css';
 
 type TimelineItem =
   | {
@@ -152,7 +155,7 @@ export default function AdminUserDetailsPage() {
       : []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b bg-background">
+    <div className="min-h-screen bg-transparent">
       <div className="mx-auto max-w-3xl px-4 py-8 pb-16">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -175,7 +178,7 @@ export default function AdminUserDetailsPage() {
           </Link>
         </div>
 
-        <div className="mb-8 rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <div className={cn(surface.card, animations.slideUp, 'mb-8 rounded-3xl border border-border p-5 rika-glow-edge')}>
           <h2 className="mb-3 text-sm font-semibold text-foreground">Quick actions</h2>
           <textarea
             value={reason}
@@ -242,7 +245,7 @@ export default function AdminUserDetailsPage() {
               {timeline.map((item) => (
                 <li
                   key={`${item.kind}-${item.id}`}
-                  className={`relative rounded-r-xl border border-border border-l-4 p-4 text-sm shadow-sm ${kindStyles(item.kind)}`}
+                  className={cn(surface.card, `relative rounded-r-xl border border-border border-l-4 p-4 text-sm ${kindStyles(item.kind)}`)}
                 >
                   <div className="absolute -left-[25px] top-5 h-2.5 w-2.5 rounded-full border-2 border-white bg-slate-400 shadow-sm" />
                   <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">

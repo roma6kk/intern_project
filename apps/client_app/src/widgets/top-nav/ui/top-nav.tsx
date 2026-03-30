@@ -40,7 +40,7 @@ function normalizeMessage(payload: unknown): Message | null {
 }
 
 const navBtn =
-  'relative flex p-2.5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors duration-200';
+  'relative flex p-2.5 rounded-2xl text-muted-foreground hover:bg-muted/85 hover:text-foreground transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_24px_-18px_var(--primary)]';
 
 function notificationLooksUnread(n: Notification & { is_read?: boolean }): boolean {
   const read = n.isRead ?? n.is_read;
@@ -196,35 +196,35 @@ export function TopNav() {
     <>
       <header
         className={cn(
-          'w-full sticky top-0 z-40',
+          'w-full sticky top-0 z-40 px-2 sm:px-3 lg:px-5 pt-2 sm:pt-3',
           surface.glassNav,
           animations.fadeIn
         )}
       >
-        <div className="max-w-3xl mx-auto flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl border border-border/70 bg-card/55 backdrop-blur-xl shadow-[0_16px_42px_-30px_var(--overlay)] rika-glow-edge">
           <div className="flex items-center shrink-0 min-w-0">
             <Link
               href="/feed"
-              className="text-xl font-bold text-foreground hover:text-primary transition-colors tracking-tight"
+              className="text-xl font-black text-foreground hover:text-primary transition-colors tracking-tight bg-gradient-to-r from-primary via-indigo-400 to-fuchsia-500 bg-clip-text hover:text-transparent"
             >
               Innogram
             </Link>
           </div>
 
-          <div className="flex-1 max-w-md mx-2 sm:mx-4 hidden md:block min-w-0">
+          <div className="flex-1 max-w-xl mx-2 sm:mx-4 hidden md:block min-w-0">
             <div className="relative group">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               <button
                 type="button"
                 onClick={() => setIsSearchOpen(true)}
-                className="w-full pl-10 pr-4 py-2.5 text-left text-sm text-muted-foreground bg-muted/80 border border-border rounded-xl hover:bg-muted hover:border-border focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/40 transition-all cursor-pointer"
+                className="w-full pl-10 pr-4 py-2.5 text-left text-sm text-muted-foreground bg-muted/65 border border-border rounded-2xl hover:bg-muted hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/40 transition-all cursor-pointer"
               >
-                Search
+                Search posts, people, tags...
               </button>
             </div>
           </div>
 
-          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+          <div className="flex items-center gap-1 shrink-0 p-1 rounded-2xl bg-background/50 border border-border/50">
             <button
               type="button"
               onClick={toggleColorMode}
@@ -292,7 +292,7 @@ export function TopNav() {
             )}
             <Link
               href="/profile/me"
-              className="w-9 h-9 rounded-full overflow-hidden shrink-0 border-2 border-transparent hover:border-border focus:outline-none focus:ring-2 focus:ring-primary/35 focus:ring-offset-2 focus:ring-offset-background transition-all"
+              className="w-9 h-9 rounded-full overflow-hidden shrink-0 border-2 border-transparent hover:border-primary/35 focus:outline-none focus:ring-2 focus:ring-primary/35 focus:ring-offset-2 focus:ring-offset-background transition-all"
             >
               <Image
                 src={user?.profile?.avatarUrl || '/default-avatar.svg'}

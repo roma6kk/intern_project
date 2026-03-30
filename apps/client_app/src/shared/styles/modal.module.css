@@ -16,7 +16,9 @@
   margin: 0;
   cursor: pointer;
   background: var(--overlay);
-  animation: rika-fade-in 0.2s ease-out forwards;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: rika-fade-in 0.24s ease-out forwards;
 }
 
 .shell {
@@ -27,14 +29,19 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: var(--card);
+  background:
+    linear-gradient(
+      155deg,
+      color-mix(in srgb, var(--card) 93%, #ffffff),
+      color-mix(in srgb, var(--card) 80%, var(--muted))
+    );
   color: var(--card-foreground);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   box-shadow:
-    0 24px 48px -12px var(--overlay),
+    0 26px 56px -16px var(--overlay),
     0 0 0 1px color-mix(in srgb, var(--border) 80%, transparent);
-  animation: rika-scale-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: rika-scale-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .header {

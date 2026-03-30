@@ -26,7 +26,7 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
   const isSuspended = !isAuthPage && user != null && isActiveSuspension(user);
 
   if (isAuthPage) {
-    return <main className="min-h-screen bg-background text-foreground">{children}</main>;
+    return <main className="min-h-screen bg-transparent text-foreground">{children}</main>;
   }
 
   if (!isLoading && isDeleted) {
@@ -38,14 +38,14 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
+    <div className="rika-shell min-h-screen flex flex-col bg-transparent text-foreground">
       <TopNav />
       <main
         className={cn(
-          'flex-1 w-full min-h-0',
+          'flex-1 w-full min-h-0 relative',
           isChatPage
             ? 'flex flex-col pb-0'
-            : 'max-w-3xl mx-auto px-3 sm:px-4 pb-20 md:pb-6'
+            : 'max-w-7xl mx-auto px-3 sm:px-5 lg:px-8 pb-24 md:pb-8 pt-4 sm:pt-6'
         )}
       >
         {children}

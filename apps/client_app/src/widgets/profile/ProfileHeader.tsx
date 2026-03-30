@@ -64,8 +64,8 @@ export default function ProfileHeader({
   const bio = userProfile.bio || '';
 
   return (
-    <div className="border-b border-border">
-      <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="border-b border-border/70">
+      <div className="max-w-5xl mx-auto px-4 py-8">
         <div className="flex gap-8 md:gap-12">
           <div className="shrink-0">
             <div className="w-32 h-32 md:w-40 md:h-40 relative">
@@ -73,7 +73,7 @@ export default function ProfileHeader({
                 src={avatarError ? '/default-avatar.svg' : avatarUrl}
                 alt={userProfile.user.account.username}
                 fill
-                className="rounded-full object-cover"
+                className="rounded-full object-cover ring-2 ring-primary/25"
                 priority
                 onError={() => setAvatarError(true)}
               />
@@ -83,7 +83,7 @@ export default function ProfileHeader({
           <div className="flex-1">
             <div className="mb-4">
               <div className="flex items-center gap-3 mb-4">
-                <h1 className="text-2xl md:text-3xl font-light text-muted-foreground">{userProfile.user.account.username}</h1>
+                <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">{userProfile.user.account.username}</h1>
               </div>
 
               <div className="flex gap-2 mb-4">
@@ -91,7 +91,7 @@ export default function ProfileHeader({
                   <>
                     <button
                       onClick={() => router.push('/profile/settings')}
-                      className="px-4 py-2 border border-border rounded-full hover:bg-muted/50 transition-colors flex items-center gap-2"
+                      className="px-4 py-2 border border-border rounded-full hover:bg-muted/50 transition-colors flex items-center gap-2 bg-background/70"
                     >
                       <Settings className="w-5 h-5 text-muted-foreground" />
                       <span className="font-semibold text-muted-foreground">Settings</span>
@@ -104,10 +104,10 @@ export default function ProfileHeader({
                       disabled={isFollowLoading}
                       className={`px-8 py-2 rounded-full font-semibold transition-colors flex items-center gap-2 ${
                         isFollowingUser
-                          ? 'bg-muted text-black hover:bg-gray-300 disabled:bg-muted'
+                          ? 'bg-muted text-foreground hover:bg-muted/80 disabled:bg-muted'
                           : isPendingFollowRequest
-                          ? 'bg-muted text-black hover:bg-gray-300 disabled:bg-muted'
-                          : 'bg-blue-500 text-white hover:bg-blue-600 disabled:bg-blue-400'
+                          ? 'bg-muted text-foreground hover:bg-muted/80 disabled:bg-muted'
+                          : 'bg-primary text-white hover:opacity-90 disabled:opacity-70'
                       } disabled:cursor-not-allowed`}
                     >
                       {isFollowLoading ? (
@@ -129,7 +129,7 @@ export default function ProfileHeader({
                     <button
                       onClick={handleSendMessage}
                       disabled={isMessageLoading}
-                      className="px-4 py-2 bg-muted text-black rounded-full font-semibold hover:bg-gray-300 transition-colors disabled:opacity-70 flex items-center gap-2"
+                      className="px-4 py-2 bg-muted text-foreground rounded-full font-semibold hover:bg-muted/80 transition-colors disabled:opacity-70 flex items-center gap-2"
                     >
                       {isMessageLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Message'}
                     </button>

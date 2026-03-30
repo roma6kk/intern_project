@@ -9,6 +9,9 @@ import type { Post } from '@/entities/post';
 import { PostCard } from '@/widgets/post-card';
 import { BottomNav } from '@/widgets/bottom-nav';
 import { useAuth } from '@/entities/session';
+import { cn } from '@/shared/lib/cn';
+import surface from '@/shared/styles/surface.module.css';
+import animations from '@/shared/styles/animations.module.css';
 
 interface SearchParams {
   page: number;
@@ -201,9 +204,9 @@ function SearchPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/50">
-      <div className="max-w-2xl mx-auto px-4 py-6">
-        <div className="bg-card rounded-lg p-4 mb-6 shadow-sm">
+    <div className="min-h-screen bg-transparent">
+      <div className="max-w-4xl mx-auto px-4 py-6">
+        <div className={cn(surface.card, animations.slideUp, 'rounded-3xl p-4 sm:p-5 mb-6 rika-glow-edge')}>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
             <input
@@ -211,7 +214,7 @@ function SearchPageContent() {
               placeholder="Поиск постов..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg text-muted-foreground"
+              className="w-full pl-10 pr-3 py-3 border border-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/30 text-lg text-foreground bg-background/70"
               autoFocus
             />
           </div>
@@ -219,7 +222,7 @@ function SearchPageContent() {
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as 'newest' | 'oldest' | 'popular')}
-              className="flex-1 border rounded-lg py-2 px-3 text-sm focus:outline-none text-muted-foreground" 
+              className="flex-1 border border-border rounded-xl py-2 px-3 text-sm focus:outline-none text-foreground bg-background/70"
             >
               <option value="newest">Сначала новые</option>
               <option value="oldest">Сначала старые</option>
@@ -229,7 +232,7 @@ function SearchPageContent() {
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value as 'all' | 'following' | 'withImages')}
-              className="flex-1 border rounded-lg py-2 px-3 text-sm focus:outline-none text-muted-foreground"
+              className="flex-1 border border-border rounded-xl py-2 px-3 text-sm focus:outline-none text-foreground bg-background/70"
             >
               <option value="all">Все</option>
               <option value="following">От подписок</option>
@@ -240,7 +243,7 @@ function SearchPageContent() {
 
         {loading && page === 1 && (
           <div className="flex justify-center py-8">
-            <div className="bg-card rounded-lg border border-border shadow-sm px-6 py-4 flex items-center gap-3">
+            <div className={cn(surface.card, 'rounded-2xl px-6 py-4 flex items-center gap-3')}>
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Поиск постов...</span>
             </div>
@@ -248,7 +251,7 @@ function SearchPageContent() {
         )}
         
         {!loading && posts.length === 0 && (
-          <div className="bg-card rounded-lg shadow-sm border border-border p-8 text-center">
+          <div className={cn(surface.card, animations.scaleIn, 'rounded-3xl p-8 text-center')}>
             <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
               <Search className="w-8 h-8 text-muted-foreground" />
             </div>

@@ -1,19 +1,97 @@
 .fadeIn {
-  animation: rika-fade-in 0.25s ease-out forwards;
+  animation: rika-fade-in 0.34s ease-out forwards;
 }
 
 .slideUp {
-  animation: rika-slide-up 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: rika-slide-up 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .scaleIn {
-  animation: rika-scale-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: rika-scale-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.hoverLift {
+  transition:
+    transform 0.24s ease,
+    box-shadow 0.24s ease;
+}
+
+.hoverLift:hover {
+  transform: translateY(-2px);
+}
+
+.softPulse {
+  animation: rika-fade-in 1.5s ease-in-out infinite alternate;
+}
+
+.staggerChild {
+  opacity: 0;
+  transform: translateY(8px) scale(0.985);
+  animation: rika-slide-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.staggerChild:nth-child(1) { animation-delay: 20ms; }
+.staggerChild:nth-child(2) { animation-delay: 70ms; }
+.staggerChild:nth-child(3) { animation-delay: 120ms; }
+.staggerChild:nth-child(4) { animation-delay: 170ms; }
+.staggerChild:nth-child(5) { animation-delay: 220ms; }
+.staggerChild:nth-child(6) { animation-delay: 270ms; }
+
+.auroraSweep {
+  position: relative;
+  overflow: hidden;
+}
+
+.auroraSweep::before {
+  content: '';
+  position: absolute;
+  inset: -220% -55%;
+  background:
+    conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      color-mix(in srgb, var(--hero-from) 40%, transparent) 68deg,
+      color-mix(in srgb, var(--hero-via) 35%, transparent) 136deg,
+      color-mix(in srgb, var(--hero-to) 35%, transparent) 196deg,
+      transparent 360deg
+    );
+  animation: rika-aurora 11s linear infinite;
+  pointer-events: none;
+}
+
+.spotlightCard {
+  position: relative;
+  isolation: isolate;
+}
+
+.spotlightCard::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(480px 120px at var(--x, 50%) -8%, color-mix(in srgb, var(--primary) 28%, transparent), transparent 70%);
+  opacity: 0;
+  transition: opacity 260ms ease;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.spotlightCard:hover::before {
+  opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .fadeIn,
   .slideUp,
-  .scaleIn {
+  .scaleIn,
+  .softPulse,
+  .staggerChild,
+  .auroraSweep::before {
     animation: none;
+  }
+
+  .staggerChild {
+    opacity: 1;
+    transform: none;
   }
 }

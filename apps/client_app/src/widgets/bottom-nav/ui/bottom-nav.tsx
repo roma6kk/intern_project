@@ -19,22 +19,22 @@ export function BottomNav() {
 
   const item = (href: string, active: boolean) =>
     cn(
-      'flex-1 flex justify-center py-2.5 rounded-xl transition-colors duration-200',
+      'flex-1 flex justify-center py-2.5 rounded-xl transition-all duration-200',
       active
-        ? 'text-primary bg-primary/10'
-        : 'text-muted-foreground hover:text-foreground hover:bg-muted/80'
+        ? 'text-primary bg-primary/12 shadow-[0_10px_24px_-18px_var(--primary)]'
+        : 'text-muted-foreground hover:text-foreground hover:bg-muted/80 hover:-translate-y-0.5'
     );
 
   return (
     <>
       <nav
         className={cn(
-          'md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border',
+          'md:hidden fixed bottom-3 left-2 right-2 z-40',
           surface.glassNav,
           animations.fadeIn
         )}
       >
-        <div className="max-w-3xl mx-auto flex items-center p-1.5 gap-0.5">
+        <div className="max-w-md mx-auto flex items-center p-1.5 gap-0.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))] rounded-2xl border border-border/65 bg-card/70 backdrop-blur-xl shadow-[0_20px_40px_-24px_var(--overlay)]">
           <Link href="/feed" className={item('/feed', pathname === '/feed' || pathname.startsWith('/feed'))}>
             <Home className="w-6 h-6" strokeWidth={pathname.startsWith('/feed') ? 2.25 : 2} />
           </Link>
