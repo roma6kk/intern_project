@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now()) @map("created_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  account Account?
+  profile Profile?
+
+  @@map("users")
+}
+
+model Account {
+  id                  String       @id @default(uuid())
+  userId              String       @unique @map("user_id")
+  username            String       @unique
+  email               String?      @unique
+  phoneNumber         String?      @unique @map("phone_number")
+  passwordHash        String?      @map("password_hash")
+  role                PlatformRole @default(USER)
+  state               AccountState @default(ACTIVE)
+  stateChangedAt      DateTime?    @map("state_changed_at")
+  stateChangedBy      String?      @map("state_changed_by")
+  stateReason         String?      @db.Text @map("state_reason")
+  deletionRequestedAt DateTime?    @map("deletion_requested_at")
+  recoveryDeadline    DateTime?    @map("recovery_deadline")
+  suspendedUntil      DateTime?    @map("suspended_until")
+  escalationLevel     Int          @default(0) @map("escalation_level")
+  updatedAt           DateTime?    @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("accounts")
+}
+
+model Profile {
+  id         String   @id @default(uuid())
+  userId     String   @unique @map("user_id")
+  firstName  String   @map("first_name")
+  secondName String?  @map("second_name")
+  avatarUrl  String?  @map("avatar_url")
+  bio        String?
+  birthday   DateTime?
+  isPrivate  Boolean  @default(false) @map("is_private")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+enum PlatformRole {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum AccountState {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}

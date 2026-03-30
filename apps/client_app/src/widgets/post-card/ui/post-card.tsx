@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import type { Post } from '@/entities/post';
 import { Heart, MessageCircle, MoreHorizontal, Send, Bookmark, Edit2, Trash2, Volume2, VolumeX, ArchiveRestore, Archive, ChevronLeft, ChevronRight, Flag } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useAuth } from '@/entities/session';
 import { togglePostLike, getPostLikes, deletePost, archivePost } from '@/entities/post';
 import {
@@ -41,7 +42,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentsPage, setCommentsPage] = useState(1);
   const [commentsHasMore, setCommentsHasMore] = useState(true);
-  const [, setCommentsCount] = useState<number>(0);
+  const [commentsCount, setCommentsCount] = useState<number>(0);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [liked, setLiked] = useState<boolean>(false);
   const [isLiking, setIsLiking] = useState(false);
@@ -706,6 +707,14 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
             />
           ))}
         </div>
+        {!fullView && commentsCount > comments.length && (
+          <Link
+            href={`/post/${post.id}`}
+            className="inline-flex text-sm font-medium text-primary hover:text-primary/80 transition-colors mb-2"
+          >
+            Показать все комментарии ({commentsCount})
+          </Link>
+        )}
   
         {/* Add Comment */}
         <div className="pt-3 mt-2 border-t border-border/70 flex items-start gap-3">
