@@ -95,30 +95,24 @@ describe('AssistantService', () => {
 
     expect(url).toBe('http://localhost:3003/assistant/topic-suggestions');
 
-    expect(body).toEqual(
-      expect.objectContaining({
-        chatId: 'chat-1',
-        requesterId: 'u1',
-        targetUserId: 'u2',
-      }),
-    );
-    expect(body).toEqual(
-      expect.objectContaining({
-        targetUserProfile: expect.objectContaining({ userId: 'u2' }),
-      }),
-    );
+    const requestBody = body as {
+      chatId: string;
+      requesterId: string;
+      targetUserId: string;
+      targetUserProfile: { userId: string };
+    };
+    expect(requestBody.chatId).toBe('chat-1');
+    expect(requestBody.requesterId).toBe('u1');
+    expect(requestBody.targetUserId).toBe('u2');
+    expect(requestBody.targetUserProfile.userId).toBe('u2');
 
-    expect(config).toEqual(
-      expect.objectContaining({
-        timeout: 25000,
-      }),
-    );
-    expect(config).toEqual(
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          'X-Assistant-Service-Token': 'test-secret',
-        }),
-      }),
+    const requestConfig = config as {
+      timeout: number;
+      headers: Record<string, string>;
+    };
+    expect(requestConfig.timeout).toBe(25000);
+    expect(requestConfig.headers['X-Assistant-Service-Token']).toBe(
+      'test-secret',
     );
   });
 
