@@ -2,6 +2,7 @@
   "name": "intern_project",
   "private": true,
   "scripts": {
+    "preinstall": "node scripts/check-node-version.mjs",
     "build": "turbo run build",
     "dev": "turbo dev --parallel",
     "lint": "turbo run lint -- --fix",

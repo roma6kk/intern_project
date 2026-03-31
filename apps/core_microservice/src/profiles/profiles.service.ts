@@ -32,13 +32,24 @@ export class ProfilesService {
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
+  private async resolveAvatarUrl(
+    avatarUrl: string | null,
+  ): Promise<string | null> {
+    if (!avatarUrl) return avatarUrl;
+    return this.filesService.getReadableUrl(avatarUrl);
+  }
+
   async getMyProfile(userId: string): Promise<ProfileWithRelations> {
     const cacheKey = `profile:${userId}`;
 
     const cachedProfile =
       await this.cacheManager.get<ProfileWithRelations>(cacheKey);
     if (cachedProfile) {
-      return cachedProfile;
+      const resolved = await this.resolveAvatarUrl(cachedProfile.avatarUrl);
+      return {
+        ...cachedProfile,
+        avatarUrl: resolved,
+      };
     }
 
     try {
@@ -61,7 +72,11 @@ export class ProfilesService {
 
       await this.cacheManager.set(cacheKey, profile, 3600);
       this.logger.log(`Profile for user ${userId} cached`);
-      return profile;
+      const resolved = await this.resolveAvatarUrl(profile.avatarUrl);
+      return {
+        ...profile,
+        avatarUrl: resolved,
+      };
     } catch (error) {
       this.logger.error(
         `Error fetching profile for user ${userId}`,
@@ -96,7 +111,11 @@ export class ProfilesService {
         throw new NotFoundException('Profile not found');
       }
 
-      return profile;
+      const resolved = await this.resolveAvatarUrl(profile.avatarUrl);
+      return {
+        ...profile,
+        avatarUrl: resolved,
+      };
     } catch (error) {
       this.logger.error(
         `Error fetching profile for username ${username}`,
@@ -130,11 +149,18 @@ export class ProfilesService {
     });
 
     const shuffled = profiles.sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, limit);
+    const result = shuffled.slice(0, limit);
+    // Convert avatarUrl to readable (signed) URL if needed
+    return Promise.all(
+      result.map(async (p) => ({
+        ...p,
+        avatarUrl: await this.resolveAvatarUrl(p.avatarUrl),
+      })),
+    );
   }
 
   async searchProfiles(query: string) {
-    return this.prisma.profile.findMany({
+    const profiles = await this.prisma.profile.findMany({
       where: {
         AND: [
           { user: { deletedAt: null } },
@@ -169,6 +195,12 @@ export class ProfilesService {
         },
       },
     });
+    return Promise.all(
+      profiles.map(async (p) => ({
+        ...p,
+        avatarUrl: await this.resolveAvatarUrl(p.avatarUrl ?? null),
+      })),
+    );
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {

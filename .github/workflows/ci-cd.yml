@@ -73,7 +73,8 @@ jobs:
         run: |
           npx turbo db:generate
           cd apps/core_microservice && npx prisma migrate deploy
-          cd ../../apps/auth_microservice && npx prisma migrate deploy
+          # Auth service uses the same DB objects managed by core migrations in CI.
+          # Running auth baseline migration in the same schema causes duplicate type/table errors.
 
       - name: Run Backend Integration Tests
         run: npx turbo test:e2e --filter=core_microservice

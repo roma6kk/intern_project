@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { AccountState } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
+import { FilesService } from '../files/files.service';
 
 const RECOVERY_WINDOW_DAYS = 30;
 
@@ -13,7 +14,10 @@ const RECOVERY_WINDOW_DAYS = 30;
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly filesService: FilesService,
+  ) {}
 
   async isDeleted(userId: string): Promise<boolean> {
     const account = await this.prisma.account.findUnique({
@@ -132,6 +136,14 @@ export class UsersService {
       if (!user) {
         this.logger.warn(`User with ID ${userId} not found`);
         throw new NotFoundException('User not found');
+      }
+
+      // Ensure avatarUrl is readable from browser (signed URL for private buckets)
+      if (user.profile?.avatarUrl) {
+        const readable = await this.filesService.getReadableUrl(
+          user.profile.avatarUrl,
+        );
+        return { ...user, profile: { ...user.profile, avatarUrl: readable } };
       }
 
       return user;

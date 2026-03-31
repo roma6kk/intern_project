@@ -724,13 +724,17 @@ export class PostService {
   }
 
   private async withReadableAssetUrls<T>(data: T): Promise<T> {
+    const memo = new Map<string, string>();
     if (Array.isArray(data)) {
       const updated = await Promise.all(
         data.map((item) => this.mapPostAssets(item)),
       );
-      return updated as T;
+      const resolved = await this.resolveAvatarUrlsDeep(updated, memo);
+      return resolved as T;
     }
-    return (await this.mapPostAssets(data)) as T;
+    const updated = await this.mapPostAssets(data);
+    const resolved = await this.resolveAvatarUrlsDeep(updated, memo);
+    return resolved as T;
   }
 
   private async mapPostAssets<T>(item: T): Promise<T> {
@@ -754,5 +758,41 @@ export class PostService {
       ...(item as object),
       assets,
     } as T;
+  }
+
+  /**
+   * Makes nested `avatarUrl` values browser-readable (signed URLs for private MinIO buckets).
+   * Memoizes per-request to avoid duplicate presigning.
+   */
+  private async resolveAvatarUrlsDeep(
+    value: unknown,
+    memo: Map<string, string>,
+  ): Promise<unknown> {
+    if (!value || typeof value !== 'object') return value;
+
+    if (Array.isArray(value)) {
+      const next = await Promise.all(
+        value.map((v) => this.resolveAvatarUrlsDeep(v, memo)),
+      );
+      return next;
+    }
+
+    const obj = value as Record<string, unknown>;
+
+    if (typeof obj.avatarUrl === 'string') {
+      const original = obj.avatarUrl;
+      if (!memo.has(original)) {
+        memo.set(original, await this.filesService.getReadableUrl(original));
+      }
+      obj.avatarUrl = memo.get(original) ?? obj.avatarUrl;
+    }
+
+    const entries = Object.entries(obj);
+    for (const [k, v] of entries) {
+      if (k === 'avatarUrl') continue;
+      obj[k] = await this.resolveAvatarUrlsDeep(v, memo);
+    }
+
+    return obj;
   }
 }

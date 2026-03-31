@@ -23,6 +23,7 @@ import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 import { ReportsModule } from './reports/reports.module';
 import { AdminUsersModule } from './admin-users/admin-users.module';
 import { AdminDashboardModule } from './admin-dashboard/admin-dashboard.module';
+import { AssistantModule } from './assistant/assistant.module';
 @Module({
   imports: [
     ScheduleModule,
@@ -48,6 +49,7 @@ import { AdminDashboardModule } from './admin-dashboard/admin-dashboard.module';
     ReportsModule,
     AdminUsersModule,
     AdminDashboardModule,
+    AssistantModule,
     HealthModule,
     ConfigModule.forRoot({
       isGlobal: true,

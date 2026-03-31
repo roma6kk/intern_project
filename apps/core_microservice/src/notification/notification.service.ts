@@ -7,6 +7,7 @@ import { ChatGateway } from '../chat/chat.gateway';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { decodeCursor, encodeCursor } from '../common/utils/cursor.helper';
 import { NotificationType, Prisma } from '@prisma/client';
+import { FilesService } from '../files/files.service';
 
 @Injectable()
 export class NotificationService {
@@ -16,6 +17,7 @@ export class NotificationService {
     private readonly prisma: PrismaService,
     @Inject('NOTIFICATIONS_SERVICE') private readonly client: ClientProxy,
     private readonly chatGateway: ChatGateway,
+    private readonly filesService: FilesService,
   ) {}
 
   async create(dto: CreateNotificationDto) {
@@ -34,6 +36,11 @@ export class NotificationService {
         include: { account: { select: { username: true } }, profile: true },
       });
 
+      const readableAvatarUrl =
+        actor?.profile?.avatarUrl != null
+          ? await this.filesService.getReadableUrl(actor.profile.avatarUrl)
+          : actor?.profile?.avatarUrl;
+
       this.chatGateway.sendNotification(dto.recipientId, {
         type: dto.type,
         itemId: dto.itemId,
@@ -41,7 +48,7 @@ export class NotificationService {
         message: dto.message,
         actor: {
           username: actor?.account?.username,
-          avatarUrl: actor?.profile?.avatarUrl,
+          avatarUrl: readableAvatarUrl,
         },
       });
     } catch (error) {
@@ -109,6 +116,14 @@ export class NotificationService {
 
     const hasNextPage = notifications.length > limit;
     const items = hasNextPage ? notifications.slice(0, limit) : notifications;
+
+    for (const n of items) {
+      const avatar = n.actor?.profile?.avatarUrl;
+      if (typeof avatar === 'string' && avatar.length > 0 && n.actor?.profile) {
+        n.actor.profile.avatarUrl =
+          await this.filesService.getReadableUrl(avatar);
+      }
+    }
 
     const nextCursor =
       hasNextPage && items.length > 0
