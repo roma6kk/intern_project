@@ -1,12 +1,31 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import type { Chat, Message } from '@/entities/chat';
 import { getChatMessages, sendMessage, markChatAsRead } from '@/entities/chat';
+import {
+  assistantTopicSuggestions,
+  assistantDialogSummary,
+  assistantChatQa,
+  type TopicSuggestionsData,
+  type DialogSummaryData,
+  type ChatQaData,
+  type AssistantMeta,
+} from '@/entities/assistant';
 import { useChatSocket } from '@/features/chat-socket';
 import { useAuth } from '@/entities/session';
 import MessageBubble from './MessageBubble';
 import ChatManagementModal from './ChatManagementModal';
-import { Send, Loader2, Paperclip, X, Settings, ArrowLeft } from 'lucide-react';
+import {
+  Send,
+  Loader2,
+  Paperclip,
+  X,
+  Settings,
+  ArrowLeft,
+  Lightbulb,
+  ListOrdered,
+  MessageCircleQuestion,
+} from 'lucide-react';
 
 const MAX_ATTACHMENTS = 10;
 
@@ -29,6 +48,16 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
   const [showManagementModal, setShowManagementModal] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [currentChat, setCurrentChat] = useState<Chat>(chat);
+  const [assistantBusy, setAssistantBusy] = useState<'topic' | 'summary' | 'qa' | null>(null);
+  const [assistantError, setAssistantError] = useState<string | null>(null);
+  type AssistantPanel =
+    | { kind: 'idle' }
+    | { kind: 'topic'; data: TopicSuggestionsData; meta?: AssistantMeta }
+    | { kind: 'summary'; data: DialogSummaryData; meta?: AssistantMeta }
+    | { kind: 'qa'; data: ChatQaData; meta?: AssistantMeta };
+  const [assistantPanel, setAssistantPanel] = useState<AssistantPanel>({ kind: 'idle' });
+  const [topicTargetUserId, setTopicTargetUserId] = useState<string | undefined>(undefined);
+  const [qaInput, setQaInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const hasMarkedAsReadRef = useRef(false);
@@ -37,7 +66,25 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
     setCurrentChat(chat);
   }, [chat]);
 
-  const otherMember = currentChat.members?.find((m) => m.id !== user?.id) ?? currentChat.members?.[0];
+  const otherMembers = useMemo(
+    () => currentChat.members?.filter((m) => m.id !== user?.id) ?? [],
+    [currentChat.members, user?.id],
+  );
+
+  useEffect(() => {
+    setAssistantPanel({ kind: 'idle' });
+    setAssistantError(null);
+    setQaInput('');
+  }, [chat.id]);
+
+  useEffect(() => {
+    if (otherMembers.length >= 1) {
+      setTopicTargetUserId(otherMembers[0].id);
+    } else {
+      setTopicTargetUserId(undefined);
+    }
+  }, [chat.id, otherMembers]);
+  const otherMember = otherMembers[0] ?? currentChat.members?.[0];
   const displayName =
     currentChat.type === 'GROUP'
       ? (currentChat.name || 'Group Chat')
@@ -193,10 +240,74 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
     }
   };
 
+  const handleTopicSuggestions = async () => {
+    if (!user || assistantBusy) return;
+    setAssistantBusy('topic');
+    setAssistantError(null);
+    try {
+      const targetUserId =
+        currentChat.type === 'GROUP' && otherMembers.length > 1
+          ? topicTargetUserId
+          : undefined;
+      const res = await assistantTopicSuggestions(chat.id, targetUserId);
+      if (res.success) {
+        setAssistantPanel({ kind: 'topic', data: res.data, meta: res.meta });
+      } else {
+        setAssistantError(res.message);
+        setAssistantPanel({ kind: 'idle' });
+      }
+    } catch (e: unknown) {
+      const msg = e && typeof e === 'object' && 'message' in e ? String((e as Error).message) : 'Ошибка запроса';
+      setAssistantError(msg);
+    } finally {
+      setAssistantBusy(null);
+    }
+  };
+
+  const handleDialogSummary = async () => {
+    if (!user || assistantBusy) return;
+    setAssistantBusy('summary');
+    setAssistantError(null);
+    try {
+      const res = await assistantDialogSummary(chat.id, 5);
+      if (res.success) {
+        setAssistantPanel({ kind: 'summary', data: res.data, meta: res.meta });
+      } else {
+        setAssistantError(res.message);
+        setAssistantPanel({ kind: 'idle' });
+      }
+    } catch (e: unknown) {
+      const msg = e && typeof e === 'object' && 'message' in e ? String((e as Error).message) : 'Ошибка запроса';
+      setAssistantError(msg);
+    } finally {
+      setAssistantBusy(null);
+    }
+  };
+
+  const handleChatQa = async () => {
+    if (!user || assistantBusy || !qaInput.trim()) return;
+    setAssistantBusy('qa');
+    setAssistantError(null);
+    try {
+      const res = await assistantChatQa(chat.id, qaInput.trim());
+      if (res.success) {
+        setAssistantPanel({ kind: 'qa', data: res.data, meta: res.meta });
+      } else {
+        setAssistantError(res.message);
+        setAssistantPanel({ kind: 'idle' });
+      }
+    } catch (e: unknown) {
+      const msg = e && typeof e === 'object' && 'message' in e ? String((e as Error).message) : 'Ошибка запроса';
+      setAssistantError(msg);
+    } finally {
+      setAssistantBusy(null);
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full bg-muted/50">
+    <div className="flex flex-col h-full bg-transparent">
       {/* Header */}
-      <div className="px-3 py-3 sm:p-4 bg-card border-b flex items-center gap-3 shadow-sm z-10">
+      <div className="px-3 py-3 sm:p-4 bg-card/80 border-b border-border/60 flex items-center gap-3 shadow-[0_10px_24px_-20px_var(--overlay)] backdrop-blur-sm z-10">
         {onBack && (
           <button
             type="button"
@@ -236,8 +347,140 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
         )}
       </div>
 
+      {/* AI assistant */}
+      <div className="border-b border-border/50 bg-muted/20 px-3 py-2 space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {currentChat.type === 'GROUP' && otherMembers.length > 1 && (
+            <select
+              value={topicTargetUserId ?? ''}
+              onChange={(e) => setTopicTargetUserId(e.target.value || undefined)}
+              className="text-xs rounded-lg border border-border/70 bg-card px-2 py-1.5 max-w-[160px]"
+              aria-label="Собеседник для подсказки темы"
+            >
+              {otherMembers.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.account?.username ?? m.profile?.firstName ?? m.id.slice(0, 8)}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            type="button"
+            onClick={handleTopicSuggestions}
+            disabled={!!assistantBusy || !user}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card/90 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted/80 disabled:opacity-50"
+          >
+            {assistantBusy === 'topic' ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Lightbulb className="w-3.5 h-3.5" />
+            )}
+            Темы
+          </button>
+          <button
+            type="button"
+            onClick={handleDialogSummary}
+            disabled={!!assistantBusy || !user}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card/90 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted/80 disabled:opacity-50"
+          >
+            {assistantBusy === 'summary' ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <ListOrdered className="w-3.5 h-3.5" />
+            )}
+            Итоги
+          </button>
+          <div className="flex flex-1 min-w-[200px] items-center gap-1">
+            <input
+              value={qaInput}
+              onChange={(e) => setQaInput(e.target.value)}
+              placeholder="Вопрос по чату…"
+              className="flex-1 min-w-0 rounded-full border border-border/70 bg-card/90 px-3 py-1.5 text-xs"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleChatQa();
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={handleChatQa}
+              disabled={!!assistantBusy || !user || !qaInput.trim()}
+              className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-primary/90 px-2.5 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+              aria-label="Спросить AI"
+            >
+              {assistantBusy === 'qa' ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <MessageCircleQuestion className="w-3.5 h-3.5" />
+              )}
+            </button>
+          </div>
+        </div>
+        {assistantError && (
+          <p className="text-xs text-destructive" role="alert">
+            {assistantError}
+          </p>
+        )}
+        {assistantPanel.kind === 'topic' && (
+          <div className="rounded-lg border border-border/60 bg-card/80 p-3 text-sm space-y-2">
+            <div className="flex justify-between items-start gap-2">
+              <span className="font-medium text-foreground">Идеи для разговора</span>
+              {assistantPanel.meta?.source === 'fallback' && (
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">без LLM</span>
+              )}
+            </div>
+            <ul className="list-disc pl-4 space-y-1 text-muted-foreground">
+              {assistantPanel.data.suggestions.map((s, i) => (
+                <li key={i}>{s}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {assistantPanel.kind === 'summary' && (
+          <div className="rounded-lg border border-border/60 bg-card/80 p-3 text-sm space-y-2">
+            <div className="flex justify-between items-start gap-2">
+              <span className="font-medium text-foreground">Краткое резюме</span>
+              {assistantPanel.meta?.source === 'fallback' && (
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">без LLM</span>
+              )}
+            </div>
+            <p className="text-muted-foreground">{assistantPanel.data.summary}</p>
+            {assistantPanel.data.actionItems.length > 0 && (
+              <ul className="list-disc pl-4 space-y-1 text-muted-foreground">
+                {assistantPanel.data.actionItems.map((a, i) => (
+                  <li key={i}>{a}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+        {assistantPanel.kind === 'qa' && (
+          <div className="rounded-lg border border-border/60 bg-card/80 p-3 text-sm space-y-2">
+            <div className="flex justify-between items-start gap-2">
+              <span className="font-medium text-foreground">Ответ</span>
+              {assistantPanel.meta?.source === 'fallback' && (
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">без LLM</span>
+              )}
+            </div>
+            <p className="text-muted-foreground whitespace-pre-wrap">{assistantPanel.data.answer}</p>
+            {assistantPanel.data.citations.length > 0 && (
+              <div className="text-xs text-muted-foreground space-y-1">
+                <span className="font-medium text-foreground/80">Цитаты:</span>
+                {assistantPanel.data.citations.map((c, i) => (
+                  <blockquote key={i} className="border-l-2 border-primary/40 pl-2 italic">
+                    {c.excerpt}
+                  </blockquote>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.08),transparent_36%)] dark:bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.12),transparent_40%)]">
         {loading ? (
           <div className="h-full flex items-center justify-center p-6">
             <div className="flex flex-col items-center gap-3">
@@ -260,9 +503,9 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
       </div>
 
       {/* Input */}
-      <div className="p-4 bg-card border-t">
+      <div className="p-4 bg-card/85 border-t border-border/60 backdrop-blur-sm">
         {replyingTo && (
-          <div className="mb-2 flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm">
+          <div className="mb-2 flex items-center justify-between gap-2 rounded-xl border border-border/70 bg-muted/45 px-3 py-2 text-sm">
             <span className="truncate text-muted-foreground">
               Ответ на <strong>{replyingTo.sender?.account?.username ?? replyingTo.sender?.profile?.firstName ?? 'User'}</strong>
               {replyingTo.content != null && replyingTo.content !== '' && (
@@ -280,7 +523,7 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
           </div>
         )}
         {attachedFiles.length > 0 && (
-          <div className="mb-3 max-h-[130px] max-w-[280px] rounded-xl border border-border bg-muted/50 p-1.5 overflow-hidden shrink-0">
+          <div className="mb-3 max-h-[130px] max-w-[280px] rounded-xl border border-border/70 bg-muted/45 p-1.5 overflow-hidden shrink-0">
             <div
               className={`grid h-[116px] max-w-[268px] gap-1 ${
                 attachedFiles.length === 1
@@ -337,7 +580,7 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={attachedFiles.length >= MAX_ATTACHMENTS}
-            className="p-3 rounded-full border border-border text-muted-foreground hover:bg-muted/50 disabled:opacity-50 transition-colors"
+            className="p-3 rounded-full border border-border/70 text-muted-foreground hover:bg-muted/50 disabled:opacity-50 transition-colors"
             aria-label="Attach files"
           >
             <Paperclip size={20} />
@@ -346,13 +589,13 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={handleKeyPress}
-            placeholder="Type a message..."
-            className="flex-1 p-3 text-muted-foreground border rounded-full focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            placeholder="Напишите сообщение..."
+            className="flex-1 p-3 text-foreground border border-border/70 bg-card/90 rounded-full focus:outline-none focus:border-primary/70 focus:ring-2 focus:ring-primary/20 transition-colors"
           />
           <button
             onClick={handleSend}
             disabled={(!inputText.trim() && !attachedFiles.length) || sending}
-            className="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="p-3 bg-primary text-white rounded-full hover:opacity-90 disabled:opacity-50 transition-colors shadow-sm"
           >
             <Send size={20} />
           </button>

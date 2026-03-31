@@ -8,8 +8,6 @@ import { useAuth } from '@/entities/session';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { cn } from '@/shared/lib/cn';
-import surface from '@/shared/styles/surface.module.css';
-import animations from '@/shared/styles/animations.module.css';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email'),
@@ -54,24 +52,19 @@ export default function SignInForm({ onSwitch }: SignInFormProps) {
   };
 
   return (
-    <div className={cn(surface.card, surface.elevated, animations.scaleIn, 'w-full max-w-sm mx-auto p-8 backdrop-blur-sm')}>
-      <div className="text-center mb-8">
-        <h1
-          className="text-4xl font-light text-foreground mb-2"
-          style={{ fontFamily: 'Billabong, cursive' }}
-        >
-          Innogram
-        </h1>
-        <p className="text-sm text-muted-foreground">Welcome back</p>
+    <div className={cn('w-full mx-auto rounded-2xl border border-border/70 bg-card/65 p-5 backdrop-blur-md sm:p-6')}>
+      <div className="mb-6">
+        <h3 className="text-xl font-semibold text-foreground">Welcome back</h3>
+        <p className="mt-1 text-sm text-muted-foreground">Log in to continue working with your account.</p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5">
         <div>
           <Input
             {...register('email')}
-            placeholder="Email address"
+            placeholder="Email"
             type="email"
-            className="py-3 text-sm"
+            className="py-3 text-sm bg-card/70"
           />
           {errors.email && <p className="text-destructive text-xs mt-1">{errors.email.message}</p>}
         </div>
@@ -81,7 +74,7 @@ export default function SignInForm({ onSwitch }: SignInFormProps) {
             {...register('password')}
             placeholder="Password"
             type="password"
-            className="py-3 text-sm"
+            className="py-3 text-sm bg-card/70"
           />
           {errors.password && (
             <p className="text-destructive text-xs mt-1">{errors.password.message}</p>
@@ -92,9 +85,9 @@ export default function SignInForm({ onSwitch }: SignInFormProps) {
           type="submit"
           variant="primary"
           disabled={isSubmitting}
-          className="w-full font-semibold py-2.5 mt-4"
+          className="w-full font-semibold py-2.5 mt-1"
         >
-          {isSubmitting ? 'Loading...' : 'Log In'}
+          {isSubmitting ? 'Signing you in...' : 'Log In'}
         </Button>
       </form>
 
@@ -111,7 +104,7 @@ export default function SignInForm({ onSwitch }: SignInFormProps) {
         <button
           onClick={handleGoogleLogin}
           type="button"
-          className="w-full mt-6 flex items-center justify-center gap-2 text-foreground font-semibold text-sm hover:opacity-80 transition-opacity rounded-xl py-2.5 hover:bg-muted/60"
+          className="w-full mt-6 flex items-center justify-center gap-2 text-foreground font-semibold text-sm transition-opacity rounded-xl py-2.5 border border-border/75 hover:bg-muted/60"
         >
           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
             <path
@@ -131,7 +124,7 @@ export default function SignInForm({ onSwitch }: SignInFormProps) {
               fill="#EA4335"
             />
           </svg>
-          Log in with Google
+          Continue with Google
         </button>
 
         <div className="text-center mt-6">
@@ -143,9 +136,9 @@ export default function SignInForm({ onSwitch }: SignInFormProps) {
 
       <div className="mt-8 text-center">
         <p className="text-sm text-muted-foreground">
-          Don&apos;t have an account?{' '}
+          Don&apos;t have an account yet?{' '}
           <button type="button" onClick={onSwitch} className="text-primary font-semibold hover:opacity-90">
-            Sign up
+            Create one
           </button>
         </p>
       </div>

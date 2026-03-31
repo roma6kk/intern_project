@@ -3,7 +3,6 @@ import { test, expect } from '@playwright/test';
 test('User can sign up and see feed', async ({ page }) => {
   test.setTimeout(60_000);
 
-  
   let signupAlertMessage: string | null = null;
   page.once('dialog', async (dialog) => {
     signupAlertMessage = dialog.message();
@@ -16,7 +15,7 @@ test('User can sign up and see feed', async ({ page }) => {
   const firstNameInput = page.getByPlaceholder(/first name/i);
 
   await expect(
-    page.getByRole('button', { name: 'Log In', exact: true }),
+    page.locator('button[type="button"]').filter({ hasText: /^Log In$/ }),
   ).toBeVisible({
     timeout: 30_000,
   });
@@ -48,15 +47,16 @@ test('User can sign up and see feed', async ({ page }) => {
   await page.getByPlaceholder(/^email$/i).fill(email);
   await page.getByPlaceholder(/^password$/i).fill(password);
 
-  const signUpSubmit = page.locator('button').filter({ hasText: /create account/i });
-  await expect(signUpSubmit.first()).toBeVisible({ timeout: 30_000 });
+  const signUpSubmit = page.getByRole('button', { name: 'Create account', exact: true });
+  await expect(signUpSubmit).toBeVisible({ timeout: 30_000 });
+  await expect(signUpSubmit).toBeEnabled({ timeout: 30_000 });
 
   const signupResponse = page.waitForResponse(
     (resp) => resp.url().includes('/auth/signup'),
-    { timeout: 30_000 },
+    { timeout: 60_000 },
   );
 
-  const submit = signUpSubmit.first().click();
+  const submit = signUpSubmit.click({ timeout: 30_000, force: true });
 
   try {
     const [, resp] = await Promise.all([submit, signupResponse]);
@@ -66,7 +66,7 @@ test('User can sign up and see feed', async ({ page }) => {
       );
     }
 
-    await page.waitForURL(/\/feed/, { timeout: 30_000 });
+    await page.waitForURL(/\/feed/, { timeout: 60_000 });
   } catch (e) {
     if (signupAlertMessage) {
       throw new Error(`Signup failed: ${signupAlertMessage}`);

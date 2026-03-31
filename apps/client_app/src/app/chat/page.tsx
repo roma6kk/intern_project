@@ -99,40 +99,45 @@ function ChatPageContent() {
   }, [user, socket]);
 
   const selectedChat = chats.find(c => c.id === selectedChatId);
+  const chatViewportClass = 'h-[calc(100dvh-5rem)] max-h-[calc(100dvh-5rem)]';
 
   const content = isLoading ? (
-    <div className="flex h-[calc(100vh-4rem)] items-center justify-center p-4 bg-transparent">
-      <div className={cn(surface.card, 'rounded-3xl p-8 flex flex-col items-center gap-4 max-w-sm w-full')}>
+    <div className={cn('flex items-center justify-center p-4 bg-transparent overflow-hidden', chatViewportClass)}>
+      <div className={cn(surface.card, 'rounded-3xl p-8 flex flex-col items-center gap-4 max-w-sm w-full border border-border/70 shadow-[0_20px_50px_-30px_var(--overlay)]')}>
         <Loader2 className="w-10 h-10 animate-spin text-muted-foreground" />
         <p className="text-muted-foreground font-medium">Loading chats...</p>
       </div>
     </div>
   ) : (
-    <div className={cn(surface.card, animations.slideUp, 'flex h-[calc(100vh-5.5rem)] border rounded-3xl overflow-hidden mt-4 mx-1 sm:mx-2 rika-glow-edge')}>
-      <div className={`w-full md:w-1/3 border-r ${selectedChatId ? 'hidden md:block' : 'block'}`}>
-        <div className="h-full flex flex-col">
-          <div className="p-3 border-b border-border/70 flex justify-between bg-background/45">
-            <div className="flex items-center font-bold text-lg text-muted-foreground ml-3">
-            Chats
+    <div className={cn('overflow-hidden px-1 py-2 sm:px-2 sm:py-3', chatViewportClass)}>
+      <div className={cn(surface.card, animations.slideUp, 'relative flex h-full min-h-0 overflow-hidden rounded-[2rem] border border-border/70 bg-card/85 shadow-[0_30px_100px_-45px_var(--overlay)] rika-glow-edge')}>
+        <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(ellipse_at_top_left,rgba(99,102,241,0.12),transparent_40%),radial-gradient(ellipse_at_bottom_right,rgba(14,165,233,0.1),transparent_42%)]" />
+      <div className={`relative w-full md:w-1/3 min-h-0 border-r border-border/60 ${selectedChatId ? 'hidden md:block' : 'block'}`}>
+        <div className="h-full min-h-0 flex flex-col">
+          <div className="p-3 border-b border-border/60 flex justify-between bg-background/55 backdrop-blur-sm">
+            <div className="flex items-center font-semibold text-lg text-foreground ml-3">
+            Чаты
             </div>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 bg-primary text-white px-3 py-2 rounded-xl hover:opacity-90 transition">
+              className="flex items-center gap-2 bg-primary text-white px-3 py-2 rounded-xl hover:opacity-90 transition shadow-sm">
               <MessageSquarePlus size={18} />
-              New chat
+              Новый чат
             </button>
           </div>
-          <ChatList
-            chats={chats}
-            selectedChatId={selectedChatId}
-            onSelectChat={setSelectedChatId}
-          />
+          <div className="flex-1 min-h-0">
+            <ChatList
+              chats={chats}
+              selectedChatId={selectedChatId}
+              onSelectChat={setSelectedChatId}
+            />
+          </div>
         </div>
       </div>
 
-      <div className={`w-full md:w-2/3 ${!selectedChatId ? 'hidden md:block' : 'block'}`}>
+      <div className={`relative w-full md:w-2/3 min-h-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.34),rgba(255,255,255,0.08))] dark:bg-[linear-gradient(to_bottom,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] ${!selectedChatId ? 'hidden md:block' : 'block'}`}>
         {selectedChat ? (
-          <div className="h-full flex flex-col">
+          <div className="h-full min-h-0 flex flex-col">
             <ChatWindow
               chat={selectedChat}
               onBack={() => setSelectedChatId(null)}
@@ -149,9 +154,9 @@ function ChatPageContent() {
             />
           </div>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-muted-foreground bg-muted/30">
-            <MessageSquarePlus size={64} className="mb-4 opacity-50" />
-            <p className="text-lg">Select a chat to start messaging</p>
+          <div className="h-full flex flex-col items-center justify-center text-muted-foreground bg-muted/20">
+            <MessageSquarePlus size={64} className="mb-4 opacity-40" />
+            <p className="text-lg font-medium">Выберите чат, чтобы начать общение</p>
           </div>
         )}
       </div>
@@ -163,16 +168,20 @@ function ChatPageContent() {
           setSelectedChatId(chat.id);
         }}
       />
+      </div>
     </div>
   );
   return content;
 }
 
 export default function ChatPage() {
+  const chatViewportClass = 'h-[calc(100dvh-5rem)] max-h-[calc(100dvh-5rem)]';
+
   return (
-    <Suspense
+    <div className={cn('overflow-hidden', chatViewportClass)}>
+      <Suspense
       fallback={
-        <div className="flex h-[calc(100vh-4rem)] items-center justify-center p-4 bg-muted/50">
+        <div className={cn('flex items-center justify-center p-4 bg-muted/50 overflow-hidden', chatViewportClass)}>
           <div className="bg-card rounded-lg shadow-sm border border-border p-8 flex flex-col items-center gap-4 max-w-sm w-full">
             <Loader2 className="w-10 h-10 animate-spin text-muted-foreground" />
             <p className="text-muted-foreground font-medium">Loading chats...</p>
@@ -181,6 +190,7 @@ export default function ChatPage() {
       }
     >
       <ChatPageContent />
-    </Suspense>
+      </Suspense>
+    </div>
   );
 }

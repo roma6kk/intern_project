@@ -24,10 +24,10 @@ export default function ChatList({ chats, selectedChatId, onSelectChat }: ChatLi
   }, [chats]);
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto bg-card border-r">
+    <div className="flex h-full min-h-0 flex-col overflow-y-auto bg-card/55">
       <div className="flex-1">
         {sortedChats.length === 0 ? (
-          <div className="p-4 text-center text-muted-foreground text-sm">No chats yet</div>
+          <div className="p-6 text-center text-muted-foreground text-sm">Пока нет чатов</div>
         ) : (
           sortedChats.map((chat) => {
             const otherMember = chat.members.find(m => m.id !== user?.id) || chat.members[0];
@@ -40,11 +40,15 @@ export default function ChatList({ chats, selectedChatId, onSelectChat }: ChatLi
               <button
                 key={chat.id}
                 onClick={() => onSelectChat(chat.id)}
-                className={`w-full p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors text-left ${
-                  selectedChatId === chat.id ? 'bg-blue-50 border-r-4 border-blue-500' : ''
+                className={`group mx-2 my-1.5 w-[calc(100%-1rem)] rounded-2xl border p-3.5 flex items-center gap-3 text-left transition-all ${
+                  selectedChatId === chat.id
+                    ? 'border-primary/50 bg-primary/10 shadow-[0_12px_30px_-18px_color-mix(in_srgb,var(--primary)_60%,transparent)]'
+                    : 'border-transparent hover:border-border/70 hover:bg-muted/55'
                 }`}
               >
-                <div className="w-12 h-12 rounded-full bg-muted overflow-hidden flex-shrink-0 flex items-center justify-center">
+                <div className={`w-12 h-12 rounded-2xl overflow-hidden flex-shrink-0 flex items-center justify-center border ${
+                  selectedChatId === chat.id ? 'border-primary/45 bg-primary/15' : 'border-border/60 bg-muted'
+                }`}>
                   {avatarUrl ? (
                     <Image src={avatarUrl} alt={chatName} width={48} height={48} className="object-cover w-full h-full" />
                   ) : (
@@ -52,11 +56,11 @@ export default function ChatList({ chats, selectedChatId, onSelectChat }: ChatLi
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-muted-foreground truncate">{chatName}</h3>
-                  <p className="text-sm text-muted-foreground truncate">
+                  <h3 className="font-semibold text-foreground truncate">{chatName}</h3>
+                  <p className="text-sm text-muted-foreground truncate mt-0.5">
                     {chat.messages && chat.messages.length > 0 
                       ? chat.messages[0].content 
-                      : 'No messages yet'}
+                      : 'Нет сообщений'}
                   </p>
                 </div>
               </button>

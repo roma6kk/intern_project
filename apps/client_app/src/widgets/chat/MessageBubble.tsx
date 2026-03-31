@@ -252,10 +252,10 @@ export default function MessageBubble({
 
         {/* Bubble */}
         <div 
-          className={`p-3 rounded-2xl text-sm ${
+          className={`p-3 rounded-2xl text-sm shadow-[0_8px_24px_-16px_var(--overlay)] ${
             isOwn 
-              ? 'bg-blue-600 text-white rounded-br-none' 
-              : 'bg-card border border-border text-foreground rounded-bl-none'
+              ? 'bg-primary text-white rounded-br-none border border-primary/55' 
+              : 'bg-card border border-border/70 text-foreground rounded-bl-none'
           }`}
         >
           {!isOwn && (
@@ -266,7 +266,7 @@ export default function MessageBubble({
           {message.replyTo && (
             <div
               className={`mb-2 pl-2 border-l-2 text-xs truncate max-w-full ${
-                isOwn ? 'border-blue-400/60 text-blue-100' : 'border-border text-muted-foreground'
+                isOwn ? 'border-white/40 text-blue-100' : 'border-border text-muted-foreground'
               }`}
             >
               <span className="font-medium">
@@ -295,7 +295,7 @@ export default function MessageBubble({
                 rows={3}
                 className={`w-full resize-none rounded-lg border px-2 py-1.5 text-sm focus:outline-none focus:ring-1 ${
                   isOwn
-                    ? 'border-blue-400/50 bg-blue-500/20 text-white placeholder-blue-200/70'
+                    ? 'border-white/35 bg-white/15 text-white placeholder-blue-100/70'
                     : 'border-border bg-muted/50 text-foreground'
                 }`}
                 placeholder="Текст сообщения..."
@@ -330,7 +330,7 @@ export default function MessageBubble({
                   type="button"
                   onClick={handleSaveEdit}
                   disabled={saving}
-                  className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="rounded-lg bg-primary px-3 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-50"
                 >
                   {saving ? '…' : 'Сохранить'}
                 </button>
@@ -341,7 +341,7 @@ export default function MessageBubble({
                     setEditText(message.content ?? '');
                     setEditFiles([]);
                   }}
-                  className={`rounded-lg px-3 py-1.5 text-xs ${isOwn ? 'bg-blue-500/30 text-blue-100' : 'bg-muted text-foreground'}`}
+                  className={`rounded-lg px-3 py-1.5 text-xs ${isOwn ? 'bg-white/20 text-blue-100' : 'bg-muted text-foreground'}`}
                 >
                   Отмена
                 </button>
@@ -360,7 +360,7 @@ export default function MessageBubble({
                 />
               )}
               {message.isEdited && (
-                <div className={`text-[10px] mt-0.5 ${isOwn ? 'text-blue-200' : 'text-muted-foreground'}`}>
+                <div className={`text-[10px] mt-0.5 ${isOwn ? 'text-blue-100/90' : 'text-muted-foreground'}`}>
                   edited
                 </div>
               )}
@@ -379,7 +379,7 @@ export default function MessageBubble({
                 type="button"
                 onClick={onReply}
                 className={`rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity ${
-                  isOwn ? 'text-blue-200 hover:bg-blue-500/30' : 'text-muted-foreground hover:bg-muted'
+                  isOwn ? 'text-blue-100 hover:bg-white/20' : 'text-muted-foreground hover:bg-muted'
                 }`}
                 aria-label="Ответить"
               >
@@ -392,7 +392,7 @@ export default function MessageBubble({
                   type="button"
                   onClick={() => setIsEditing(true)}
                   className={`rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity ${
-                    isOwn ? 'text-blue-200 hover:bg-blue-500/30' : 'text-muted-foreground hover:bg-muted'
+                    isOwn ? 'text-blue-100 hover:bg-white/20' : 'text-muted-foreground hover:bg-muted'
                   }`}
                   aria-label="Изменить"
                 >
@@ -403,7 +403,7 @@ export default function MessageBubble({
                   onClick={handleDelete}
                   disabled={deleting}
                   className={`rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity ${
-                    isOwn ? 'text-blue-200 hover:bg-blue-500/30' : 'text-muted-foreground hover:bg-muted'
+                    isOwn ? 'text-blue-100 hover:bg-white/20' : 'text-muted-foreground hover:bg-muted'
                   } disabled:opacity-50`}
                   aria-label="Удалить"
                 >
@@ -411,7 +411,7 @@ export default function MessageBubble({
                 </button>
               </>
             )}
-            <span className={`text-[10px] ${isOwn ? 'text-blue-200' : 'text-muted-foreground'}`}>
+            <span className={`text-[10px] ${isOwn ? 'text-blue-100/90' : 'text-muted-foreground'}`}>
               {format(new Date(message.createdAt), 'HH:mm')}
             </span>
           </div>
