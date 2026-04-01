@@ -171,6 +171,7 @@ model Notification {
   actorId     String           @map("actor_id")
   itemId      String?          @map("item_id")
   postId      String?          @map("post_id")
+  message     String?          @db.Text
   isRead      Boolean          @default(false) @map("is_read")
   createdAt   DateTime         @default(now()) @map("created_at")
 

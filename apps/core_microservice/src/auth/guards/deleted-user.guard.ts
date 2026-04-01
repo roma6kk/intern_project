@@ -8,6 +8,7 @@ import {
 import { Request } from 'express';
 import { Reflector } from '@nestjs/core';
 import { UsersService } from '../../users/users.service';
+import { AccountState } from '@prisma/client';
 
 export const ALLOW_WHEN_DELETED = 'allowWhenDeleted';
 
@@ -37,11 +38,18 @@ export class DeletedUserGuard implements CanActivate {
       return true;
     }
 
-    const isDeleted = await this.usersService.isDeleted(user.userId);
-    if (isDeleted) {
+    const { state: accountState, suspendedUntil } =
+      await this.usersService.getAccountAccessMeta(user.userId);
+    if (accountState === AccountState.DELETED) {
       throw new ForbiddenException(
         'Account is scheduled for deletion. Recover your account to continue.',
       );
+    }
+    if (accountState === AccountState.SUSPENDED) {
+      if (suspendedUntil && suspendedUntil <= new Date()) {
+        return true;
+      }
+      throw new ForbiddenException('Account is suspended. Contact support.');
     }
 
     return true;

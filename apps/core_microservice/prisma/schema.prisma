@@ -28,6 +28,15 @@ model User {
   sentMessages Message[]
   recievedNotifications  Notification[] @relation("recipient")
   triggeredNotifications Notification[] @relation("actor") 
+  createdReports Report[] @relation("ReportAuthor")
+  resolvedReports Report[] @relation("ReportResolver")
+  receivedWarnings UserWarning[] @relation("WarningTarget")
+  issuedWarnings UserWarning[] @relation("WarningActor")
+  receivedSanctions UserSanction[] @relation("SanctionTarget")
+  issuedSanctions UserSanction[] @relation("SanctionActor")
+  moderationLogsForTarget ModerationLog[] @relation("ModerationTarget")
+  moderationLogsForActor ModerationLog[] @relation("ModerationActor")
+  assignedModerationReports Report[] @relation("ReportAssignedModerator")
 
   @@map("users")
 }
@@ -39,6 +48,15 @@ model Account {
   email        String?   @unique
   phoneNumber  String?   @unique @map("phone_number")
   passwordHash String?   @map("password_hash")
+  role         PlatformRole @default(USER)
+  state        AccountState @default(ACTIVE)
+  stateChangedAt DateTime? @map("state_changed_at")
+  stateChangedBy String? @map("state_changed_by")
+  stateReason  String?   @db.Text @map("state_reason")
+  deletionRequestedAt DateTime? @map("deletion_requested_at")
+  recoveryDeadline DateTime? @map("recovery_deadline")
+  suspendedUntil DateTime? @map("suspended_until")
+  escalationLevel Int @default(0) @map("escalation_level")
   updatedAt    DateTime? @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -80,12 +98,14 @@ model Post {
   authorId    String   @map("author_id")
   description String?  @db.Text
   isArchived  Boolean  @default(false) @map("is_archived")
+  isHidden    Boolean  @default(false) @map("is_hidden")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime? @updatedAt @map("updated_at")
   
   assets      Asset[]
   comments    Comment[]
   likes       Like[]
+  reports     Report[]
 
   author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   @@index([authorId, createdAt])
@@ -110,6 +130,7 @@ model Comment {
   postId    String   @map("post_id")
   parentId    String?   @map("parent_id")
   content   String
+  isHidden  Boolean  @default(false) @map("is_hidden")
   createdAt DateTime @default(now()) @map("created_at")
   parent      Comment?  @relation("CommentChildren", fields: [parentId], references: [id], onDelete: Cascade)
   children    Comment[] @relation("CommentChildren")
@@ -117,9 +138,102 @@ model Comment {
 
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  reports   Report[]
   @@index([postId])
   @@index([parentId])
   @@map("comments")
+}
+
+model Report {
+  id          String        @id @default(uuid())
+  reporterId  String        @map("reporter_id")
+  postId      String?       @map("post_id")
+  commentId   String?       @map("comment_id")
+  reason      String        @db.Text
+  status      ReportStatus  @default(OPEN)
+  action      ModerationAction @default(NONE)
+  resolutionNote String?    @db.Text @map("resolution_note")
+  resolvedById String?      @map("resolved_by_id")
+  resolvedAt  DateTime?     @map("resolved_at")
+  priority    ReportPriority @default(NORMAL) @map("priority")
+  assignedModeratorId String? @map("assigned_moderator_id")
+  dueAt       DateTime?     @map("due_at")
+  firstResponseAt DateTime? @map("first_response_at")
+  slaNotifiedAt DateTime?   @map("sla_notified_at")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime?     @updatedAt @map("updated_at")
+
+  reporter    User          @relation("ReportAuthor", fields: [reporterId], references: [id], onDelete: Cascade)
+  post        Post?         @relation(fields: [postId], references: [id], onDelete: SetNull)
+  comment     Comment?      @relation(fields: [commentId], references: [id], onDelete: SetNull)
+  resolvedBy  User?         @relation("ReportResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  assignedModerator User?   @relation("ReportAssignedModerator", fields: [assignedModeratorId], references: [id], onDelete: SetNull)
+  warnings    UserWarning[]
+  sanctions   UserSanction[]
+
+  @@index([reporterId, createdAt])
+  @@index([status, createdAt])
+  @@index([postId])
+  @@index([commentId])
+  @@index([status, priority, createdAt])
+  @@index([assignedModeratorId, status])
+  @@map("reports")
+}
+
+model UserWarning {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  actorId   String   @map("actor_id")
+  reportId  String?  @map("report_id")
+  reason    String   @db.Text
+  source    WarningSource @default(MANUAL)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user   User   @relation("WarningTarget", fields: [userId], references: [id], onDelete: Cascade)
+  actor  User   @relation("WarningActor", fields: [actorId], references: [id], onDelete: Cascade)
+  report Report? @relation(fields: [reportId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([actorId, createdAt])
+  @@map("user_warnings")
+}
+
+model UserSanction {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  actorId   String   @map("actor_id")
+  reportId  String?  @map("report_id")
+  type      SanctionType
+  reason    String   @db.Text
+  until     DateTime? @map("until")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  revokedAt DateTime? @map("revoked_at")
+
+  user   User   @relation("SanctionTarget", fields: [userId], references: [id], onDelete: Cascade)
+  actor  User   @relation("SanctionActor", fields: [actorId], references: [id], onDelete: Cascade)
+  report Report? @relation(fields: [reportId], references: [id], onDelete: SetNull)
+
+  @@index([userId, isActive, createdAt])
+  @@index([actorId, createdAt])
+  @@map("user_sanctions")
+}
+
+model ModerationLog {
+  id         String   @id @default(uuid())
+  actorId    String   @map("actor_id")
+  targetUserId String @map("target_user_id")
+  actionType ModerationLogAction @map("action_type")
+  reason     String?  @db.Text
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  actor      User     @relation("ModerationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  targetUser User     @relation("ModerationTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@index([targetUserId, createdAt])
+  @@index([actorId, createdAt])
+  @@map("moderation_logs")
 }
 
 model Like {
@@ -194,6 +308,7 @@ model Notification {
   actorId     String           @map("actor_id")
   itemId      String?          @map("item_id")
   postId      String?          @map("post_id")
+  message     String?          @db.Text
   isRead      Boolean          @default(false) @map("is_read")
   createdAt   DateTime         @default(now()) @map("created_at")
 
@@ -229,4 +344,53 @@ enum ChatType {
 enum ChatRole {
   ADMIN
   MEMBER
+}
+
+enum PlatformRole {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum AccountState {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum ReportPriority {
+  LOW
+  NORMAL
+  HIGH
+}
+
+enum ReportStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+enum ModerationAction {
+  NONE
+  HIDE
+  DELETE
+  WARN
+}
+
+enum WarningSource {
+  MANUAL
+  REPORT
+}
+
+enum SanctionType {
+  SUSPEND
+}
+
+enum ModerationLogAction {
+  ROLE_CHANGED
+  WARNING_ISSUED
+  SUSPENDED
+  UNSUSPENDED
+  ESCALATED
 }

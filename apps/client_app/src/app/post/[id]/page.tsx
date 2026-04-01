@@ -3,9 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
-import PostCard from '@/components/PostCard';
-import { Post } from '@/types';
-import api from '@/lib/api';
+import { PostCard } from '@/widgets/post-card';
+import type { Post } from '@/entities/post';
+import api from '@/shared/api';
+import { cn } from '@/shared/lib/cn';
+import surface from '@/shared/styles/surface.module.css';
+import animations from '@/shared/styles/animations.module.css';
 
 export default function PostPage() {
   const params = useParams();
@@ -38,10 +41,10 @@ export default function PostPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 flex flex-col items-center gap-4 max-w-sm w-full">
-          <Loader2 className="w-10 h-10 animate-spin text-gray-400" />
-          <p className="text-gray-600 font-medium">Загрузка поста...</p>
+      <div className="min-h-screen bg-muted/50 flex items-center justify-center p-4">
+        <div className="bg-card rounded-lg shadow-sm border border-border p-8 flex flex-col items-center gap-4 max-w-sm w-full">
+          <Loader2 className="w-10 h-10 animate-spin text-muted-foreground" />
+          <p className="text-muted-foreground font-medium">Загрузка поста...</p>
         </div>
       </div>
     );
@@ -50,8 +53,8 @@ export default function PostPage() {
   if (!post) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex justify-center py-6">
-      <div className="w-full max-w-2xl px-4">
+    <div className="min-h-screen bg-transparent flex justify-center py-6">
+      <div className={cn(surface.card, animations.slideUp, 'w-full max-w-3xl px-4 sm:px-6 py-4 sm:py-6 rounded-3xl rika-glow-edge')}>
         <PostCard post={post} fullView={true} />
       </div>
     </div>

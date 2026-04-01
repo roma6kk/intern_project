@@ -1,26 +1,293 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f3f6ff;
+  --foreground: #141826;
+  --card: #ffffff;
+  --card-foreground: #11182a;
+  --popover: #ffffff;
+  --popover-foreground: #11182a;
+  --primary: #5b5df7;
+  --primary-hover: #4a4cf0;
+  --primary-foreground: #ffffff;
+  --secondary: #e9eeff;
+  --secondary-foreground: #253053;
+  --muted: #edf2ff;
+  --muted-foreground: #667196;
+  --accent: #e7ebff;
+  --accent-foreground: #2a3465;
+  --destructive: #e54865;
+  --destructive-foreground: #ffffff;
+  --border: #dbe3ff;
+  --input: #d3dcfb;
+  --ring: #6f73ff;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --nav-bg: rgba(255, 255, 255, 0.72);
+  --nav-border: rgba(93, 105, 157, 0.2);
+  --nav-shadow: 0 8px 34px -22px rgba(35, 57, 122, 0.55);
+  --overlay: rgba(16, 24, 56, 0.42);
+  --success: #22b983;
+  --success-muted: #daf8ee;
+  --warning: #e7922e;
+  --warning-muted: #fff1de;
+  --hero-from: #4f46e5;
+  --hero-via: #8b5cf6;
+  --hero-to: #e879f9;
+  --bg-mesh-1: rgba(91, 93, 247, 0.24);
+  --bg-mesh-2: rgba(56, 189, 248, 0.2);
+  --bg-mesh-3: rgba(236, 72, 153, 0.14);
+  --font-sans-fallback: ui-sans-serif, system-ui, sans-serif;
+  --font-geist-sans: ui-sans-serif, system-ui, sans-serif;
+  --font-geist-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.dark {
+  --background: #090d1b;
+  --foreground: #eff3ff;
+  --card: #121938;
+  --card-foreground: #eff3ff;
+  --popover: #111833;
+  --popover-foreground: #eff3ff;
+  --primary: #818cf8;
+  --primary-hover: #96a0ff;
+  --primary-foreground: #ffffff;
+  --secondary: #1a2446;
+  --secondary-foreground: #dce3ff;
+  --muted: #1a2343;
+  --muted-foreground: #98a7d9;
+  --accent: #202a55;
+  --accent-foreground: #eef2ff;
+  --destructive: #ff6b87;
+  --destructive-foreground: #ffffff;
+  --border: #2a3769;
+  --input: #2a3769;
+  --ring: #96a0ff;
+  --nav-bg: rgba(8, 13, 30, 0.78);
+  --nav-border: rgba(181, 197, 255, 0.18);
+  --nav-shadow: 0 10px 36px -18px rgba(0, 0, 0, 0.8);
+  --overlay: rgba(2, 6, 18, 0.72);
+  --success: #34d399;
+  --success-muted: rgba(52, 211, 153, 0.16);
+  --warning: #f7b955;
+  --warning-muted: rgba(247, 185, 85, 0.16);
+  --hero-from: #6366f1;
+  --hero-via: #8b5cf6;
+  --hero-to: #ec4899;
+  --bg-mesh-1: rgba(99, 102, 241, 0.28);
+  --bg-mesh-2: rgba(14, 165, 233, 0.2);
+  --bg-mesh-3: rgba(236, 72, 153, 0.2);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-muted: var(--success-muted);
+  --color-warning: var(--warning);
+  --color-warning-muted: var(--warning-muted);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --font-sans: var(--font-geist-sans), var(--font-sans-fallback);
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@keyframes rika-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes rika-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rika-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes rika-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes rika-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -12px, 0) scale(1.03);
+  }
+}
+
+@keyframes rika-aurora {
+  0% {
+    transform: translate3d(-3%, -2%, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(3%, 2%, 0) rotate(5deg);
+  }
+  100% {
+    transform: translate3d(-3%, -2%, 0) rotate(0deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(1200px 580px at 8% -15%, var(--bg-mesh-1), transparent 55%),
+    radial-gradient(920px 500px at 95% 0%, var(--bg-mesh-2), transparent 52%),
+    radial-gradient(760px 420px at 40% 115%, var(--bg-mesh-3), transparent 50%),
+    var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-attachment: fixed;
+}
+
+.rika-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.rika-shell::before,
+.rika-shell::after {
+  content: '';
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+  filter: blur(60px);
+  border-radius: 999px;
+}
+
+.rika-shell::before {
+  width: min(42vw, 560px);
+  height: min(42vw, 560px);
+  top: -10rem;
+  left: -8rem;
+  background: radial-gradient(circle at 30% 30%, var(--hero-from), transparent 65%);
+  opacity: 0.26;
+  animation: rika-float 14s ease-in-out infinite;
+}
+
+.rika-shell::after {
+  width: min(38vw, 520px);
+  height: min(38vw, 520px);
+  right: -6rem;
+  bottom: -10rem;
+  background: radial-gradient(circle at 40% 35%, var(--hero-to), transparent 65%);
+  opacity: 0.22;
+  animation: rika-aurora 18s ease-in-out infinite;
+}
+
+.rika-glow-edge {
+  position: relative;
+}
+
+.rika-glow-edge::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--primary) 70%, transparent),
+    color-mix(in srgb, var(--hero-to) 60%, transparent)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.42;
+}
+
+/* react-toastify — semantic surfaces */
+.Toastify__toast {
+  background: var(--card) !important;
+  color: var(--card-foreground) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow:
+    0 10px 40px -10px var(--overlay),
+    0 0 0 1px var(--border) !important;
+}
+
+.Toastify__toast-icon {
+  color: var(--primary) !important;
+}
+
+.Toastify__close-button {
+  color: var(--muted-foreground) !important;
+  opacity: 1 !important;
+}
+
+.Toastify__close-button:hover {
+  color: var(--foreground) !important;
+}
+
+.Toastify__progress-bar {
+  background: var(--primary) !important;
+}
+
+.Toastify__toast--success .Toastify__toast-icon {
+  color: var(--success) !important;
+}
+
+.Toastify__toast--error .Toastify__toast-icon {
+  color: var(--destructive) !important;
 }
