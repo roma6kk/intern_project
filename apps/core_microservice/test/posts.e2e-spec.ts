@@ -82,6 +82,12 @@ describe('Posts Controller (e2e)', () => {
       .useValue(mockPrismaService)
       .overrideProvider(ChatGateway)
       .useValue(mockChatGateway)
+      .overrideProvider('NOTIFICATIONS_SERVICE')
+      .useValue({
+        connect: jest.fn().mockResolvedValue(undefined),
+        close: jest.fn().mockResolvedValue(undefined),
+        emit: jest.fn(),
+      })
       .compile();
 
     app = moduleFixture.createNestApplication();
