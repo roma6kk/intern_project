@@ -79,8 +79,9 @@ test('User can sign up and see feed', async ({ page }) => {
   try {
     const [, resp] = await Promise.all([submit, signupResponse]);
     if (resp.status() >= 400) {
+      const bodyText = await resp.text().catch(() => '');
       throw new Error(
-        `Signup request failed: ${resp.status()} ${resp.statusText()}`,
+        `Signup request failed: ${resp.status()} ${resp.statusText()}${bodyText ? ` | body: ${bodyText}` : ''}`,
       );
     }
 
