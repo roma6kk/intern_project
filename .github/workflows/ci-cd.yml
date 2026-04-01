@@ -50,6 +50,10 @@ jobs:
     needs: quality
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    env:
+      # Next.js reads these when `next dev` starts (pm2). The Playwright step env alone is not enough.
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_WS_URL: http://127.0.0.1:3000
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -103,8 +107,6 @@ jobs:
       - name: Run Playwright Tests
         run: npx playwright test
         working-directory: apps/client_app
-        env:
-          NEXT_PUBLIC_API_URL: http://localhost:3000
 
       - name: Upload Playwright Report
         if: failure()

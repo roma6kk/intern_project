@@ -96,9 +96,11 @@ npx playwright install
 cd ../..  # back to repo root
 ```
 
-5. Start services for Playwright in separate terminals (or using a process manager):
+5. Start services for Playwright in separate terminals (or using a process manager). The Next.js client must know the API base URL when `next dev` starts (same as in CI):
 
 ```bash
+export NEXT_PUBLIC_API_URL=http://127.0.0.1:3000
+export NEXT_PUBLIC_WS_URL=http://127.0.0.1:3000
 npx turbo dev --filter=core_microservice
 npx turbo dev --filter=auth_microservice
 npx turbo dev --filter=notifications_consumer_microservice

@@ -51,8 +51,12 @@ test('User can sign up and see feed', async ({ page }) => {
   await expect(signUpSubmit).toBeVisible({ timeout: 30_000 });
   await expect(signUpSubmit).toBeEnabled({ timeout: 30_000 });
 
+  // Cross-origin requests (client :3002 → API :3000) trigger an OPTIONS preflight first.
+  // Matching only `/auth/signup` would resolve on OPTIONS (e.g. 204) before the POST completes.
   const signupResponse = page.waitForResponse(
-    (resp) => resp.url().includes('/auth/signup'),
+    (resp) =>
+      resp.url().includes('/auth/signup') &&
+      resp.request().method() === 'POST',
     { timeout: 60_000 },
   );
 
