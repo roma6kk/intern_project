@@ -4,6 +4,20 @@ test('User can sign up and see feed', async ({ page }) => {
   test.setTimeout(60_000);
 
   let signupAlertMessage: string | null = null;
+  let lastSignupRequestFailed:
+    | { url: string; method: string; failureText: string | null }
+    | null = null;
+
+  page.on('requestfailed', (req) => {
+    const url = req.url();
+    if (!url.includes('/auth/signup')) return;
+    lastSignupRequestFailed = {
+      url,
+      method: req.method(),
+      failureText: req.failure()?.errorText ?? null,
+    };
+  });
+
   page.once('dialog', async (dialog) => {
     signupAlertMessage = dialog.message();
     await dialog.dismiss();
@@ -73,7 +87,11 @@ test('User can sign up and see feed', async ({ page }) => {
     await page.waitForURL(/\/feed/, { timeout: 60_000 });
   } catch (e) {
     if (signupAlertMessage) {
-      throw new Error(`Signup failed: ${signupAlertMessage}`);
+      const extra =
+        lastSignupRequestFailed != null
+          ? ` (request failed: ${lastSignupRequestFailed.method} ${lastSignupRequestFailed.url} -> ${lastSignupRequestFailed.failureText ?? 'unknown'})`
+          : '';
+      throw new Error(`Signup failed: ${signupAlertMessage}${extra}`);
     }
     throw e;
   }
