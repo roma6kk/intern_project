@@ -52,8 +52,8 @@ jobs:
     timeout-minutes: 40
     env:
       # Next.js reads these when `next dev` starts (pm2). The Playwright step env alone is not enough.
-      NEXT_PUBLIC_API_URL: http://127.0.0.1:3000
-      NEXT_PUBLIC_WS_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_API_URL: http://localhost:3000
+      NEXT_PUBLIC_WS_URL: http://localhost:3000
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -90,19 +90,26 @@ jobs:
       - name: Start Services for Playwright
         run: |
           npm install -g pm2
-          pm2 start "npx turbo dev --filter=core_microservice" --name core
-          pm2 start "npx turbo dev --filter=auth_microservice" --name auth
-          pm2 start "npx turbo dev --filter=notifications_consumer_microservice" --name consumer
-          pm2 start "npx turbo dev --filter=client_app" --name client
-          echo "Waiting for core and auth services to be healthy..."
-          for i in {1..30}; do
-            if curl -fsS http://localhost:3000/health && curl -fsS http://localhost:3001/health; then
-              echo "Core and Auth services are up."
+          pm2 start "npm run dev" --name core --cwd apps/core_microservice
+          pm2 start "npm run dev" --name auth --cwd apps/auth_microservice
+          pm2 start "npm run dev" --name consumer --cwd apps/notifications_consumer_microservice
+          pm2 start "npm run dev" --name client --cwd apps/client_app
+          echo "Waiting for core, auth and client services..."
+          for i in {1..60}; do
+            if curl -fsS http://localhost:3000/health && curl -fsS http://localhost:3001/health && curl -fsS http://localhost:3002/login >/dev/null; then
+              echo "Core, Auth and Client services are up."
               break
             fi
-            echo "Services not ready yet, retrying in 5s... (attempt $i/30)"
+            echo "Services not ready yet, retrying in 5s... (attempt $i/60)"
             sleep 5
           done
+          if ! (curl -fsS http://localhost:3000/health && curl -fsS http://localhost:3001/health && curl -fsS http://localhost:3002/login >/dev/null); then
+            echo "Services failed to become healthy in time."
+            pm2 status
+            pm2 logs --lines 200 --nostream
+            exit 1
+          fi
+          pm2 status
 
       - name: Run Playwright Tests
         run: npx playwright test
