@@ -12,7 +12,7 @@ env:
   JWT_ACCESS_SECRET: ${{ secrets.JWT_ACCESS_SECRET }}
   JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
   AUTH_MICROSERVICE_URL: http://127.0.0.1:3001/internal/auth
-  DATABASE_URL: postgresql://postgres:Jadirus33@127.0.0.1:5432/innogram?schema=public
+  DATABASE_URL: postgresql://postgres:Jadirus33@127.0.0.1:5432/innogram?schema=main
   REDIS_URL: redis://127.0.0.1:6379
   RABBITMQ_URL: amqp://guest:guest@127.0.0.1:5672
 
@@ -89,10 +89,8 @@ jobs:
       - name: Generate Prisma & Migrate DB
         run: |
           npx turbo db:generate
-          # CI DB is ephemeral; reset to ensure schema exists for auth/core.
+          # CI DB is ephemeral; reset to ensure schemas and tables are rebuilt.
           cd apps/core_microservice && npx prisma migrate reset --force --skip-seed
-          # Auth service uses the same DB objects managed by core migrations in CI.
-          # Running auth baseline migration in the same schema causes duplicate type/table errors.
 
       - name: Run Backend Integration Tests
         run: npx turbo test:e2e --filter=core_microservice -- --runInBand --detectOpenHandles
@@ -105,13 +103,13 @@ jobs:
         run: |
           npm install -g pm2
           export PORT=3001
-          export DATABASE_URL=postgresql://postgres:Jadirus33@localhost:5432/innogram?schema=public
+          export DATABASE_URL=postgresql://postgres:Jadirus33@localhost:5432/innogram?schema=main
           export REDIS_URL=redis://localhost:6379
           export RABBITMQ_URL=amqp://guest:guest@localhost:5672
           export AUTH_MICROSERVICE_URL=http://localhost:3001/internal/auth
           pm2 start "npx ts-node -r tsconfig-paths/register src/main.ts" --name core --cwd apps/core_microservice
-          pm2 start "npx ts-node src/app.ts" --name auth --cwd apps/auth_microservice
-          pm2 start "npx ts-node src/main.ts" --name consumer --cwd apps/notifications_consumer_microservice
+          DATABASE_URL=postgresql://postgres:Jadirus33@localhost:5432/innogram?schema=auth pm2 start "npx ts-node src/app.ts" --name auth --cwd apps/auth_microservice
+          DATABASE_URL=postgresql://postgres:Jadirus33@localhost:5432/innogram?schema=notifications pm2 start "npx ts-node src/main.ts" --name consumer --cwd apps/notifications_consumer_microservice
           pm2 start "npm run dev" --name client --cwd apps/client_app
           echo "Waiting for core, auth and client services..."
           for i in {1..60}; do
