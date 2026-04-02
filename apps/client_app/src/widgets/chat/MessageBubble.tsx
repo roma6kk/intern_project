@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import Image from 'next/image';
 import { User, FileText, X, ChevronLeft, ChevronRight, Reply, Pencil, Trash2 } from 'lucide-react';
 import { updateMessage, deleteMessage } from '@/entities/chat';
+import PostSharePreview from './PostSharePreview';
 
 const ASSET_GRID_CLASS: Record<number, string> = {
   1: 'grid grid-cols-1',
@@ -179,6 +180,16 @@ function MessageAssets({
 
 const MAX_ATTACHMENTS = 10;
 
+function extractSharedPostId(content: string | null | undefined): string | null {
+  const raw = (content ?? '').trim();
+  if (!raw) return null;
+
+  // Accept either "/post/<id>" or "<origin>/post/<id>" (no spaces).
+  const match = raw.match(/(?:^|https?:\/\/[^/\s]+)(\/post\/([^\s?#/]+))(?:[?#].*)?$/i);
+  if (!match) return null;
+  return match[2] ?? null;
+}
+
 export default function MessageBubble({
   message,
   onReply,
@@ -195,6 +206,7 @@ export default function MessageBubble({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const messageImages = (message.assets ?? []).filter((a) => a.type === 'IMAGE' || !a.type);
+  const sharedPostId = extractSharedPostId(message.content);
 
   const handleSaveEdit = async () => {
     if (saving) return;
@@ -349,7 +361,9 @@ export default function MessageBubble({
             </div>
           ) : (
             <>
-              {message.content ? (
+              {!message.deletedAt && !isEditing && sharedPostId ? (
+                <PostSharePreview postId={sharedPostId} />
+              ) : message.content ? (
                 <p className="whitespace-pre-wrap">{message.content}</p>
               ) : null}
               {message.assets && message.assets.length > 0 && (

@@ -89,8 +89,7 @@ export function SharePostModal({ postId, onClose }: SharePostModalProps) {
 
   const sendMessageToChat = async (chatId: string) => {
     try {
-      const postUrl = `${window.location.origin}/post/${postId}`;
-      const messageContent = `Look at this post: ${postUrl}`;
+      const messageContent = `/post/${postId}`;
 
       await api.post('/messages', {
         chatId: chatId,
