@@ -7,9 +7,9 @@ import api from '@/shared/api';
 import type { Post } from '@/entities/post';
 
 type PreviewState =
-  | { kind: 'loading' }
-  | { kind: 'ready'; post: Post }
-  | { kind: 'error' };
+  | { kind: 'loading'; postId: string }
+  | { kind: 'ready'; postId: string; post: Post }
+  | { kind: 'error'; postId: string };
 
 function getFirstAssetUrl(post: Post): string | null {
   const a = post.assets?.[0];
@@ -39,20 +39,19 @@ function getDescriptionSnippet(post: Post, maxLen: number): string {
 
 export default function PostSharePreview({ postId }: { postId: string }) {
   const href = `/post/${postId}`;
-  const [state, setState] = useState<PreviewState>({ kind: 'loading' });
+  const [state, setState] = useState<PreviewState>({ kind: 'loading', postId });
 
   useEffect(() => {
     let active = true;
-    setState({ kind: 'loading' });
     api
       .get<Post>(`/posts/${postId}`)
       .then((res) => {
         if (!active) return;
-        setState({ kind: 'ready', post: res.data });
+        setState({ kind: 'ready', postId, post: res.data });
       })
       .catch(() => {
         if (!active) return;
-        setState({ kind: 'error' });
+        setState({ kind: 'error', postId });
       });
     return () => {
       active = false;
@@ -60,7 +59,7 @@ export default function PostSharePreview({ postId }: { postId: string }) {
   }, [postId]);
 
   const view = useMemo(() => {
-    if (state.kind !== 'ready') return null;
+    if (state.kind !== 'ready' || state.postId !== postId) return null;
     const post = state.post;
     const mediaUrl = getFirstAssetUrl(post);
     const author = getAuthorLabel(post);
@@ -70,7 +69,7 @@ export default function PostSharePreview({ postId }: { postId: string }) {
   }, [state]);
 
   // Always clickable; when loading/error, show empty placeholder (no text).
-  if (state.kind === 'loading' || state.kind === 'error' || !view) {
+  if (state.postId !== postId || state.kind === 'loading' || state.kind === 'error' || !view) {
     return (
       <Link
         href={href}
