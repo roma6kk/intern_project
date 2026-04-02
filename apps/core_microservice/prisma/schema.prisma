@@ -8,6 +8,7 @@ generator client {
 datasource db { 
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  schemas  = ["auth", "main", "notifications"]
 }
 
 model User {
@@ -39,6 +40,7 @@ model User {
   assignedModerationReports Report[] @relation("ReportAssignedModerator")
 
   @@map("users")
+  @@schema("auth")
 }
 
 model Account {
@@ -61,6 +63,7 @@ model Account {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@map("accounts")
+  @@schema("auth")
 }
 
 model Profile {
@@ -75,6 +78,7 @@ model Profile {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@map("profiles")
+  @@schema("main")
 }
 
 model Follow {
@@ -91,6 +95,7 @@ model Follow {
   @@index([followingId])
   @@unique([followerId, followingId])
   @@map("follows")
+  @@schema("main")
 }
 
 model Post {
@@ -110,6 +115,7 @@ model Post {
   author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   @@index([authorId, createdAt])
   @@map("posts")
+  @@schema("main")
 }
 
 model Asset {
@@ -122,6 +128,7 @@ model Asset {
   post   Post?     @relation(fields: [postId], references: [id], onDelete: Cascade)
   message Message? @relation(fields: [messageId], references: [id], onDelete: Cascade)
   @@map("assets")
+  @@schema("main")
 }
   
 model Comment {
@@ -142,6 +149,7 @@ model Comment {
   @@index([postId])
   @@index([parentId])
   @@map("comments")
+  @@schema("main")
 }
 
 model Report {
@@ -178,6 +186,7 @@ model Report {
   @@index([status, priority, createdAt])
   @@index([assignedModeratorId, status])
   @@map("reports")
+  @@schema("main")
 }
 
 model UserWarning {
@@ -196,6 +205,7 @@ model UserWarning {
   @@index([userId, createdAt])
   @@index([actorId, createdAt])
   @@map("user_warnings")
+  @@schema("main")
 }
 
 model UserSanction {
@@ -217,6 +227,7 @@ model UserSanction {
   @@index([userId, isActive, createdAt])
   @@index([actorId, createdAt])
   @@map("user_sanctions")
+  @@schema("main")
 }
 
 model ModerationLog {
@@ -234,6 +245,7 @@ model ModerationLog {
   @@index([targetUserId, createdAt])
   @@index([actorId, createdAt])
   @@map("moderation_logs")
+  @@schema("main")
 }
 
 model Like {
@@ -251,6 +263,7 @@ model Like {
   @@unique([authorId, commentId])
 
   @@map("likes")
+  @@schema("main")
 }
 
 model Chat {
@@ -265,6 +278,7 @@ model Chat {
   messages    Message[]
 
   @@map("chats")
+  @@schema("main")
 }
 
 model ChatParticipant {
@@ -278,6 +292,7 @@ model ChatParticipant {
 
   @@unique([chatId, userId])
   @@map("chat_participants")
+  @@schema("main")
 }
 
 model Message {
@@ -299,6 +314,7 @@ model Message {
   replyTo   Message? @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
   replies   Message[] @relation("MessageReplies")
   @@map("messages")
+  @@schema("main")
 }
 
 model Notification {
@@ -316,6 +332,7 @@ model Notification {
   actor       User             @relation("actor", fields: [actorId], references: [id], onDelete: Cascade)
   @@index([recipientId, createdAt])
   @@map("notifications")
+  @@schema("notifications")
 }
 
 enum NotificationType {
@@ -324,44 +341,60 @@ enum NotificationType {
   FOLLOW
   SYSTEM
   MENTION
+
+  @@schema("notifications")
 }
 
 enum AssetType {
   IMAGE
   VIDEO
+
+  @@schema("main")
 }
 
 enum FollowStatus {
   PENDING
   ACCEPTED
+
+  @@schema("main")
 }
 
 enum ChatType {
   PRIVATE
   GROUP
+
+  @@schema("main")
 }
 
 enum ChatRole {
   ADMIN
   MEMBER
+
+  @@schema("main")
 }
 
 enum PlatformRole {
   USER
   MODERATOR
   ADMIN
+
+  @@schema("auth")
 }
 
 enum AccountState {
   ACTIVE
   SUSPENDED
   DELETED
+
+  @@schema("auth")
 }
 
 enum ReportPriority {
   LOW
   NORMAL
   HIGH
+
+  @@schema("main")
 }
 
 enum ReportStatus {
@@ -369,6 +402,8 @@ enum ReportStatus {
   IN_REVIEW
   RESOLVED
   REJECTED
+
+  @@schema("main")
 }
 
 enum ModerationAction {
@@ -376,15 +411,21 @@ enum ModerationAction {
   HIDE
   DELETE
   WARN
+
+  @@schema("main")
 }
 
 enum WarningSource {
   MANUAL
   REPORT
+
+  @@schema("main")
 }
 
 enum SanctionType {
   SUSPEND
+
+  @@schema("main")
 }
 
 enum ModerationLogAction {
@@ -393,4 +434,6 @@ enum ModerationLogAction {
   SUSPENDED
   UNSUSPENDED
   ESCALATED
+
+  @@schema("main")
 }

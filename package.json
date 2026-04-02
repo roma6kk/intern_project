@@ -6,7 +6,9 @@
     "build": "turbo run build",
     "dev": "turbo dev --parallel",
     "lint": "turbo run lint -- --fix",
-    "db:generate": "turbo db:generate",
+    "db:generate": "turbo run db:generate",
+    "db:migrate": "turbo run db:migrate",
+    "db:migrate:deploy": "turbo run db:migrate:deploy",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types"
   },

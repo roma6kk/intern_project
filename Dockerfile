@@ -14,6 +14,7 @@ RUN apk add --no-cache libc6-compat
 
 COPY --from=builder /app/out/json/ .
 COPY --from=builder /app/out/package-lock.json ./package-lock.json
+COPY --from=builder /app/out/full/scripts ./scripts
 
 RUN npm ci
 
@@ -45,4 +46,4 @@ COPY --from=installer --chown=appuser:nodejs /app .
 
 ENV RUN_APP_NAME=${APP_NAME}
 
-CMD npm run start --workspace=apps/${RUN_APP_NAME}
+CMD ["sh", "-c", "npm run start --workspace=apps/${RUN_APP_NAME}"]
