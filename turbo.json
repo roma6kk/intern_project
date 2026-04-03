@@ -10,7 +10,13 @@
     "ASSISTANT_SERVICE_SECRET",
     "LLM_API_KEY",
     "LLM_BASE_URL",
-    "LLM_MODEL"
+    "LLM_MODEL",
+    "NEXT_PUBLIC_API_URL",
+    "NEXT_PUBLIC_WS_URL",
+    "NEXT_DEV_HOST",
+    "DEV_HOST_IP",
+    "AWS_PUBLIC_ENDPOINT",
+    "AWS_USE_SIGNED_URLS"
   ],
   "tasks": {
     "build": {

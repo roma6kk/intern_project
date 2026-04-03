@@ -66,7 +66,7 @@ export default function PostSharePreview({ postId }: { postId: string }) {
     const desc = getDescriptionSnippet(post, 120);
     const hasText = Boolean(desc);
     return { mediaUrl, author, desc, hasText };
-  }, [state]);
+  }, [state, postId]);
 
   // Always clickable; when loading/error, show empty placeholder (no text).
   if (state.postId !== postId || state.kind === 'loading' || state.kind === 'error' || !view) {

@@ -28,7 +28,7 @@ const inputClass =
 
 const SettingsPage = () => {
   const router = useRouter();
-  const { logout } = useAuth();
+  const { logout, refreshUser } = useAuth();
   const { theme, setTheme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -127,6 +127,10 @@ const SettingsPage = () => {
           },
         });
       }
+
+      // Keep `useAuth()` context in sync so other components (feed/post/comment)
+      // immediately show the updated avatar.
+      await refreshUser();
 
       setSuccess('Profile updated successfully!');
       setTimeout(() => {

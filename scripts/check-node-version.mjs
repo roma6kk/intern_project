@@ -1,5 +1,9 @@
 import process from "node:process";
 
+if (process.env.SKIP_NODE_VERSION_CHECK === "1") {
+  process.exit(0);
+}
+
 const major = Number(process.versions.node.split(".")[0]);
 
 // Prisma (engines) в этом проекте стабильно работает только на Node 20+,

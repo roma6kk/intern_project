@@ -10,6 +10,10 @@ export type HealthCheckResult = {
   latencyMs: number;
   statusCode?: number;
   error?: string;
+  llm?: {
+    configured: boolean;
+    model?: string;
+  };
 };
 
 @Injectable()
@@ -50,6 +54,16 @@ export class AdminSystemService {
     const authHealth = `${authUrl.replace(/\/internal\/auth\/?$/, '')}/health`;
     services.push(await this.pingHttp('auth_service', authHealth));
 
+    const assistantBaseUrl =
+      this.config.get<string>('ASSISTANT_MICROSERVICE_URL') ||
+      'http://localhost:3003';
+    const assistantHealthUrl = assistantBaseUrl.endsWith('/health')
+      ? assistantBaseUrl
+      : `${assistantBaseUrl.replace(/\/$/, '')}/health`;
+    services.push(
+      await this.pingHttp('ai_microservice', assistantHealthUrl, true),
+    );
+
     const extra = this.config.get<string>('ADMIN_MONITOR_URLS') || '';
     const extras = extra
       .split(',')
@@ -67,6 +81,7 @@ export class AdminSystemService {
   private async pingHttp(
     name: string,
     url: string,
+    parseLlM?: boolean,
   ): Promise<HealthCheckResult> {
     const t0 = Date.now();
     try {
@@ -77,11 +92,26 @@ export class AdminSystemService {
         }),
       );
       const ok = res.status >= 200 && res.status < 500;
+      const llm =
+        parseLlM && typeof res.data === 'object' && res.data != null
+          ? (() => {
+              const d = res.data as Record<string, unknown>;
+              const llm = d.llm as Record<string, unknown> | undefined;
+              const configured = llm?.configured;
+              const model = llm?.model;
+              if (typeof configured !== 'boolean') return undefined;
+              return {
+                configured,
+                model: typeof model === 'string' ? model : undefined,
+              };
+            })()
+          : undefined;
       return {
         name,
         ok,
         statusCode: res.status,
         latencyMs: Date.now() - t0,
+        ...(llm ? { llm } : {}),
       };
     } catch (e) {
       return {

@@ -14,8 +14,7 @@ RUN apk add --no-cache libc6-compat
 
 COPY --from=builder /app/out/json/ .
 COPY --from=builder /app/out/package-lock.json ./package-lock.json
-COPY --from=builder /app/out/full/scripts ./scripts
-
+ENV SKIP_NODE_VERSION_CHECK=1
 RUN npm ci
 
 COPY --from=builder /app/out/full/ .

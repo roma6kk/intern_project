@@ -18,6 +18,8 @@ export class FilesService {
   private readonly bucketName: string;
   private readonly region: string;
   private readonly endpoint: string;
+  private readonly publicEndpoint: string;
+  private readonly useSignedUrls: boolean;
   private readonly signedUrlTtlSeconds: number;
   private readonly logger = new Logger(FilesService.name);
 
@@ -25,6 +27,12 @@ export class FilesService {
     this.bucketName = this.configService.getOrThrow<string>('AWS_BUCKET_NAME');
     this.region = this.configService.getOrThrow<string>('AWS_REGION');
     this.endpoint = this.configService.getOrThrow<string>('AWS_ENDPOINT');
+    this.publicEndpoint = this.configService.get<string>(
+      'AWS_PUBLIC_ENDPOINT',
+      this.endpoint,
+    );
+    this.useSignedUrls =
+      this.configService.get<string>('AWS_USE_SIGNED_URLS', 'true') === 'true';
     this.signedUrlTtlSeconds = this.configService.get<number>(
       'AWS_SIGNED_URL_TTL_SECONDS',
       3600,
@@ -64,7 +72,7 @@ export class FilesService {
 
       // Формируем итоговую публичную ссылку на картинку.
       // Для Яндекса получится: https://storage.yandexcloud.net/ваше-имя-бакета/имя-файла.jpg
-      return `${this.endpoint.replace(/\/$/, '')}/${this.bucketName}/${fileName}`;
+      return `${this.publicEndpoint.replace(/\/$/, '')}/${this.bucketName}/${fileName}`;
     } catch (error) {
       const err = (error ?? {}) as Record<string, unknown>;
       const metadata =
@@ -103,6 +111,14 @@ export class FilesService {
   async getReadableUrl(originalUrl: string): Promise<string> {
     if (!originalUrl) {
       return originalUrl;
+    }
+
+    if (!this.useSignedUrls) {
+      const key = this.extractObjectKey(originalUrl);
+      if (!key) {
+        return originalUrl;
+      }
+      return `${this.publicEndpoint.replace(/\/$/, '')}/${this.bucketName}/${key}`;
     }
 
     if (this.isAlreadySignedUrl(originalUrl)) {

@@ -43,6 +43,10 @@ type HealthResponse = {
     latencyMs: number;
     statusCode?: number;
     error?: string;
+    llm?: {
+      configured: boolean;
+      model?: string;
+    };
   }[];
 };
 
@@ -269,6 +273,15 @@ export default function AdminSystemPage() {
                           {svc.statusCode != null && (
                             <p className="mt-0.5 text-xs text-muted-foreground">
                               HTTP {svc.statusCode}
+                            </p>
+                          )}
+                          {svc.llm && (
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              LLM:{' '}
+                              {svc.llm.configured
+                                ? 'подключена'
+                                : 'не подключена'}
+                              {svc.llm.model ? ` (${svc.llm.model})` : ''}
                             </p>
                           )}
                         </div>
