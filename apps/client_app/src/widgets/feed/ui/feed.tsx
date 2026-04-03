@@ -47,6 +47,18 @@ export function Feed() {
   }, [user, refresh, isLoading]);
 
   useEffect(() => {
+    const handler = () => {
+      if (!isLoading && user) {
+        refresh();
+      }
+    };
+
+    if (typeof window === 'undefined') return;
+    window.addEventListener('post:created', handler);
+    return () => window.removeEventListener('post:created', handler);
+  }, [user, isLoading, refresh]);
+
+  useEffect(() => {
     if (!isLoading && user) {
       api.get('/follows/following/me')
         .then((followingRes) => {
@@ -172,7 +184,7 @@ export function Feed() {
               </button>
             </div>
 
-            <div className="flex gap-4 overflow-x-auto py-2">
+            <div className="flex gap-4 py-2 overflow-x-auto flex-nowrap max-[480px]:flex-wrap max-[480px]:overflow-x-hidden">
               <div className="shrink-0 text-center w-20">
                 <div className="w-14 h-14 rounded-full overflow-hidden mx-auto border-2 border-primary shadow-[0_8px_20px_-12px_var(--primary)]">
                   <Image

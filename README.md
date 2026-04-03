@@ -28,6 +28,42 @@ npm run start:dev
 
 Refer to each app’s README for detailed setup and environment variable configuration.
 
+### Dev mode: Local vs LAN
+
+Use one command from repo root to switch development network mode:
+
+```bash
+npm run dev:local
+```
+
+- Binds client to `127.0.0.1` (current machine only).
+- Sets `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` to `http://127.0.0.1:3000`.
+
+```bash
+npm run dev:lan
+```
+
+- Binds client to `0.0.0.0` and auto-detects host IPv4.
+- Sets `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` to `http://<host-ip>:3000`.
+- Open app from mobile/other devices: `http://<host-ip>:3002`.
+
+Optional: force specific host IP if auto-detection is wrong.
+
+```bash
+DEV_HOST_IP=192.168.1.50 npm run dev:lan
+```
+
+PowerShell:
+
+```powershell
+$env:DEV_HOST_IP="192.168.1.50"; npm run dev:lan
+```
+
+LAN checklist:
+- Host and mobile device are on the same Wi-Fi/LAN.
+- Firewall allows inbound TCP for `3002` (client), `3000` (core), `3001` (auth).
+- Core and auth health endpoints are reachable from another device.
+
 ### Local CI/CD verification
 
 To locally reproduce what runs in CI/CD, follow these steps from the repository root.

@@ -92,6 +92,12 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
       fd.append('description', caption);
       
       await api.post('/posts', fd);
+
+      // Notify feed (and any other listeners) to refresh immediately.
+      // This avoids a hard page reload after creating a post.
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('post:created'));
+      }
       
       setStep('upload');
       setFiles([]);
@@ -139,7 +145,7 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
         <div className={cn(modal.body, 'flex flex-col flex-1 min-h-0')}>
           {step === 'upload' ? (
             <>
-              <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1 -mr-1">
+              <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
               <div className="border-2 border-dashed border-border rounded-xl p-4 text-center bg-muted/30">
                 {previews.length > 0 && (
                   <div className="space-y-4">
@@ -244,7 +250,7 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
             </>
           ) : (
             <div className="flex flex-col flex-1 min-h-0">
-              <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1 -mr-1">
+              <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
               {previews.length > 0 && (
                 <div className="border border-border rounded-xl overflow-hidden bg-muted/50 flex items-center justify-center max-h-[min(40vh,360px)]">
                   {fileTypes[currentIndex] === 'image' ? (

@@ -241,7 +241,7 @@ export default function AdminUserDetailsPage() {
               No moderation events yet.
             </p>
           ) : (
-            <ol className="relative space-y-3 border-l-2 border-border pl-6">
+            <ol className="relative space-y-3 border-l-2 border-border pl-6 overflow-x-hidden">
               {timeline.map((item) => (
                 <li
                   key={`${item.kind}-${item.id}`}

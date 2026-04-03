@@ -232,6 +232,24 @@ body {
   animation: rika-aurora 18s ease-in-out infinite;
 }
 
+@media (max-width: 480px) {
+  /* Mobile: prevent fixed background glows from increasing document width */
+  .rika-shell::before,
+  .rika-shell::after {
+    filter: blur(40px);
+  }
+
+  .rika-shell::before {
+    left: 2.5rem;
+    top: -8rem;
+  }
+
+  .rika-shell::after {
+    right: 2.5rem;
+    bottom: -8rem;
+  }
+}
+
 .rika-glow-edge {
   position: relative;
 }

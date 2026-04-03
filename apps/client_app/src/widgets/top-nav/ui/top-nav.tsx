@@ -27,7 +27,6 @@ import { getUserChats } from '@/entities/chat';
 import { currentChatIdRef } from '@/shared/lib/current-chat-id';
 import type { Chat, Message } from '@/entities/chat';
 import { cn } from '@/shared/lib/cn';
-import surface from '@/shared/styles/surface.module.css';
 import animations from '@/shared/styles/animations.module.css';
 
 function normalizeMessage(payload: unknown): Message | null {
@@ -40,7 +39,7 @@ function normalizeMessage(payload: unknown): Message | null {
 }
 
 const navBtn =
-  'relative flex p-2.5 rounded-2xl text-muted-foreground hover:bg-muted/85 hover:text-foreground transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_24px_-18px_var(--primary)]';
+  'relative flex shrink-0 p-2.5 rounded-2xl text-muted-foreground hover:bg-muted/85 hover:text-foreground transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_24px_-18px_var(--primary)]';
 
 function notificationLooksUnread(n: Notification & { is_read?: boolean }): boolean {
   const read = n.isRead ?? n.is_read;
@@ -187,6 +186,9 @@ export function TopNav() {
   const showUnreadMessages = hasUnreadMessages && !pathname?.startsWith('/chat');
   const canModerate = user?.role === 'MODERATOR' || user?.role === 'ADMIN';
   const isAdmin = user?.role === 'ADMIN';
+  const isModerator = user?.role === 'MODERATOR';
+  const showProfileOnMobileTop = !isAdmin && !isModerator;
+  const showSearchOnMobileTop = !isAdmin;
 
   const toggleColorMode = () => {
     setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
@@ -196,12 +198,11 @@ export function TopNav() {
     <>
       <header
         className={cn(
-          'w-full sticky top-0 z-40 px-2 sm:px-3 lg:px-5 pt-2 sm:pt-3',
-          surface.glassNav,
+          'w-full sticky top-0 z-40 px-2 sm:px-3 lg:px-5 pt-2 sm:pt-3 overflow-x-clip',
           animations.fadeIn
         )}
       >
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl border border-border/70 bg-card/55 backdrop-blur-xl shadow-[0_16px_42px_-30px_var(--overlay)] rika-glow-edge">
+        <div className="max-w-7xl mx-auto flex min-w-0 items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl">
           <div className="flex items-center shrink-0 min-w-0">
             <Link
               href="/feed"
@@ -237,7 +238,7 @@ export function TopNav() {
             <button
               type="button"
               onClick={() => setIsSearchOpen(true)}
-              className={cn(navBtn, 'md:hidden')}
+              className={cn(navBtn, 'md:hidden', showSearchOnMobileTop ? '' : 'hidden')}
               title="Поиск"
               aria-label="Поиск"
             >
@@ -292,7 +293,10 @@ export function TopNav() {
             )}
             <Link
               href="/profile/me"
-              className="w-9 h-9 rounded-full overflow-hidden shrink-0 border-2 border-transparent hover:border-primary/35 focus:outline-none focus:ring-2 focus:ring-primary/35 focus:ring-offset-2 focus:ring-offset-background transition-all"
+              className={cn(
+                'w-9 h-9 rounded-full overflow-hidden shrink-0 border-2 border-transparent hover:border-primary/35 focus:outline-none focus:ring-2 focus:ring-primary/35 focus:ring-offset-2 focus:ring-offset-background transition-all',
+                showProfileOnMobileTop ? '' : 'hidden md:flex'
+              )}
             >
               <Image
                 src={user?.profile?.avatarUrl || '/default-avatar.svg'}

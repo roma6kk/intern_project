@@ -44,7 +44,8 @@ export function MentionTextarea({
     <div
       style={{
         padding: '8px 12px',
-        background: focused ? '#eef3ff' : '#fff',
+        background: focused ? 'var(--muted)' : 'var(--card)',
+        color: 'var(--foreground)',
         cursor: 'pointer'
       }}
     >
@@ -85,8 +86,9 @@ export function MentionTextarea({
         },      
         suggestions: {
           list: {
-            background: '#fff',
-            border: '1px solid #ddd',
+            background: 'var(--card)',
+            border: '1px solid var(--border)',
+            color: 'var(--foreground)',
             borderRadius: 10,
             boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
             overflow: 'hidden',
@@ -94,8 +96,10 @@ export function MentionTextarea({
           },
           item: {
             padding: '8px 12px',
+            color: 'var(--foreground)',
             '&focused': {
-              background: '#eef3ff'
+              background: 'var(--muted)',
+              color: 'var(--foreground)'
             }
           }
         }

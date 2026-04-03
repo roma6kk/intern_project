@@ -60,7 +60,9 @@ export default function ProfileHeader({
   isPrivateAndNotFollowing = false,
 }: ProfileHeaderProps) {
   const avatarUrl = userProfile.avatarUrl || '/default-avatar.svg';
-  const fullName = `${userProfile.firstName} ${userProfile.secondName}`;
+  const fullName = [userProfile.firstName, userProfile.secondName]
+    .filter((part): part is string => Boolean(part && part.trim()))
+    .join(' ');
   const bio = userProfile.bio || '';
 
   return (
@@ -160,7 +162,7 @@ export default function ProfileHeader({
             </div>
 
             <div>
-              <p className="font-semibold mb-1 text-muted-foreground">{fullName}</p>
+              {fullName && <p className="font-semibold mb-1 text-muted-foreground">{fullName}</p>}
               {!isPrivateAndNotFollowing && <p className="text-sm text-muted-foreground mb-2">{bio}</p>}
               {isPrivateAndNotFollowing && (
                 <p className="text-sm text-muted-foreground mb-2">This account is private</p>
