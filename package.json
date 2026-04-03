@@ -2,7 +2,7 @@
   "name": "intern_project",
   "private": true,
   "scripts": {
-    "preinstall": "node scripts/check-node-version.mjs",
+    "preinstall": "node -e \"if(process.env.SKIP_NODE_VERSION_CHECK==='1')process.exit(0);const m=Number(process.versions.node.split('.')[0]);if(Number.isFinite(m)&&m>=24){console.error(['Unsupported Node.js version for this repo:','  Detected: '+process.version,'','This project requires Node 20 (as in CI) for Prisma engines to work.','Install/switch to Node 20 and re-run: npm ci'].join('\\n'));process.exit(1)}\"",
     "build": "npx turbo run build",
     "dev": "npx turbo dev --parallel",
     "dev:local": "node scripts/dev-mode.mjs local",
