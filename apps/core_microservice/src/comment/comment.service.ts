@@ -9,6 +9,7 @@ import { UpdateCommentDto } from './dto/update-comment.dto';
 import { PrismaService } from '../database/prisma.service';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { NotificationService } from '../notification/notification.service';
+import { CreateNotificationDto } from '../notification/dto/create-notification.dto';
 import { NotificationType, Prisma } from '@prisma/client';
 import { decodeCursor, encodeCursor } from '../common/utils/cursor.helper';
 
@@ -296,13 +297,14 @@ export class CommentService {
 
     for (const account of accounts) {
       if (account.userId !== actorId && account.userId !== excludeUserId) {
-        await this.notificationService.create({
-          type: NotificationType.MENTION,
+        const dto: CreateNotificationDto = {
+          type: 'MENTION',
           recipientId: account.userId,
-          actorId: actorId,
-          itemId: itemId,
+          actorId,
+          itemId,
           postId,
-        });
+        };
+        await this.notificationService.create(dto);
       }
     }
   }
