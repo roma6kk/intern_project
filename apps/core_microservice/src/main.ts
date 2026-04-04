@@ -11,7 +11,7 @@ import { nodeProfilingIntegration } from '@sentry/profiling-node';
 
 async function bootstrap() {
   Sentry.init({
-    dsn: process.env.CORE_SENTRY_DSN,
+    dsn: process.env.CORE_SENTRY_DSN ?? process.env.SENTRY_DSN,
     integrations: [nodeProfilingIntegration()],
     tracesSampleRate: 1.0,
     profilesSampleRate: 1.0,

@@ -712,11 +712,13 @@ export class PostService {
     if (error instanceof Error) {
       return error.message;
     }
-
     if (typeof error === 'string') {
       return error;
     }
-
+    if (error !== null && typeof error === 'object' && 'toString' in error) {
+      // eslint-disable-next-line @typescript-eslint/no-base-to-string
+      return String(error);
+    }
     return 'Unknown error';
   }
 }

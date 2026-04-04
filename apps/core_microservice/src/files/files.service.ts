@@ -1,4 +1,8 @@
-import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
@@ -17,14 +21,15 @@ export class FilesService {
     this.endpoint = this.configService.getOrThrow<string>('AWS_ENDPOINT');
 
     this.s3Client = new S3Client({
-      region: this.region, // Должно быть ru-central1 в .env
-      endpoint: this.endpoint, // Должно быть https://storage.yandexcloud.net
+      region: this.region,
+      endpoint: this.endpoint,
       credentials: {
         accessKeyId: this.configService.getOrThrow<string>('AWS_ACCESS_KEY_ID'),
-        secretAccessKey: this.configService.getOrThrow<string>('AWS_SECRET_ACCESS_KEY'),
+        secretAccessKey: this.configService.getOrThrow<string>(
+          'AWS_SECRET_ACCESS_KEY',
+        ),
       },
-      // КРИТИЧЕСКИ ВАЖНО для совместимости с Yandex Cloud
-      forcePathStyle: true, 
+      forcePathStyle: true,
     });
   }
 
@@ -33,24 +38,24 @@ export class FilesService {
     const fileName = `${uuidv4()}.${fileExtension}`;
 
     try {
-      // ИСПОЛЬЗУЕМ КЛАССИЧЕСКИЙ PutObjectCommand
       const command = new PutObjectCommand({
         Bucket: this.bucketName,
         Key: fileName,
         Body: file.buffer,
         ContentType: file.mimetype,
-        // ВАЖНО: Мы полностью убрали ACL. Yandex Cloud будет использовать 
-        // настройки публичного доступа, которые вы задали в панели управления.
       });
 
-      // Отправляем файл одним запросом
       await this.s3Client.send(command);
 
-      // Формируем итоговую публичную ссылку на картинку.
-      // Для Яндекса получится: https://storage.yandexcloud.net/ваше-имя-бакета/имя-файла.jpg
       return `${this.endpoint.replace(/\/$/, '')}/${this.bucketName}/${fileName}`;
     } catch (error) {
-      const err = error as any;
+      const err = error as {
+        message?: string;
+        name?: string;
+        Code?: string;
+        $metadata?: { httpStatusCode?: number; requestId?: string };
+        RequestId?: string;
+      };
       const httpStatusCode = err?.$metadata?.httpStatusCode;
       const requestId = err?.$metadata?.requestId ?? err?.RequestId;
       const code = err?.Code ?? err?.name;
