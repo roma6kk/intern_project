@@ -56,8 +56,8 @@ services:
         done
         
         echo "MinIO is UP!"
-        /usr/bin/mc mb
-        /usr/bin/mc anonymous set public myminio/innogram-bucket
+        /usr/bin/mc mb myminio/rika-bucket
+        /usr/bin/mc anonymous set public myminio/rika-bucket
         
         echo "Bucket created."
         exit 0

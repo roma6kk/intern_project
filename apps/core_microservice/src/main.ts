@@ -11,7 +11,7 @@ import { nodeProfilingIntegration } from '@sentry/profiling-node';
 
 async function bootstrap() {
   Sentry.init({
-    dsn: process.env.SENTRY_DSN,
+    dsn: process.env.CORE_SENTRY_DSN ?? process.env.SENTRY_DSN,
     integrations: [nodeProfilingIntegration()],
     tracesSampleRate: 1.0,
     profilesSampleRate: 1.0,
@@ -26,7 +26,12 @@ async function bootstrap() {
   app.useGlobalInterceptors(new SentryInterceptor());
   app.useWebSocketAdapter(redisIoAdapter);
   app.use(cookieParser());
-  app.enableCors({ credentials: true, origin: 'http://localhost:3002' });
+  // Dev-friendly CORS: разрешаем любой origin, чтобы можно было заходить по IP/localhost.
+  // В проде origin должен быть зафиксирован.
+  app.enableCors({
+    credentials: true,
+    origin: true,
+  });
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,

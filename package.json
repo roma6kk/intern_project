@@ -2,14 +2,20 @@
   "name": "intern_project",
   "private": true,
   "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo dev --parallel",
-    "lint": "turbo run lint -- --fix",
-    "db:generate": "turbo db:generate",
+    "preinstall": "node -e \"if(process.env.SKIP_NODE_VERSION_CHECK==='1')process.exit(0);const m=Number(process.versions.node.split('.')[0]);if(Number.isFinite(m)&&m>=24){console.error(['Unsupported Node.js version for this repo:','  Detected: '+process.version,'','This project requires Node 20 (as in CI) for Prisma engines to work.','Install/switch to Node 20 and re-run: npm ci'].join('\\n'));process.exit(1)}\"",
+    "build": "npx turbo run build",
+    "dev": "npx turbo dev --parallel",
+    "dev:local": "node scripts/dev-mode.mjs local",
+    "dev:lan": "node scripts/dev-mode.mjs lan",
+    "lint": "npx turbo run lint -- --fix",
+    "db:generate": "turbo run db:generate",
+    "db:migrate": "npx turbo run db:migrate",
+    "db:migrate:deploy": "npx turbo run db:migrate:deploy",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types"
+    "check-types": "npx turbo run check-types"
   },
   "devDependencies": {
+    "next": "16.1.4",
     "@eslint/js": "^9.39.1",
     "@types/react-mentions": "^4.4.1",
     "eslint": "^9.39.1",
@@ -20,10 +26,26 @@
     "typescript": "5.9.2",
     "typescript-eslint": "^8.48.1"
   },
+  "overrides": {
+    "next": "16.1.4",
+    "@next/env": "16.1.4",
+    "@next/swc-darwin-arm64": "16.1.4",
+    "@next/swc-darwin-x64": "16.1.4",
+    "@next/swc-linux-arm64-gnu": "16.1.4",
+    "@next/swc-linux-arm64-musl": "16.1.4",
+    "@next/swc-linux-x64-gnu": "16.1.4",
+    "@next/swc-linux-x64-musl": "16.1.4",
+    "@next/swc-win32-arm64-msvc": "16.1.4",
+    "@next/swc-win32-x64-msvc": "16.1.4"
+  },
   "engines": {
     "node": ">=18"
   },
   "packageManager": "npm@10.9.0",
+  "optionalDependencies": {
+    "lightningcss-linux-x64-gnu": "1.32.0",
+    "lightningcss-linux-x64-musl": "1.32.0"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"

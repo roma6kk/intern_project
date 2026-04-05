@@ -4,9 +4,10 @@ import { UsersController } from './users.controller';
 import { AuthModule } from '../auth/auth.module';
 import { PrismaModule } from '../database/prisma.module';
 import { DeletedUserGuard } from '../auth/guards/deleted-user.guard';
+import { FilesModule } from '../files/file.module';
 
 @Module({
-  imports: [AuthModule, PrismaModule],
+  imports: [AuthModule, PrismaModule, FilesModule],
   controllers: [UsersController],
   providers: [UsersService, DeletedUserGuard],
   exports: [UsersService, DeletedUserGuard],

@@ -16,14 +16,32 @@ npm run dev
 
 By default the app runs at `http://localhost:3002` (check configuration if this differs).
 
+You can explicitly select bind mode:
+
+```bash
+cd apps/client_app
+npm run dev:local
+```
+
+- Local-only mode (`127.0.0.1`), useful when app should stay on current machine.
+
+```bash
+cd apps/client_app
+npm run dev:lan
+```
+
+- LAN mode (`0.0.0.0`), app is reachable from other devices by host IP.
+
 ### Environment variables
 
 Typical environment variables for the client app:
 
-- `NEXT_PUBLIC_CORE_API_URL` – base URL of the core microservice (for example `http://localhost:3000`)
-- `NEXT_PUBLIC_AUTH_API_URL` – base URL of the auth microservice (for example `http://localhost:3001`)
+- `NEXT_PUBLIC_API_URL` – base URL of the core API (for example `http://localhost:3000`)
+- `NEXT_PUBLIC_WS_URL` – base URL for websocket connection (for example `http://localhost:3000`)
 
 These variables are used to construct HTTP requests to backend services from the browser and server-side rendering environment.
+
+When running from repo root with `npm run dev:local` or `npm run dev:lan`, these variables are set automatically.
 
 ### Backend integration
 

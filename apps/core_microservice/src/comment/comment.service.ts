@@ -9,6 +9,7 @@ import { UpdateCommentDto } from './dto/update-comment.dto';
 import { PrismaService } from '../database/prisma.service';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { NotificationService } from '../notification/notification.service';
+import { CreateNotificationDto } from '../notification/dto/create-notification.dto';
 import { NotificationType, Prisma } from '@prisma/client';
 import { decodeCursor, encodeCursor } from '../common/utils/cursor.helper';
 
@@ -120,8 +121,8 @@ export class CommentService {
 
     const comments = await this.prisma.comment.findMany({
       where: cursorFilter
-        ? { postId, parentId: null, AND: cursorFilter }
-        : { postId, parentId: null },
+        ? { postId, parentId: null, isHidden: false, AND: cursorFilter }
+        : { postId, parentId: null, isHidden: false },
       take,
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       include: {
@@ -164,7 +165,7 @@ export class CommentService {
 
   async findReplies(commentId: string) {
     return this.prisma.comment.findMany({
-      where: { parentId: commentId },
+      where: { parentId: commentId, isHidden: false },
       orderBy: { createdAt: 'asc' },
       include: {
         author: {
@@ -296,13 +297,14 @@ export class CommentService {
 
     for (const account of accounts) {
       if (account.userId !== actorId && account.userId !== excludeUserId) {
-        await this.notificationService.create({
-          type: NotificationType.MENTION,
+        const dto: CreateNotificationDto = {
+          type: 'MENTION',
           recipientId: account.userId,
-          actorId: actorId,
-          itemId: itemId,
+          actorId,
+          itemId,
           postId,
-        });
+        };
+        await this.notificationService.create(dto);
       }
     }
   }
@@ -311,11 +313,13 @@ export class CommentService {
     if (error instanceof Error) {
       return error.message;
     }
-
     if (typeof error === 'string') {
       return error;
     }
-
+    if (error !== null && typeof error === 'object' && 'toString' in error) {
+      // eslint-disable-next-line @typescript-eslint/no-base-to-string
+      return String(error);
+    }
     return 'Unknown error';
   }
 }

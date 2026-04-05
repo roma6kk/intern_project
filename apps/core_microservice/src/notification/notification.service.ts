@@ -6,7 +6,8 @@ import { PrismaService } from '../database/prisma.service';
 import { ChatGateway } from '../chat/chat.gateway';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { decodeCursor, encodeCursor } from '../common/utils/cursor.helper';
-import { Prisma } from '@prisma/client';
+import { NotificationType, Prisma } from '@prisma/client';
+import { FilesService } from '../files/files.service';
 
 @Injectable()
 export class NotificationService {
@@ -16,10 +17,14 @@ export class NotificationService {
     private readonly prisma: PrismaService,
     @Inject('NOTIFICATIONS_SERVICE') private readonly client: ClientProxy,
     private readonly chatGateway: ChatGateway,
+    private readonly filesService: FilesService,
   ) {}
 
   async create(dto: CreateNotificationDto) {
-    if (dto.actorId === dto.recipientId) {
+    if (
+      dto.actorId === dto.recipientId &&
+      dto.type !== NotificationType.SYSTEM
+    ) {
       return;
     }
 
@@ -31,13 +36,19 @@ export class NotificationService {
         include: { account: { select: { username: true } }, profile: true },
       });
 
+      const readableAvatarUrl =
+        actor?.profile?.avatarUrl != null
+          ? await this.filesService.getReadableUrl(actor.profile.avatarUrl)
+          : actor?.profile?.avatarUrl;
+
       this.chatGateway.sendNotification(dto.recipientId, {
         type: dto.type,
         itemId: dto.itemId,
         postId: dto.postId,
+        message: dto.message,
         actor: {
           username: actor?.account?.username,
-          avatarUrl: actor?.profile?.avatarUrl,
+          avatarUrl: readableAvatarUrl,
         },
       });
     } catch (error) {
@@ -105,6 +116,14 @@ export class NotificationService {
 
     const hasNextPage = notifications.length > limit;
     const items = hasNextPage ? notifications.slice(0, limit) : notifications;
+
+    for (const n of items) {
+      const avatar = n.actor?.profile?.avatarUrl;
+      if (typeof avatar === 'string' && avatar.length > 0 && n.actor?.profile) {
+        n.actor.profile.avatarUrl =
+          await this.filesService.getReadableUrl(avatar);
+      }
+    }
 
     const nextCursor =
       hasNextPage && items.length > 0

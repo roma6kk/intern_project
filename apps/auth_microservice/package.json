@@ -5,8 +5,11 @@
   "scripts": {
     "test": "echo \"No tests written yet for Auth Service\" && exit 0",
     "dev": "nodemon --exec ts-node src/app.ts",
-    "start": "ts-node src/app.ts",
+    "build": "tsc",
+    "start": "node dist/app.js",
     "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
     "lint": "eslint \"src/**/*.ts\" --fix"
   },
   "author": "",
@@ -32,8 +35,10 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
+    "@repo/typescript-config": "*",
     "@types/bcrypt": "^6.0.0",
     "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.17",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.17",

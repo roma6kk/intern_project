@@ -15,11 +15,19 @@ import { IRegisterUserDto } from './interfaces/IRegisterUserDto';
 
 export class AuthService {
 
-  private async generateNewTokens(userId: string, username: string) {
-    const tokens = generateTokens({ userId, username });
+  private async generateNewTokens(params: {
+    userId: string;
+    username: string;
+    email?: string | null;
+    role: 'USER' | 'MODERATOR' | 'ADMIN';
+    accountState: 'ACTIVE' | 'SUSPENDED' | 'DELETED';
+    suspendedUntil?: string | null;
+    escalationLevel?: number;
+  }) {
+    const tokens = generateTokens(params);
 
     await redisRepository.storeRefreshTokenId(
-      userId, 
+      params.userId, 
       tokens.refreshJti, 
       604800
     );
@@ -27,7 +35,14 @@ export class AuthService {
     return {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
-      user: { id: userId, username }
+      user: {
+        id: params.userId,
+        username: params.username,
+        role: params.role,
+        accountState: params.accountState,
+        suspendedUntil: params.suspendedUntil,
+        escalationLevel: params.escalationLevel,
+      }
     };
   }
 
@@ -61,7 +76,15 @@ export class AuthService {
       });
 
       if (!user.account) throw new Error('Account creation failed');
-      return this.generateNewTokens(user.id, user.account.username);
+      return this.generateNewTokens({
+        userId: user.id,
+        username: user.account.username,
+        email: user.account.email,
+        role: user.account.role,
+        accountState: user.account.state,
+        suspendedUntil: user.account.suspendedUntil?.toISOString() ?? null,
+        escalationLevel: user.account.escalationLevel,
+      });
 
     } catch (e) {
       console.error(e);
@@ -77,11 +100,22 @@ export class AuthService {
     if (!account || !account.passwordHash) {
       throw new Error('Invalid credentials');
     }
+    if (account.state === 'DELETED') {
+      throw new Error('Account is not active');
+    }
 
     const isValid = await bcrypt.compare(credentials.pass, account.passwordHash);
     if (!isValid) throw new Error('Invalid credentials');
 
-    return this.generateNewTokens(account.userId, account.username);
+    return this.generateNewTokens({
+      userId: account.userId,
+      username: account.username,
+      email: account.email,
+      role: account.role,
+      accountState: account.state,
+      suspendedUntil: account.suspendedUntil?.toISOString() ?? null,
+      escalationLevel: account.escalationLevel,
+    });
   }
 
   async processRefreshToken(oldRefreshToken: string) {
@@ -96,7 +130,21 @@ export class AuthService {
       throw new Error('Invalid or expired refresh token');
     }
 
-    return this.generateNewTokens(payload.userId, payload.username);
+    const account = await prisma.account.findUnique({
+      where: { userId: payload.userId },
+    });
+    if (!account) {
+      throw new Error('Account not found');
+    }
+    return this.generateNewTokens({
+      userId: payload.userId,
+      username: account.username,
+      email: account.email,
+      role: account.role,
+      accountState: account.state,
+      suspendedUntil: account.suspendedUntil?.toISOString() ?? null,
+      escalationLevel: account.escalationLevel,
+    });
   }
 
   async validateToken(accessToken: string) {
@@ -109,7 +157,15 @@ export class AuthService {
       }
     }
     
-    return payload;
+    return {
+      userId: payload.userId,
+      username: payload.username,
+      email: payload.email,
+      role: payload.role,
+      accountState: payload.accountState,
+      suspendedUntil: payload.suspendedUntil,
+      escalationLevel: payload.escalationLevel,
+    };
   }
 
   async handleOAuthLogin(profile: { email: string; username: string; photo?: string; firstName?: string; secondName?: string }) {
@@ -150,7 +206,19 @@ export class AuthService {
       account = newUser.account;
     }
 
-    return this.generateNewTokens(account.userId, account.username);
+    if (account.state === 'DELETED') {
+      throw new Error('Account is not active');
+    }
+
+    return this.generateNewTokens({
+      userId: account.userId,
+      username: account.username,
+      email: account.email,
+      role: account.role,
+      accountState: account.state,
+      suspendedUntil: account.suspendedUntil?.toISOString() ?? null,
+      escalationLevel: account.escalationLevel,
+    });
   }
 
   async logout(refreshToken: string) {

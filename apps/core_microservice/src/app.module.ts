@@ -20,6 +20,10 @@ import { HealthModule } from './health/health.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import KeyvRedis from '@keyv/redis';
 import { PrometheusModule } from '@willsoto/nestjs-prometheus';
+import { ReportsModule } from './reports/reports.module';
+import { AdminUsersModule } from './admin-users/admin-users.module';
+import { AdminDashboardModule } from './admin-dashboard/admin-dashboard.module';
+import { AssistantModule } from './assistant/assistant.module';
 @Module({
   imports: [
     ScheduleModule,
@@ -42,6 +46,10 @@ import { PrometheusModule } from '@willsoto/nestjs-prometheus';
     NotificationModule,
     AuthModule,
     FilesModule,
+    ReportsModule,
+    AdminUsersModule,
+    AdminDashboardModule,
+    AssistantModule,
     HealthModule,
     ConfigModule.forRoot({
       isGlobal: true,

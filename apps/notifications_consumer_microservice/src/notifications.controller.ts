@@ -9,6 +9,7 @@ interface NotificationData {
   actorId: string;
   itemId?: string;
   postId?: string;
+  message?: string;
 }
 
 @Controller()

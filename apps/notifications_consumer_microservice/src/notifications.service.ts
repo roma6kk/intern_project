@@ -9,6 +9,7 @@ interface NotificationData {
   actorId: string;
   itemId?: string;
   postId?: string;
+  message?: string;
 }
 
 @Injectable()
@@ -68,6 +69,7 @@ export class NotificationsService extends PrismaClient implements OnModuleInit, 
           actorId: data.actorId,
           itemId: data.itemId,
           postId: data.postId || null,
+          message: data.message ?? null,
         },
         include: { 
           recipient: { 
@@ -94,6 +96,7 @@ export class NotificationsService extends PrismaClient implements OnModuleInit, 
             type: savedNotification.type,
             itemId: savedNotification.itemId,
             postId: savedNotification.postId,
+            message: savedNotification.message,
             createdAt: savedNotification.createdAt,
             actor: {
               id: savedNotification.actor.id,

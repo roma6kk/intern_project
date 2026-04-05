@@ -1,0 +1,31 @@
+.pageTitle {
+  font-size: clamp(1.55rem, 2.8vw, 2.2rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--foreground);
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.pageSubtitle {
+  font-size: 0.95rem;
+  color: var(--muted-foreground);
+  line-height: 1.55;
+  max-width: 68ch;
+}
+
+.caption {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  line-height: 1.4;
+}
+
+.link {
+  color: var(--primary);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.link:hover {
+  color: var(--primary-hover);
+}

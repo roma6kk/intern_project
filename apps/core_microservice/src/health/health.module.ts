@@ -8,5 +8,6 @@ import { PrismaModule } from '../database/prisma.module';
   imports: [TerminusModule, HttpModule, PrismaModule],
   controllers: [HealthController],
   providers: [PrismaHealthIndicator],
+  exports: [PrismaHealthIndicator],
 })
 export class HealthModule {}
