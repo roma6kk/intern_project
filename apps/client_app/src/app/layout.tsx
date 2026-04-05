@@ -1,5 +1,3 @@
-'use client';
-
 import { ThemeScript } from '@/shared/ui/theme-script';
 import 'react-toastify/dist/ReactToastify.css';
 import './globals.css';
