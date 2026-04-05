@@ -8,6 +8,7 @@ generator client {
 datasource db { 
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  schemas  = ["auth", "main", "notifications"]
 }
 
 model User {
@@ -30,6 +31,7 @@ model User {
   triggeredNotifications Notification[] @relation("actor") 
 
   @@map("users")
+  @@schema("auth")
 }
 
 model Account {
@@ -43,6 +45,7 @@ model Account {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@map("accounts")
+  @@schema("auth")
 }
 
 model Profile {
@@ -57,6 +60,7 @@ model Profile {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@map("profiles")
+  @@schema("main")
 }
 
 model Follow {
@@ -71,6 +75,7 @@ model Follow {
   
   @@unique([followerId, followingId])
   @@map("follows")
+  @@schema("main")
 }
 
 model Post {
@@ -87,6 +92,7 @@ model Post {
 
   author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   @@map("posts")
+  @@schema("main")
 }
 
 model Asset {
@@ -99,6 +105,7 @@ model Asset {
   post   Post?     @relation(fields: [postId], references: [id], onDelete: Cascade)
   message Message? @relation(fields: [messageId], references: [id], onDelete: Cascade)
   @@map("assets")
+  @@schema("main")
 }
   
 model Comment {
@@ -115,6 +122,7 @@ model Comment {
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   @@map("comments")
+  @@schema("main")
 }
 
 model Like {
@@ -132,6 +140,7 @@ model Like {
   @@unique([authorId, commentId])
 
   @@map("likes")
+  @@schema("main")
 }
 
 model Chat {
@@ -145,6 +154,7 @@ model Chat {
   messages Message[]
 
   @@map("chats")
+  @@schema("main")
 }
 
 model Message {
@@ -162,6 +172,7 @@ model Message {
   chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
   sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
   @@map("messages")
+  @@schema("main")
 }
 
 model Notification {
@@ -171,12 +182,14 @@ model Notification {
   actorId     String           @map("actor_id")
   itemId      String?          @map("item_id")
   postId      String?          @map("post_id")
+  message     String?          @db.Text
   isRead      Boolean          @default(false) @map("is_read")
   createdAt   DateTime         @default(now()) @map("created_at")
 
   recipient   User             @relation("recipient", fields: [recipientId], references: [id], onDelete: Cascade)
   actor       User             @relation("actor", fields: [actorId], references: [id], onDelete: Cascade)
   @@map("notifications")
+  @@schema("notifications")
 }
 
 enum NotificationType {
@@ -185,19 +198,27 @@ enum NotificationType {
   FOLLOW
   SYSTEM
   MENTION
+
+  @@schema("notifications")
 }
 
 enum AssetType {
   IMAGE
   VIDEO
+
+  @@schema("main")
 }
 
 enum FollowStatus {
   PENDING
   ACCEPTED
+
+  @@schema("main")
 }
 
 enum ChatType {
   PRIVATE
   GROUP
+
+  @@schema("main")
 }

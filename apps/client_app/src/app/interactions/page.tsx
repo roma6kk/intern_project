@@ -4,7 +4,10 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Check, X, User, Bell, Play, Grid, Loader2 } from 'lucide-react';
-import api from '@/lib/api';
+import api from '@/shared/api';
+import { cn } from '@/shared/lib/cn';
+import surface from '@/shared/styles/surface.module.css';
+import animations from '@/shared/styles/animations.module.css';
 
 interface FollowRequest {
   id: string;
@@ -28,7 +31,7 @@ interface BackendFollowRequest {
 interface Notification {
   id: string;
   type: string;
-  message: string;
+  message?: string;
   isRead: boolean;
   createdAt: string;
   itemId?: string;
@@ -48,6 +51,7 @@ interface GroupedNotification {
   type: string;
   postId?: string;
   itemId?: string;
+  message?: string;
   actors: Array<{
     id: string;
     username: string;
@@ -94,6 +98,7 @@ function groupNotifications(notifications: Notification[]): GroupedNotification[
         type: notification.type,
         postId: notification.postId,
         itemId: notification.itemId,
+        message: notification.message,
         actors: [
           {
             id: notification.actor.id,
@@ -139,6 +144,7 @@ function groupNotifications(notifications: Notification[]): GroupedNotification[
           type: notification.type,
           postId: notification.postId,
           itemId: notification.itemId,
+          message: notification.message,
           actors: [
             {
               id: notification.actor.id,
@@ -158,6 +164,7 @@ function groupNotifications(notifications: Notification[]): GroupedNotification[
         type: notification.type,
         postId: notification.postId,
         itemId: notification.itemId,
+        message: notification.message,
         actors: [
           {
             id: notification.actor.id,
@@ -220,11 +227,16 @@ function NotificationItem({
     FOLLOW: 'followed you',
     MENTION: 'mentioned you',
     FOLLOW_REQUEST: 'requested follow',
+    SYSTEM: 'moderation notice',
   };
 
   const displayText = typeLabels[n.type] || 'interacted with you';
 
   const getNotificationLink = () => {
+    if (n.type === 'SYSTEM') {
+      if (n.postId) return `/post/${n.postId}`;
+      return `/profile/${n.actors[0].username}`;
+    }
     if (n.type === 'FOLLOW' || n.type === 'FOLLOW_REQUEST') {
       return `/profile/${n.actors[0].username}`;
     }
@@ -285,23 +297,38 @@ function NotificationItem({
   const hasMedia = firstAsset !== undefined;
 
   const getDisplayText = () => {
+    if (n.type === 'SYSTEM') {
+      return (
+        <div className="space-y-1">
+          <div className="text-xs font-semibold text-amber-800 uppercase tracking-wide">
+            Moderation
+          </div>
+          <p className="text-sm text-foreground whitespace-pre-wrap">
+            {n.message || 'System notification'}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            From moderator @{n.actors[0].username}
+          </p>
+        </div>
+      );
+    }
     if (n.count === 1) {
       return (
         <>
-          <span className="font-semibold text-gray-500">
+          <span className="font-semibold text-muted-foreground">
             {n.actors[0].username}
           </span>{' '}
-          <span className="text-gray-600">{displayText}</span>
+          <span className="text-muted-foreground">{displayText}</span>
         </>
       );
     } else {
       const othersCount = n.count - 1;
       return (
         <>
-          <span className="font-semibold text-gray-500">
+          <span className="font-semibold text-muted-foreground">
             {n.actors[0].username}
           </span>{' '}
-          <span className="text-gray-600">
+          <span className="text-muted-foreground">
             and {othersCount} {othersCount === 1 ? 'other' : 'others'}{' '}
             {displayText}
           </span>
@@ -314,11 +341,13 @@ function NotificationItem({
 
   const content = (
     <div
-      className={`flex items-start gap-4 w-full py-4 px-3 rounded-lg transition-colors ${
-        !n.isRead ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'
-      }`}
+      className={cn(
+        'flex items-start gap-4 w-full py-4 px-3 rounded-2xl transition-all',
+        !n.isRead ? 'bg-primary/10 hover:bg-primary/15 ring-1 ring-primary/15' : 'hover:bg-muted/50'
+      )}
+      
     >
-      <div className="w-12 h-12 rounded-full overflow-hidden bg-white shadow-sm flex items-center justify-center hover:opacity-80 flex-shrink-0">
+      <div className="w-12 h-12 rounded-full overflow-hidden bg-card shadow-sm flex items-center justify-center hover:opacity-80 flex-shrink-0">
         {n.actors[0].avatarUrl ? (
           <Image
             src={n.actors[0].avatarUrl}
@@ -328,7 +357,7 @@ function NotificationItem({
             className="object-cover"
           />
         ) : (
-          <User className="w-6 h-6 text-gray-400" />
+          <User className="w-6 h-6 text-muted-foreground" />
         )}
       </div>
       <div className="flex-1 min-w-0">
@@ -340,7 +369,7 @@ function NotificationItem({
                 e.preventDefault();
                 onMarkRead(n.id);
               }}
-              className="text-xs font-medium text-blue-600 px-3 py-1.5 hover:bg-blue-100 rounded-md transition-colors flex-shrink-0"
+              className="text-xs font-medium text-primary px-3 py-1.5 hover:bg-primary/10 rounded-md transition-colors flex-shrink-0"
             >
               Read
             </button>
@@ -352,7 +381,7 @@ function NotificationItem({
                   e.preventDefault();
                   onAcceptFollowRequest?.(n.followRequestId!);
                 }}
-                className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                className="flex items-center gap-1 px-3 py-1.5 bg-primary text-white rounded text-sm hover:opacity-90"
                 aria-label={`Accept ${n.actors[0].username}`}
               >
                 <Check className="w-4 h-4" />
@@ -363,7 +392,7 @@ function NotificationItem({
                   e.preventDefault();
                   onRejectFollowRequest?.(n.followRequestId!);
                 }}
-                className="flex items-center gap-1 px-3 py-1.5 border rounded text-sm text-gray-700 hover:bg-gray-50"
+                className="flex items-center gap-1 px-3 py-1.5 border rounded text-sm text-foreground hover:bg-muted/50"
                 aria-label={`Decline ${n.actors[0].username}`}
               >
                 <X className="w-4 h-4" />
@@ -373,18 +402,18 @@ function NotificationItem({
           )}
         </div>
         <div className="flex items-center gap-2 mt-1.5">
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-muted-foreground">
             {new Date(n.createdAt).toLocaleDateString('ru-RU', {
               day: 'numeric',
               month: 'short',
               year: 'numeric',
             })}
           </div>
-          {!n.isRead && <div className="w-2 h-2 bg-blue-600 rounded-full"></div>}
+          {!n.isRead && <div className="w-2 h-2 bg-primary rounded-full"></div>}
         </div>
       </div>
       {showPostPreview && (
-        <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 relative border border-gray-200">
+        <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0 relative border border-border">
           {hasMedia ? (
             isVideo ? (
               <>
@@ -422,8 +451,8 @@ function NotificationItem({
               />
             )
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gray-200">
-              <Grid className="w-8 h-8 text-gray-400" />
+            <div className="w-full h-full flex items-center justify-center bg-muted">
+              <Grid className="w-8 h-8 text-muted-foreground" />
             </div>
           )}
         </div>
@@ -492,10 +521,10 @@ export default function InteractionsPage() {
           .filter((n) => !n.isRead)
           .map((n) => n.id);
         if (unreadIds.length > 0) {
-          await Promise.all(
+          void Promise.all(
             unreadIds.map((id) =>
-              api.patch(`/notification/${id}`, { isRead: true }).catch(() => {})
-            )
+              api.patch(`/notification/${id}`, { isRead: true }).catch(() => {}),
+            ),
           );
         }
       } catch (error) {
@@ -525,21 +554,32 @@ export default function InteractionsPage() {
     }
   }, []);
 
+  const loadNotificationsRef = useRef(loadNotifications);
+  loadNotificationsRef.current = loadNotifications;
+
   useEffect(() => {
     let mounted = true;
 
     async function init() {
       setLoading(true);
-      await Promise.all([loadRequests(), loadNotifications(false)]);
-      if (mounted) setLoading(false);
+      try {
+        await loadRequests();
+        await loadNotificationsRef.current(false);
+      } catch (error) {
+        console.error('Error loading interactions:', error);
+      } finally {
+        if (mounted) setLoading(false);
+      }
     }
 
-    init();
+    void init();
 
     return () => {
       mounted = false;
     };
-  }, [loadNotifications, loadRequests]);
+    // Mount only. Depending on `loadNotifications` re-runs after each fetch (cursor/hasMore/loadingMore) and keeps loading stuck.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const followRequestNotifications = requests.map((req) =>
@@ -658,32 +698,32 @@ export default function InteractionsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <h1 className="text-xl font-semibold text-gray-700">Interactions</h1>
+    <div className="min-h-screen bg-transparent">
+      <div className="border-b border-border/60">
+        <div className="max-w-5xl mx-auto px-4 py-5">
+          <h1 className="text-xl font-semibold text-foreground">Interactions</h1>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-6 pb-20 md:pb-2">
-        <div className="bg-white border rounded-md">
+      <div className="max-w-5xl mx-auto px-4 py-6 pb-20 md:pb-2">
+        <div className={cn(surface.card, animations.slideUp, 'rounded-3xl p-2 rika-glow-edge')}>
 
 
           <div className="px-4 py-3">
             {loading ? (
               <div className="flex flex-col items-center justify-center py-12">
-                <div className="bg-white rounded-lg border border-gray-200 shadow-sm px-6 py-4 flex items-center gap-3">
-                  <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-                  <span className="text-sm text-gray-600">Loading notifications...</span>
+                <div className="bg-card rounded-lg border border-border shadow-sm px-6 py-4 flex items-center gap-3">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Loading notifications...</span>
                 </div>
               </div>
             ) : groupedNotifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12">
-                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                  <Bell className="w-8 h-8 text-gray-400" />
+                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                  <Bell className="w-8 h-8 text-muted-foreground" />
                 </div>
-                <p className="text-gray-600 font-medium">No notifications</p>
-                <p className="text-sm text-gray-500 mt-1">New notifications will appear here</p>
+                <p className="text-muted-foreground font-medium">No notifications</p>
+                <p className="text-sm text-muted-foreground mt-1">New notifications will appear here</p>
               </div>
             ) : (
               <>
@@ -705,7 +745,7 @@ export default function InteractionsPage() {
                         isExpandedRef.current = true;
                         setDisplayLimit(groupedNotifications.length);
                       }}
-                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                      className="text-sm text-primary hover:opacity-80 font-medium"
                     >
                       Show all ({groupedNotifications.length - displayLimit}{' '}
                       more)
@@ -717,7 +757,7 @@ export default function InteractionsPage() {
                 )}
                 {loadingMore && (
                   <div className="flex justify-center py-4">
-                    <div className="flex items-center gap-2 text-gray-500">
+                    <div className="flex items-center gap-2 text-muted-foreground">
                       <Loader2 className="w-5 h-5 animate-spin" />
                       <span className="text-sm">Loading...</span>
                     </div>

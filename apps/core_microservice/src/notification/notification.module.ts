@@ -6,11 +6,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ChatModule } from '../chat/chat.module';
 
 import { UsersModule } from '../users/users.module';
+import { FilesModule } from '../files/file.module';
 
 @Module({
   imports: [
     ChatModule,
     UsersModule,
+    FilesModule,
     ClientsModule.registerAsync([
       {
         name: 'NOTIFICATIONS_SERVICE',

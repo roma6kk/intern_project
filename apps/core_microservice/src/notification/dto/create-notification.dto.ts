@@ -47,4 +47,11 @@ export class CreateNotificationDto {
   @IsUUID()
   @IsOptional()
   postId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Human-readable body (e.g. SYSTEM warnings)',
+  })
+  @IsOptional()
+  @IsString()
+  message?: string;
 }

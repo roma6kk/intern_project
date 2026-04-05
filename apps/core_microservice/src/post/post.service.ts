@@ -103,7 +103,7 @@ export class PostService {
 
       this.logger.log(`Post created by user ${userId}, ID:  ${newPost.id}`);
 
-      return newPost;
+      return this.withReadableAssetUrls(newPost);
     } catch (error: unknown) {
       if (error instanceof Error) {
         this.logger.error('Failed to create post', error.stack);
@@ -136,6 +136,7 @@ export class PostService {
     const whereClause: Prisma.PostWhereInput = {
       authorId: { in: followingIds },
       isArchived: false,
+      isHidden: false,
       author: { deletedAt: null },
     };
 
@@ -170,7 +171,7 @@ export class PostService {
       const totalPages = Math.ceil(total / limit);
 
       return {
-        data: posts,
+        data: await this.withReadableAssetUrls(posts),
         meta: {
           total,
           page,
@@ -248,7 +249,7 @@ export class PostService {
         : null;
 
     return {
-      data: items,
+      data: await this.withReadableAssetUrls(items),
       meta: {
         cursor: nextCursor,
         hasNextPage,
@@ -278,6 +279,7 @@ export class PostService {
     } else if (includeArchived && userId && authorId && authorId !== userId) {
       whereClause.isArchived = false;
     }
+    whereClause.isHidden = false;
 
     if (authorId) {
       whereClause.authorId = authorId;
@@ -359,7 +361,7 @@ export class PostService {
       const totalPages = Math.ceil(total / limit);
 
       return {
-        data: posts,
+        data: await this.withReadableAssetUrls(posts),
         meta: {
           total,
           page,
@@ -437,7 +439,7 @@ export class PostService {
         : null;
 
     return {
-      data: items,
+      data: await this.withReadableAssetUrls(items),
       meta: {
         cursor: nextCursor,
         hasNextPage,
@@ -452,7 +454,7 @@ export class PostService {
     const cachedPost = await this.cacheManager.get<PostWithRelations>(cacheKey);
     if (cachedPost) {
       this.logger.log(`Cache hit for post ${id}`);
-      return cachedPost;
+      return this.withReadableAssetUrls(cachedPost);
     }
 
     this.logger.log(`Cache miss for post ${id}, querying database`);
@@ -460,6 +462,7 @@ export class PostService {
     const post = await this.prisma.post.findFirst({
       where: {
         id,
+        isHidden: false,
         author: { deletedAt: null },
       },
       include: {
@@ -494,7 +497,7 @@ export class PostService {
     }
     await this.cacheManager.set(cacheKey, post);
     this.logger.log(`Post ${id} cached in Redis`);
-    return post;
+    return this.withReadableAssetUrls(post);
   }
 
   async update(
@@ -595,7 +598,7 @@ export class PostService {
       }
 
       this.logger.log(`Post ${id} updated by user ${userId}`);
-      return updatedPost;
+      return this.withReadableAssetUrls(updatedPost);
     } catch (error: unknown) {
       if (error instanceof Error) {
         this.logger.error(`Failed to update post ${id}`, error.stack);
@@ -722,5 +725,78 @@ export class PostService {
       return String(error);
     }
     return 'Unknown error';
+  }
+
+  private async withReadableAssetUrls<T>(data: T): Promise<T> {
+    const memo = new Map<string, string>();
+    if (Array.isArray(data)) {
+      const updated = await Promise.all(
+        data.map((item) => this.mapPostAssets(item)),
+      );
+      const resolved = await this.resolveAvatarUrlsDeep(updated, memo);
+      return resolved as T;
+    }
+    const updated = await this.mapPostAssets(data);
+    const resolved = await this.resolveAvatarUrlsDeep(updated, memo);
+    return resolved as T;
+  }
+
+  private async mapPostAssets<T>(item: T): Promise<T> {
+    if (!item || typeof item !== 'object') {
+      return item;
+    }
+
+    const maybePost = item as { assets?: Array<{ url: string }> };
+    if (!Array.isArray(maybePost.assets) || maybePost.assets.length === 0) {
+      return item;
+    }
+
+    const assets = await Promise.all(
+      maybePost.assets.map(async (asset) => ({
+        ...asset,
+        url: await this.filesService.getReadableUrl(asset.url),
+      })),
+    );
+
+    return {
+      ...(item as object),
+      assets,
+    } as T;
+  }
+
+  /**
+   * Makes nested `avatarUrl` values browser-readable (signed URLs for private MinIO buckets).
+   * Memoizes per-request to avoid duplicate presigning.
+   */
+  private async resolveAvatarUrlsDeep(
+    value: unknown,
+    memo: Map<string, string>,
+  ): Promise<unknown> {
+    if (!value || typeof value !== 'object') return value;
+
+    if (Array.isArray(value)) {
+      const next = await Promise.all(
+        value.map((v) => this.resolveAvatarUrlsDeep(v, memo)),
+      );
+      return next;
+    }
+
+    const obj = value as Record<string, unknown>;
+
+    if (typeof obj.avatarUrl === 'string') {
+      const original = obj.avatarUrl;
+      if (!memo.has(original)) {
+        memo.set(original, await this.filesService.getReadableUrl(original));
+      }
+      obj.avatarUrl = memo.get(original) ?? obj.avatarUrl;
+    }
+
+    const entries = Object.entries(obj);
+    for (const [k, v] of entries) {
+      if (k === 'avatarUrl') continue;
+      obj[k] = await this.resolveAvatarUrlsDeep(v, memo);
+    }
+
+    return obj;
   }
 }

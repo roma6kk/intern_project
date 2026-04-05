@@ -121,8 +121,8 @@ export class CommentService {
 
     const comments = await this.prisma.comment.findMany({
       where: cursorFilter
-        ? { postId, parentId: null, AND: cursorFilter }
-        : { postId, parentId: null },
+        ? { postId, parentId: null, isHidden: false, AND: cursorFilter }
+        : { postId, parentId: null, isHidden: false },
       take,
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       include: {
@@ -165,7 +165,7 @@ export class CommentService {
 
   async findReplies(commentId: string) {
     return this.prisma.comment.findMany({
-      where: { parentId: commentId },
+      where: { parentId: commentId, isHidden: false },
       orderBy: { createdAt: 'asc' },
       include: {
         author: {
