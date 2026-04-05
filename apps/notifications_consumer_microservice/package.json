@@ -5,8 +5,7 @@
   "scripts": {
     "test": "echo \"No tests written yet for Consumer\" && exit 0",
     "dev": "nodemon --exec ts-node src/main.ts",
-    "build": "tsc",
-    "start": "node dist/main.js",
+    "start": "ts-node src/main.ts",
     "db:generate": "prisma generate",
     "lint": "eslint \"src/**/*.ts\" --fix"
   },
@@ -24,8 +23,7 @@
     "dotenv": "^17.2.3",
     "nodemailer": "^7.0.12",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2",
-    "socket.io-client": "^4.8.3"
+    "rxjs": "^7.8.2"
   },
   "devDependencies": {
     "@types/node": "^25.0.10",

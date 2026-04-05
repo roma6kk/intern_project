@@ -44,9 +44,7 @@
     "@willsoto/nestjs-prometheus": "^6.0.2",
     "amqp-connection-manager": "^5.0.0",
     "amqplib": "^0.10.9",
-    "aws-sdk": "^2.1693.0",
     "axios": "^1.13.2",
-    "boxen": "^7.1.1",
     "cache-manager": "^7.2.8",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
@@ -58,7 +56,8 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.3",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "boxen": "^7.1.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

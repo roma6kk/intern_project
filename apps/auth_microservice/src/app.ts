@@ -16,7 +16,7 @@ import { nodeProfilingIntegration } from '@sentry/profiling-node';
 dotenv.config();
 
 Sentry.init({
-  dsn: process.env.AUTH_SENTRY_DSN ?? process.env.SENTRY_DSN,
+  dsn: process.env.SENTRY_DSN,
   integrations: [
     nodeProfilingIntegration(),
   ],
