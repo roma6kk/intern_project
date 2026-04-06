@@ -27,6 +27,9 @@ import { SignUpDto } from './dto/signup.dto';
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
+  private readonly frontendPublicUrl =
+    process.env.FRONTEND_PUBLIC_URL ?? 'https://app.local';
+
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
@@ -93,7 +96,7 @@ export class AuthController {
     });
 
     return res.redirect(
-      `http://localhost:3002/auth/callback?accessToken=${result.accessToken}`,
+      `${this.frontendPublicUrl}/auth/callback?accessToken=${result.accessToken}`,
     );
   }
 

@@ -42,7 +42,7 @@ export class ChatGateway
   async onModuleInit() {
     const redisUrl = this.configService.get<string>(
       'REDIS_URL',
-      'redis://localhost:6379',
+      'redis://redis:6379',
     );
 
     this.redisClient = createClient({ url: redisUrl });
