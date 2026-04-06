@@ -50,13 +50,13 @@ export class AdminSystemService {
 
     const authUrl =
       this.config.get<string>('AUTH_MICROSERVICE_URL') ||
-      'http://localhost:3001/internal/auth';
+      'http://auth-api:3001/internal/auth';
     const authHealth = `${authUrl.replace(/\/internal\/auth\/?$/, '')}/health`;
     services.push(await this.pingHttp('auth_service', authHealth));
 
     const assistantBaseUrl =
       this.config.get<string>('ASSISTANT_MICROSERVICE_URL') ||
-      'http://localhost:3003';
+      'http://assistant-microservice:3003';
     const assistantHealthUrl = assistantBaseUrl.endsWith('/health')
       ? assistantBaseUrl
       : `${assistantBaseUrl.replace(/\/$/, '')}/health`;

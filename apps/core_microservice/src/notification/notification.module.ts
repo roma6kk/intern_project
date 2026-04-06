@@ -23,7 +23,7 @@ import { FilesModule } from '../files/file.module';
           options: {
             urls: [
               configService.get<string>('RABBITMQ_URL') ||
-                'amqp://guest:guest@localhost:5672',
+                'amqp://guest:guest@rabbitmq:5672',
             ],
             queue: 'notifications_queue',
             queueOptions: {

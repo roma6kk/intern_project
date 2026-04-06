@@ -38,14 +38,14 @@ services:
       args:
         APP_NAME: core_microservice
     container_name: innogram-core
-    ports:
-      - "3000:3000"
     env_file:
       - .env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/${POSTGRES_DB:-innogram}?schema=main
       REDIS_URL: redis://redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672
+      ASSISTANT_MICROSERVICE_URL: ${ASSISTANT_MICROSERVICE_URL:-http://assistant-microservice:3003}
+      ASSISTANT_SERVICE_SECRET: ${ASSISTANT_SERVICE_SECRET:-change_me_assistant_shared_secret}
       SENTRY_DSN: ${CORE_SENTRY_DSN:-${SENTRY_DSN}}
     depends_on:
       - postgres
@@ -62,8 +62,6 @@ services:
       args:
         APP_NAME: auth_microservice
     container_name: innogram-auth
-    ports:
-      - "3001:3001"
     env_file:
       - .env
     environment:
@@ -97,24 +95,53 @@ services:
       - innogram_network
     restart: unless-stopped
 
+  assistant-microservice:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: assistant_microservice
+    container_name: innogram-assistant
+    env_file:
+      - .env
+    environment:
+      ASSISTANT_PORT: "3003"
+      ASSISTANT_SERVICE_SECRET: ${ASSISTANT_SERVICE_SECRET:-change_me_assistant_shared_secret}
+    networks:
+      - innogram_network
+    restart: unless-stopped
+
   client-app:
     build:
       context: .
       dockerfile: Dockerfile
       args:
         APP_NAME: client_app
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000}
-        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-http://localhost:3000}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.local}
+        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-https://api.local}
         NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
     container_name: innogram-client
-    ports:
-      - "3002:3002"
     environment:
       PORT: "3002"
       HOSTNAME: "0.0.0.0"
     depends_on:
       - core-api
       - auth-api
+    networks:
+      - innogram_network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: innogram-nginx
+    ports:
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - core-api
+      - client-app
     networks:
       - innogram_network
     restart: unless-stopped
