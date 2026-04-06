@@ -1,0 +1,23 @@
+[req]
+default_bits = 2048
+prompt = no
+default_md = sha256
+x509_extensions = v3_req
+distinguished_name = dn
+
+[dn]
+C = RU
+ST = Local
+L = Local
+O = Innogram
+OU = Dev
+CN = app.local
+
+[v3_req]
+subjectAltName = @alt_names
+keyUsage = critical, digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth
+
+[alt_names]
+DNS.1 = app.local
+DNS.2 = api.local

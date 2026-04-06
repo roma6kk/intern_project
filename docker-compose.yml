@@ -94,6 +94,21 @@ services:
       - prometheus
     networks:
       - innogram-network
+
+  assistant-microservice:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: assistant_microservice
+    container_name: assistant-microservice
+    env_file:
+      - .env
+    environment:
+      ASSISTANT_PORT: "3003"
+    networks:
+      - innogram-network
+    restart: unless-stopped
 volumes:
   postgres_data:
   redis_data:
