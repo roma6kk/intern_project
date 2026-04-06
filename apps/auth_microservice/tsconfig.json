@@ -1,18 +1,11 @@
 {
+  "extends": "@repo/typescript-config/base.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "lib": ["ES2022"],
     "outDir": "./dist",
     "rootDir": "./src",
     "baseUrl": "./src",
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "resolveJsonModule": true,
     "declaration": false,
+    "declarationMap": false,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "strictPropertyInitialization": false

@@ -14,7 +14,8 @@ import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { NotificationService } from '../notification/notification.service';
-import { NotificationType, Prisma } from '@prisma/client';
+import { CreateNotificationDto } from '../notification/dto/create-notification.dto';
+import { Prisma } from '@prisma/client';
 import { decodeCursor, encodeCursor } from '../common/utils/cursor.helper';
 
 type PostWithRelations = Prisma.PostGetPayload<{
@@ -700,13 +701,14 @@ export class PostService {
 
     for (const account of accounts) {
       if (account.userId !== actorId) {
-        await this.notificationService.create({
-          type: NotificationType.MENTION,
+        const dto: CreateNotificationDto = {
+          type: 'MENTION',
           recipientId: account.userId,
-          actorId: actorId,
-          itemId: itemId,
+          actorId,
+          itemId,
           postId: itemId,
-        });
+        };
+        await this.notificationService.create(dto);
       }
     }
   }
@@ -715,11 +717,13 @@ export class PostService {
     if (error instanceof Error) {
       return error.message;
     }
-
     if (typeof error === 'string') {
       return error;
     }
-
+    if (error !== null && typeof error === 'object' && 'toString' in error) {
+      // eslint-disable-next-line @typescript-eslint/no-base-to-string
+      return String(error);
+    }
     return 'Unknown error';
   }
 
