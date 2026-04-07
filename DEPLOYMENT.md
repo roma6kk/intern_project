@@ -78,10 +78,16 @@ If you run multiple compose stacks in the same machine, make sure you start the 
 
 ## 5. Apply database migrations
 
-Use root scripts (they run migrations inside containers):
+**From the host (Node + Prisma on your machine, database reachable via `DATABASE_URL` in each app):**
 
 ```bash
-npm run db:migrate
+npm run db:migrate:deploy
+```
+
+**Inside already-running Compose containers** (typical production host where Postgres is only on the Docker network; requires Docker CLI):
+
+```bash
+npm run db:migrate:docker
 ```
 
 Or run directly:
@@ -91,6 +97,8 @@ docker exec -it innogram-core npm run db:migrate:deploy
 docker exec -it innogram-auth npm run db:migrate:deploy
 docker exec -it innogram-consumer npm run db:migrate:deploy
 ```
+
+`npm run db:migrate` / `db:generate` use Turbo on the host and do **not** call `docker`. If you see `sh: docker: not found`, use the Turbo commands above or install the Docker CLI and use `db:migrate:docker` / `db:generate:docker`.
 
 If `auth_microservice` / `notifications_consumer_microservice` are deployed to an existing DB for the first time, they may require a one-time baseline (Prisma `migrate resolve`) to initialize migration persistence.
 
@@ -112,7 +120,7 @@ This repo’s nginx config is set up for that (`resolver 127.0.0.11` + `proxy_pa
 docker compose -f docker-compose.prod.yml up -d --no-deps --force-recreate nginx
 ```
 
-## 7. Certificate rotation (OpenSSL)
+## 8. Certificate rotation (OpenSSL)
 
 Before expiration:
 
@@ -124,7 +132,7 @@ Before expiration:
 docker compose -f docker-compose.prod.yml restart nginx
 ```
 
-## 8. Faster builds (recommended)
+## 9. Faster builds (recommended)
 
 This repo uses a monorepo `COPY . .` during image build. Keep your Docker build context small:
 
