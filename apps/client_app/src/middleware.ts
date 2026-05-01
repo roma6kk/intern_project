@@ -39,7 +39,8 @@ export function middleware(request: NextRequest) {
 
   const isAuthPage = 
     request.nextUrl.pathname.startsWith('/login') || 
-    request.nextUrl.pathname.startsWith('/signup');
+    request.nextUrl.pathname.startsWith('/signup') ||
+    request.nextUrl.pathname.startsWith('/auth/callback');
   const isAdminPage = request.nextUrl.pathname.startsWith('/admin');
 
   if (!isAuth && !isAuthPage) {

@@ -22,6 +22,11 @@ model User {
   following  Follow[] @relation("follower")
   followers  Follow[] @relation("following")
   posts      Post[]
+  stories    Story[]
+  storyViews StoryView[] @relation("StoryViewer")
+  storyReactions StoryReaction[]
+  storyExclusionsAuthored StoryExclusion[] @relation("StoryExclusionAuthor")
+  storyExclusionsReceived StoryExclusion[] @relation("StoryExclusionExcludedUser")
   likes      Like[]
   comments   Comment[]
   chatParticipants ChatParticipant[]
@@ -118,16 +123,89 @@ model Post {
   @@schema("main")
 }
 
+model Story {
+  id        String   @id @default(uuid())
+  authorId  String   @map("author_id")
+  caption   String?  @db.Text
+  isHidden  Boolean  @default(false) @map("is_hidden")
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+
+  assets    Asset[]
+  views     StoryView[]
+  reactions StoryReaction[]
+
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([authorId, createdAt])
+  @@index([expiresAt])
+  @@index([authorId, expiresAt])
+  @@map("stories")
+  @@schema("main")
+}
+
 model Asset {
   id     String    @id @default(uuid())
   url    String
   type   AssetType @default(IMAGE)
   postId String?   @map("post_id")
   messageId String? @map("message_id")
+  storyId String?  @map("story_id")
 
   post   Post?     @relation(fields: [postId], references: [id], onDelete: Cascade)
   message Message? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  story  Story?    @relation(fields: [storyId], references: [id], onDelete: Cascade)
   @@map("assets")
+  @@schema("main")
+}
+
+model StoryView {
+  id        String   @id @default(uuid())
+  storyId   String   @map("story_id")
+  viewerId  String   @map("viewer_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  story  Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  viewer User  @relation("StoryViewer", fields: [viewerId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, viewerId])
+  @@index([storyId, createdAt])
+  @@index([viewerId, createdAt])
+  @@map("story_views")
+  @@schema("main")
+}
+
+model StoryReaction {
+  id        String   @id @default(uuid())
+  storyId   String   @map("story_id")
+  userId    String   @map("user_id")
+  emoji     String   @default("❤️")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime? @updatedAt @map("updated_at")
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([storyId, createdAt])
+  @@index([storyId, userId])
+  @@index([userId, createdAt])
+  @@map("story_reactions")
+  @@schema("main")
+}
+
+model StoryExclusion {
+  id             String   @id @default(uuid())
+  authorId       String   @map("author_id")
+  excludedUserId String   @map("excluded_user_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  author       User @relation("StoryExclusionAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  excludedUser User @relation("StoryExclusionExcludedUser", fields: [excludedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([authorId, excludedUserId])
+  @@index([authorId, createdAt])
+  @@index([excludedUserId, createdAt])
+  @@map("story_exclusions")
   @@schema("main")
 }
   

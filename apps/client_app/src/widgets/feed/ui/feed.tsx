@@ -12,6 +12,8 @@ import { useInfiniteScroll } from '@/shared/lib/use-infinite-scroll';
 import { cn } from '@/shared/lib/cn';
 import surface from '@/shared/styles/surface.module.css';
 import animations from '@/shared/styles/animations.module.css';
+import type { StoriesFeedGroup } from '@/features/stories/model/types';
+import { StoryViewerModal } from '@/features/stories/ui/story-viewer-modal';
 
 interface SuggestionUser {
   id: string;
@@ -22,11 +24,15 @@ interface SuggestionUser {
 
 export function Feed() {
   const { user, isLoading } = useAuth();
-  const [followingIds, setFollowingIds] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<SuggestionUser[]>([]);
   const [suggestionsExpanded, setSuggestionsExpanded] = useState(false);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [followLoadingId, setFollowLoadingId] = useState<string | null>(null);
+  const [stories, setStories] = useState<StoriesFeedGroup[]>([]);
+  const [storiesLoading, setStoriesLoading] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerAuthorId, setViewerAuthorId] = useState<string | undefined>(undefined);
+  const [viewerStoryId, setViewerStoryId] = useState<string | undefined>(undefined);
   
   const { 
     items: posts, 
@@ -58,19 +64,24 @@ export function Feed() {
     return () => window.removeEventListener('post:created', handler);
   }, [user, isLoading, refresh]);
 
+  const loadStories = useCallback(async () => {
+    if (!user) return;
+    setStoriesLoading(true);
+    try {
+      const { data } = await api.get('/stories/feed');
+      setStories(Array.isArray(data) ? (data as StoriesFeedGroup[]) : []);
+    } catch {
+      setStories([]);
+    } finally {
+      setStoriesLoading(false);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (!isLoading && user) {
-      api.get('/follows/following/me')
-        .then((followingRes) => {
-          const followingRaw = followingRes.data || [];
-          const ids = followingRaw.map((f: { following?: { id?: string } }) => f.following?.id).filter(Boolean);
-          setFollowingIds(ids);
-        })
-        .catch(() => {
-          setFollowingIds([]);
-        });
+      void loadStories();
     }
-  }, [user, isLoading]);
+  }, [user, isLoading, loadStories]);
 
   const loadSuggestions = useCallback(async (limit: number) => {
     if (!user) return;
@@ -113,7 +124,6 @@ export function Feed() {
     try {
       await api.post(`/follows/${userId}`);
       setSuggestions((prev) => prev.filter((s) => s.userId !== userId));
-      setFollowingIds((prev) => [...prev, userId]);
     } catch {
       // ignore
     } finally {
@@ -130,21 +140,6 @@ export function Feed() {
       return { ...p, author: { ...author, id: author.id || p.authorId, username, profile } };
     });
   }, [posts]);
-
-  const storyAuthors = useMemo(() => {
-    const seen = new Set<string>();
-    const list: { id?: string; username: string; avatarUrl?: string }[] = [];
-    for (const p of normalizedPosts) {
-      const a = p.author || { id: p.authorId };
-      const id = a.id || a.username;
-      if (!id || seen.has(id)) continue;
-      if (id && followingIds.length > 0 && !followingIds.includes(id)) continue;
-      seen.add(id);
-      list.push({ id, username: a.username || 'Unknown', avatarUrl: a.profile?.avatarUrl });
-      if (list.length >= 10) break;
-    }
-    return list;
-  }, [normalizedPosts, followingIds]);
 
   if (isLoading) {
     return (
@@ -179,13 +174,13 @@ export function Feed() {
           <div className={cn(surface.card, animations.slideUp, 'p-4 sm:p-5 mb-6 rika-glow-edge')}>
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-foreground">Stories</h2>
-              <button type="button" className="text-sm text-primary font-medium hover:opacity-80">
-                See all
-              </button>
+              <Link href="/stories/manage" className="text-sm text-primary font-medium hover:opacity-80">
+                Manage
+              </Link>
             </div>
 
-            <div className="flex gap-4 py-2 overflow-x-auto flex-nowrap max-[480px]:flex-wrap max-[480px]:overflow-x-hidden">
-              <div className="shrink-0 text-center w-20">
+            <div className="flex gap-4 py-2 overflow-x-auto flex-nowrap snap-x snap-mandatory">
+              <Link href="/stories/manage" className="shrink-0 text-center w-20">
                 <div className="w-14 h-14 rounded-full overflow-hidden mx-auto border-2 border-primary shadow-[0_8px_20px_-12px_var(--primary)]">
                   <Image
                     src={user?.profile?.avatarUrl || '/default-avatar.svg'}
@@ -196,22 +191,43 @@ export function Feed() {
                   />
                 </div>
                 <div className="text-xs mt-1 truncate text-muted-foreground">Your story</div>
-              </div>
+              </Link>
 
-              {storyAuthors.map((a, index) => (
-                <div key={`story-${a.id || a.username}-${index}`} className="shrink-0 text-center w-20">
-                  <div className="w-14 h-14 rounded-full overflow-hidden mx-auto border-2 border-fuchsia-400 shadow-[0_8px_20px_-12px_var(--hero-to)]">
-                    <Image
-                      src={a.avatarUrl || '/default-avatar.svg'}
-                      alt={a.username}
-                      width={56}
-                      height={56}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="text-xs mt-1 truncate text-muted-foreground">{a.username}</div>
+              {storiesLoading ? (
+                <div className="flex items-center text-xs text-muted-foreground px-2">
+                  Loading…
                 </div>
-              ))}
+              ) : (
+                (stories || []).slice(0, 10).map((g, index) => {
+                  const a = g.author;
+                  const ring = g.hasUnseen ? 'border-fuchsia-400' : 'border-muted';
+                  return (
+                    <button
+                      key={`story-${a?.id}-${index}`}
+                      type="button"
+                      onClick={() => {
+                        setViewerAuthorId(a?.id);
+                        setViewerStoryId(g?.stories?.[0]?.id);
+                        setViewerOpen(true);
+                      }}
+                      className="shrink-0 text-center w-20 snap-start"
+                    >
+                      <div className={cn('w-14 h-14 rounded-full overflow-hidden mx-auto border-2 shadow-[0_8px_20px_-12px_var(--hero-to)]', ring)}>
+                        <Image
+                          src={a?.profile?.avatarUrl || '/default-avatar.svg'}
+                          alt={a?.username || 'Story'}
+                          width={56}
+                          height={56}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="text-xs mt-1 truncate text-muted-foreground">
+                        {a?.username || 'Unknown'}
+                      </div>
+                    </button>
+                  );
+                })
+              )}
             </div>
           </div>
 
@@ -326,6 +342,16 @@ export function Feed() {
           </div>
         </aside>
       </div>
+
+      <StoryViewerModal
+        open={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        groups={stories}
+        initialAuthorId={viewerAuthorId}
+        initialStoryId={viewerStoryId}
+        currentUserId={user?.id}
+      />
     </div>
   );
 }
+

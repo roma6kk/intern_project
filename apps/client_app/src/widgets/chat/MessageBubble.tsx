@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { User, FileText, X, ChevronLeft, ChevronRight, Reply, Pencil, Trash2 } from 'lucide-react';
 import { updateMessage, deleteMessage } from '@/entities/chat';
 import PostSharePreview from './PostSharePreview';
+import StoryMessagePreview, { parseStoryMeta } from './StoryMessagePreview';
 
 const ASSET_GRID_CLASS: Record<number, string> = {
   1: 'grid grid-cols-1',
@@ -207,6 +208,7 @@ export default function MessageBubble({
   const [deleting, setDeleting] = useState(false);
   const messageImages = (message.assets ?? []).filter((a) => a.type === 'IMAGE' || !a.type);
   const sharedPostId = extractSharedPostId(message.content);
+  const storyMeta = parseStoryMeta(message.content);
 
   const handleSaveEdit = async () => {
     if (saving) return;
@@ -361,7 +363,9 @@ export default function MessageBubble({
             </div>
           ) : (
             <>
-              {!message.deletedAt && !isEditing && sharedPostId ? (
+              {!message.deletedAt && !isEditing && storyMeta ? (
+                <StoryMessagePreview meta={storyMeta} isOwn={isOwn} />
+              ) : !message.deletedAt && !isEditing && sharedPostId ? (
                 <PostSharePreview postId={sharedPostId} />
               ) : message.content ? (
                 <p className="whitespace-pre-wrap">{message.content}</p>

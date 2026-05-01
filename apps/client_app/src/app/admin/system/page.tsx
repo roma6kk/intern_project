@@ -130,6 +130,13 @@ export default function AdminSystemPage() {
       label: r.status,
       value: r.count,
     })) ?? [];
+  const reportStatusCounts = new Map(
+    stats?.reports.byStatus.map((r) => [r.status, r.count]) ?? [],
+  );
+  const openReports = reportStatusCounts.get('OPEN') ?? 0;
+  const inReviewReports = reportStatusCounts.get('IN_REVIEW') ?? 0;
+  const resolvedReports = reportStatusCounts.get('RESOLVED') ?? 0;
+  const rejectedReports = reportStatusCounts.get('REJECTED') ?? 0;
 
   return (
     <div className="min-h-screen bg-transparent">
@@ -205,13 +212,30 @@ export default function AdminSystemPage() {
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-foreground">
                         <Activity className="h-5 w-5" />
                       </div>
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                           Reports snapshot
                         </p>
                         <p className="text-sm text-muted-foreground">
                           Open / in-review vs overdue helps spot queue pressure.
                         </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-medium text-indigo-700">
+                            Open: {openReports}
+                          </span>
+                          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700">
+                            In review: {inReviewReports}
+                          </span>
+                          <span className="rounded-full bg-rose-100 px-2.5 py-1 text-xs font-medium text-rose-700">
+                            Overdue: {stats.reports.openOverdue}
+                          </span>
+                          <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                            Resolved: {resolvedReports}
+                          </span>
+                          <span className="rounded-full bg-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700">
+                            Rejected: {rejectedReports}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>

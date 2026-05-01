@@ -26,11 +26,26 @@ async function bootstrap() {
   app.useGlobalInterceptors(new SentryInterceptor());
   app.useWebSocketAdapter(redisIoAdapter);
   app.use(cookieParser());
-  // Dev-friendly CORS: разрешаем любой origin, чтобы можно было заходить по IP/localhost.
-  // В проде origin должен быть зафиксирован.
+  const frontendPublicUrl =
+    process.env.FRONTEND_PUBLIC_URL ?? 'https://localhost';
+  const allowedOrigins = new Set([
+    frontendPublicUrl,
+    'http://localhost:3002',
+    'http://127.0.0.1:3002',
+    'https://localhost',
+  ]);
+
   app.enableCors({
     credentials: true,
-    origin: true,
+    origin: (origin, callback) => {
+      // Allow same-origin/server-side requests without an Origin header.
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      callback(null, allowedOrigins.has(origin));
+    },
   });
   app.useGlobalPipes(
     new ValidationPipe({
