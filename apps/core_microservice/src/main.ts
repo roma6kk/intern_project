@@ -37,8 +37,10 @@ async function bootstrap() {
 
   app.enableCors({
     credentials: true,
-    origin: (origin, callback) => {
-      // Allow same-origin/server-side requests without an Origin header.
+    origin: (
+      origin: string | undefined,
+      callback: (error: Error | null, allow?: boolean) => void,
+    ) => {
       if (!origin) {
         callback(null, true);
         return;

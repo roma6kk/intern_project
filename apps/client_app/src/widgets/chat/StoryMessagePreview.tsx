@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import Image from 'next/image';
 import api from '@/shared/api';
 import { cn } from '@/shared/lib/cn';

@@ -28,7 +28,7 @@ router.get("/google/callback", async (req, res) => {
     const result = await authService.exchangeCodeForTokens(code as string);
     const redirectUrl = `${process.env.FRONTEND_PUBLIC_URL}/auth/callback?accessToken=${result.accessToken}&refreshToken=${result.refreshToken}`;
     res.redirect(redirectUrl);
-  } catch (error) {
+  } catch {
     res.redirect(`${process.env.FRONTEND_PUBLIC_URL}/login?error=oauth_failed`);
   }
 });

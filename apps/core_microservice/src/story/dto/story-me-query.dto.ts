@@ -7,4 +7,3 @@ export class StoryMeQueryDto {
   @IsIn(['active', 'expired'])
   status?: 'active' | 'expired';
 }
-

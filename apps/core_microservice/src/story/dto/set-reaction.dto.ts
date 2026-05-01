@@ -8,4 +8,3 @@ export class SetStoryReactionDto {
   @MaxLength(8)
   emoji!: string;
 }
-

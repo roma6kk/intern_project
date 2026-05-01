@@ -21,7 +21,9 @@ type StoryWithRelations = Prisma.StoryGetPayload<{
         id: true;
         deletedAt: true;
         account: { select: { username: true } };
-        profile: { select: { firstName: true; avatarUrl: true; isPrivate: true } };
+        profile: {
+          select: { firstName: true; avatarUrl: true; isPrivate: true };
+        };
       };
     };
     assets: true;
@@ -72,7 +74,10 @@ export class StoryService {
     return !!row;
   }
 
-  private async assertCanViewStory(viewerId: string, story: StoryWithRelations) {
+  private async assertCanViewStory(
+    viewerId: string,
+    story: StoryWithRelations,
+  ) {
     if (story.author.deletedAt) {
       throw new NotFoundException('Story not found');
     }
@@ -118,7 +123,9 @@ export class StoryService {
     const uploaded = await Promise.all(
       files.map(async (f) => ({
         url: await this.filesService.uploadFile(f),
-        type: f.mimetype.startsWith('video/') ? ('VIDEO' as const) : ('IMAGE' as const),
+        type: f.mimetype.startsWith('video/')
+          ? ('VIDEO' as const)
+          : ('IMAGE' as const),
       })),
     );
 
@@ -137,7 +144,9 @@ export class StoryService {
             id: true,
             deletedAt: true,
             account: { select: { username: true } },
-            profile: { select: { firstName: true, avatarUrl: true, isPrivate: true } },
+            profile: {
+              select: { firstName: true, avatarUrl: true, isPrivate: true },
+            },
           },
         },
         assets: true,
@@ -169,7 +178,9 @@ export class StoryService {
             id: true,
             deletedAt: true,
             account: { select: { username: true } },
-            profile: { select: { firstName: true, avatarUrl: true, isPrivate: true } },
+            profile: {
+              select: { firstName: true, avatarUrl: true, isPrivate: true },
+            },
           },
         },
         assets: true,
@@ -206,7 +217,9 @@ export class StoryService {
           select: {
             id: true,
             account: { select: { username: true } },
-            profile: { select: { firstName: true, avatarUrl: true, isPrivate: true } },
+            profile: {
+              select: { firstName: true, avatarUrl: true, isPrivate: true },
+            },
           },
         },
         assets: true,
@@ -246,40 +259,43 @@ export class StoryService {
       const authorId = s.authorId;
       const author = s.author;
       const username =
-        author?.account?.username ||
-        author?.profile?.firstName ||
-        'Unknown';
+        author?.account?.username || author?.profile?.firstName || 'Unknown';
 
-      const entry: FeedGroup =
-        byAuthor.get(authorId) ??
-        {
-          author: {
-            id: authorId,
-            username,
-            profile: {
-              firstName: author?.profile?.firstName ?? null,
-              avatarUrl: author?.profile?.avatarUrl ?? null,
-              isPrivate: author?.profile?.isPrivate ?? false,
-            },
+      const entry: FeedGroup = byAuthor.get(authorId) ?? {
+        author: {
+          id: authorId,
+          username,
+          profile: {
+            firstName: author?.profile?.firstName ?? null,
+            avatarUrl: author?.profile?.avatarUrl ?? null,
+            isPrivate: author?.profile?.isPrivate ?? false,
           },
-          stories: [],
-          hasUnseen: false,
-          latestCreatedAt: s.createdAt,
-        };
+        },
+        stories: [],
+        hasUnseen: false,
+        latestCreatedAt: s.createdAt,
+      };
 
-      const seen = Array.isArray((s as unknown as { views?: unknown[] }).views) && (s as unknown as { views: unknown[] }).views.length > 0;
+      const seen =
+        Array.isArray((s as unknown as { views?: unknown[] }).views) &&
+        (s as unknown as { views: unknown[] }).views.length > 0;
 
       const item: FeedStory = {
         id: s.id,
         createdAt: s.createdAt,
         expiresAt: s.expiresAt,
         caption: s.caption,
-        assets: s.assets as Array<{ id: string; url: string; type: 'IMAGE' | 'VIDEO' }>,
+        assets: s.assets as Array<{
+          id: string;
+          url: string;
+          type: 'IMAGE' | 'VIDEO';
+        }>,
         seen,
       };
       entry.stories.push(item);
       if (!seen) entry.hasUnseen = true;
-      if (s.createdAt > entry.latestCreatedAt) entry.latestCreatedAt = s.createdAt;
+      if (s.createdAt > entry.latestCreatedAt)
+        entry.latestCreatedAt = s.createdAt;
 
       byAuthor.set(authorId, entry);
     }
@@ -300,7 +316,9 @@ export class StoryService {
             id: true,
             deletedAt: true,
             account: { select: { username: true } },
-            profile: { select: { firstName: true, avatarUrl: true, isPrivate: true } },
+            profile: {
+              select: { firstName: true, avatarUrl: true, isPrivate: true },
+            },
           },
         },
         assets: true,
@@ -320,7 +338,9 @@ export class StoryService {
             id: true,
             deletedAt: true,
             account: { select: { username: true } },
-            profile: { select: { firstName: true, avatarUrl: true, isPrivate: true } },
+            profile: {
+              select: { firstName: true, avatarUrl: true, isPrivate: true },
+            },
           },
         },
         assets: true,
@@ -349,7 +369,9 @@ export class StoryService {
             id: true,
             deletedAt: true,
             account: { select: { username: true } },
-            profile: { select: { firstName: true, avatarUrl: true, isPrivate: true } },
+            profile: {
+              select: { firstName: true, avatarUrl: true, isPrivate: true },
+            },
           },
         },
         assets: true,
@@ -479,7 +501,9 @@ export class StoryService {
             id: true,
             deletedAt: true,
             account: { select: { username: true } },
-            profile: { select: { firstName: true, avatarUrl: true, isPrivate: true } },
+            profile: {
+              select: { firstName: true, avatarUrl: true, isPrivate: true },
+            },
           },
         },
         assets: true,
@@ -505,7 +529,9 @@ export class StoryService {
       : '';
     const assetType = firstAsset?.type ?? 'IMAGE';
     const ref = `${STORY_REPLY_PREFIX} storyId=${storyId} assetUrl=${assetUrl} assetType=${assetType}`;
-    const messageText = [ref, (content ?? '').trim()].filter(Boolean).join('\n');
+    const messageText = [ref, (content ?? '').trim()]
+      .filter(Boolean)
+      .join('\n');
 
     const message = await this.messageService.create(viewerId, {
       chatId: (chat as { id: string }).id,
@@ -628,4 +654,3 @@ export class StoryService {
     return (await mapAny(data)) as T;
   }
 }
-

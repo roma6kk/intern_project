@@ -4,14 +4,9 @@ import { PrismaService } from '../database/prisma.service';
 import { FilesService } from '../files/files.service';
 import { NotificationService } from '../notification/notification.service';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { NotFoundException } from '@nestjs/common';
 
 describe('PostService', () => {
   let service: PostService;
-  let prismaService: PrismaService;
-  let filesService: FilesService;
-  let notificationService: NotificationService;
-  let cacheManager: any;
 
   const mockPrismaService = {
     post: {
@@ -65,10 +60,6 @@ describe('PostService', () => {
     }).compile();
 
     service = module.get<PostService>(PostService);
-    prismaService = module.get<PrismaService>(PrismaService);
-    filesService = module.get<FilesService>(FilesService);
-    notificationService = module.get<NotificationService>(NotificationService);
-    cacheManager = module.get(CACHE_MANAGER);
   });
 
   afterEach(() => {

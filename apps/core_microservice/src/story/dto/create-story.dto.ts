@@ -11,4 +11,3 @@ export class CreateStoryDto {
   @ApiProperty({ type: 'string', format: 'binary', isArray: true })
   files?: any[];
 }
-

@@ -13,4 +13,3 @@ import { StoryService } from './story.service';
   providers: [StoryService],
 })
 export class StoryModule {}
-

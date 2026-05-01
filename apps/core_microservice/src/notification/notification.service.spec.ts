@@ -4,13 +4,9 @@ import { PrismaService } from '../database/prisma.service';
 import { ChatGateway } from '../chat/chat.gateway';
 import { FilesService } from '../files/files.service';
 import { NotificationType } from '@prisma/client';
-import { NotFoundException } from '@nestjs/common';
 
 describe('NotificationService', () => {
   let service: NotificationService;
-  let prismaService: PrismaService;
-  let chatGateway: ChatGateway;
-  let filesService: FilesService;
 
   const mockPrismaService = {
     notification: {
@@ -61,9 +57,6 @@ describe('NotificationService', () => {
     }).compile();
 
     service = module.get<NotificationService>(NotificationService);
-    prismaService = module.get<PrismaService>(PrismaService);
-    chatGateway = module.get<ChatGateway>(ChatGateway);
-    filesService = module.get<FilesService>(FilesService);
   });
 
   afterEach(() => {

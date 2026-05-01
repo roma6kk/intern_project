@@ -8,4 +8,3 @@ export class ReplyToStoryDto {
   @MaxLength(5000)
   content?: string;
 }
-

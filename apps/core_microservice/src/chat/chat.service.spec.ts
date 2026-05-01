@@ -1,16 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ChatService } from './chat.service';
 import { PrismaService } from '../database/prisma.service';
-import {
-  BadRequestException,
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ChatType } from '@prisma/client';
 
 describe('ChatService', () => {
   let service: ChatService;
-  let prismaService: PrismaService;
 
   const mockPrismaService = {
     chat: {
@@ -38,7 +33,6 @@ describe('ChatService', () => {
     }).compile();
 
     service = module.get<ChatService>(ChatService);
-    prismaService = module.get<PrismaService>(PrismaService);
   });
 
   afterEach(() => {

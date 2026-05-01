@@ -176,7 +176,7 @@ export function StoryViewerModal({
 
   const goNext = useCallback(() => {
     if (!normalized.length) return;
-    const storiesCount = group?.stories?.length ?? 0;
+    const storiesCount = normalized[authorIdx]?.stories?.length ?? 0;
     if (storyIdx + 1 < storiesCount) {
       setStoryIdx((s) => s + 1);
       return;
@@ -187,7 +187,7 @@ export function StoryViewerModal({
       return;
     }
     onClose();
-  }, [normalized.length, group?.stories?.length, storyIdx, authorIdx, onClose, group, normalized]);
+  }, [normalized, storyIdx, authorIdx, onClose]);
 
   const goPrev = useCallback(() => {
     if (!normalized.length) return;
@@ -230,7 +230,7 @@ export function StoryViewerModal({
   useEffect(() => {
     if (!open) return;
     if (effectiveReadOnly) return;
-    if (!asset) return;
+    if (!asset?.id) return;
     if (asset.type === 'VIDEO') return;
 
     if (autoTimerRef.current) {
@@ -246,7 +246,7 @@ export function StoryViewerModal({
         autoTimerRef.current = null;
       }
     };
-  }, [open, asset?.id, asset?.type, effectiveReadOnly, goNext, asset]);
+  }, [open, asset?.id, asset?.type, effectiveReadOnly, goNext]);
 
   useEffect(() => {
     setVideoProgress(0);
@@ -599,11 +599,13 @@ export function StoryViewerModal({
                 className="block max-w-full max-h-[min(50vh,560px)] w-auto h-auto mx-auto object-contain"
               />
             ) : (
-              // Next/Image requires remotePatterns; we use plain img for simplicity here.
-              <img
+              <Image
                 src={asset.url}
                 alt="story"
-                className="block max-w-full max-h-[min(50vh,560px)] w-auto h-auto mx-auto object-contain select-none"
+                fill
+                unoptimized
+                sizes="100vw"
+                className="block w-auto h-auto mx-auto object-contain select-none"
               />
             )}
           </div>

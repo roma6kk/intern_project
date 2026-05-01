@@ -93,7 +93,9 @@ export class StoryController {
     @Query('query') query: string,
     @Query('limit') limit?: string,
   ) {
-    const limitNum = limit ? Math.min(Math.max(parseInt(limit, 10) || 10, 1), 20) : 10;
+    const limitNum = limit
+      ? Math.min(Math.max(parseInt(limit, 10) || 10, 1), 20)
+      : 10;
     return this.storyService.exclusionSuggestions(user.userId, query, limitNum);
   }
 
@@ -169,4 +171,3 @@ export class StoryController {
     return this.storyService.remove(user.userId, id);
   }
 }
-

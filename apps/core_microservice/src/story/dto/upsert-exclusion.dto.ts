@@ -7,4 +7,3 @@ export class UpsertStoryExclusionDto {
   @IsNotEmpty()
   excludedUserId!: string;
 }
-

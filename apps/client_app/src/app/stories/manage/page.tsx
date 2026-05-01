@@ -9,7 +9,6 @@ import animations from '@/shared/styles/animations.module.css';
 import type { StoryItem } from '@/features/stories/model/types';
 import { StoryViewerModal } from '@/features/stories/ui/story-viewer-modal';
 import Link from 'next/link';
-import modal from '@/shared/styles/modal.module.css';
 import { useAuth } from '@/entities/session';
 import { OwnerStoryCard } from '@/features/stories/ui/owner-story-card';
 import { StoryVideoThumb } from '@/features/stories/ui/story-video-thumb';
@@ -18,16 +17,6 @@ type MyStory = StoryItem & {
   author?: { id: string; username?: string; profile?: { avatarUrl?: string | null } };
   _count?: { views?: number; reactions?: number };
   isHidden?: boolean;
-};
-
-type ViewerRow = {
-  id: string;
-  createdAt: string | Date;
-  viewer?: {
-    id: string;
-    account?: { username?: string };
-    profile?: { firstName?: string; avatarUrl?: string | null };
-  };
 };
 
 type ExclusionRow = {
@@ -59,12 +48,6 @@ export default function StoriesManagePage() {
 
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerStoryId, setViewerStoryId] = useState<string | undefined>(undefined);
-
-  const [viewersOpen, setViewersOpen] = useState(false);
-  const [viewersLoading, setViewersLoading] = useState(false);
-  const [viewersStoryId, setViewersStoryId] = useState<string | null>(null);
-  const [viewers, setViewers] = useState<ViewerRow[]>([]);
-  const [viewersTotal, setViewersTotal] = useState(0);
 
   const [exclusions, setExclusions] = useState<ExclusionRow[]>([]);
   const [exclLoading, setExclLoading] = useState(false);
@@ -132,17 +115,15 @@ export default function StoriesManagePage() {
         hasUnseen: false,
       },
     ];
-  }, [stories]);
+  }, [stories, user?.id, user?.profile?.avatarUrl, user?.username]);
 
   const onPickFiles = (f: FileList | null) => {
     if (!f) return;
-    // One media per story in UI (matches product request)
     const next = Array.from(f).slice(0, 1);
     setFiles(next);
   };
 
   useEffect(() => {
-    // Generate local previews; revoke on cleanup.
     const urls = files.map((f) => URL.createObjectURL(f));
     setFilePreviews(urls);
     return () => {
@@ -166,34 +147,6 @@ export default function StoriesManagePage() {
       await loadStories();
     } finally {
       setUploading(false);
-    }
-  };
-
-  const toggleHidden = async (id: string) => {
-    await api.patch(`/stories/${id}/toggle-hidden`);
-    await loadStories();
-  };
-
-  const removeStory = async (id: string) => {
-    await api.delete(`/stories/${id}`);
-    await loadStories();
-  };
-
-  const openViewers = async (id: string) => {
-    setViewersOpen(true);
-    setViewersStoryId(id);
-    setViewersLoading(true);
-    try {
-      const res = await api.get(`/stories/${id}/viewers?page=1&limit=50`);
-      const rows = (res.data?.data ?? []) as ViewerRow[];
-      const total = (res.data?.meta?.total ?? 0) as number;
-      setViewers(rows);
-      setViewersTotal(total);
-    } catch {
-      setViewers([]);
-      setViewersTotal(0);
-    } finally {
-      setViewersLoading(false);
     }
   };
 
@@ -483,89 +436,6 @@ export default function StoriesManagePage() {
         currentUserId={user?.id}
       />
 
-      {/* Viewers modal */}
-      {viewersOpen && (
-        <div className={modal.root} role="dialog" aria-modal="true">
-          <button
-            type="button"
-            className={modal.dim}
-            onClick={() => {
-              setViewersOpen(false);
-              setViewersStoryId(null);
-            }}
-            aria-label="Close"
-          />
-          <div
-            className={cn(modal.shell, 'max-w-lg')}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className={modal.header}>
-              <div>
-                <div className="text-sm font-semibold text-foreground">Viewers</div>
-                <div className="text-xs text-muted-foreground">
-                  Total: {viewersTotal}
-                  {viewersStoryId ? ` · Story ${viewersStoryId.slice(0, 8)}…` : ''}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setViewersOpen(false);
-                  setViewersStoryId(null);
-                }}
-                className="px-3 py-2 rounded-xl bg-muted hover:bg-muted/80 text-xs"
-              >
-                Close
-              </button>
-            </div>
-            <div className={cn(modal.body, 'gap-2')}>
-              {viewersLoading ? (
-                <div className="text-sm text-muted-foreground">Loading…</div>
-              ) : viewers.length === 0 ? (
-                <div className="text-sm text-muted-foreground">No viewers yet.</div>
-              ) : (
-                <div className="space-y-2">
-                  {viewers.map((v) => {
-                    const u = v.viewer;
-                    const username = u?.account?.username || u?.id || 'Unknown';
-                    const firstName = u?.profile?.firstName || '';
-                    const avatar = u?.profile?.avatarUrl || '/default-avatar.svg';
-                    return (
-                      <div
-                        key={v.id}
-                        className="flex items-center justify-between gap-3 border border-border rounded-2xl p-3 bg-background/30"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 rounded-full overflow-hidden border border-border shrink-0">
-                            <Image
-                              src={avatar}
-                              alt={username}
-                              width={36}
-                              height={36}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-sm font-semibold text-foreground truncate">
-                              {username}
-                            </div>
-                            <div className="text-xs text-muted-foreground truncate">
-                              {firstName}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-xs text-muted-foreground shrink-0">
-                          {new Date(v.createdAt).toLocaleString()}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
