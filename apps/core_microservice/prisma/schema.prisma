@@ -1,0 +1,517 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db { 
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["auth", "main", "notifications"]
+}
+
+model User {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now()) @map("created_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  account   Account?
+  profile   Profile?
+
+  following  Follow[] @relation("follower")
+  followers  Follow[] @relation("following")
+  posts      Post[]
+  stories    Story[]
+  storyViews StoryView[] @relation("StoryViewer")
+  storyReactions StoryReaction[]
+  storyExclusionsAuthored StoryExclusion[] @relation("StoryExclusionAuthor")
+  storyExclusionsReceived StoryExclusion[] @relation("StoryExclusionExcludedUser")
+  likes      Like[]
+  comments   Comment[]
+  chatParticipants ChatParticipant[]
+  createdChats Chat[] @relation("ChatCreator")
+  sentMessages Message[]
+  recievedNotifications  Notification[] @relation("recipient")
+  triggeredNotifications Notification[] @relation("actor") 
+  createdReports Report[] @relation("ReportAuthor")
+  resolvedReports Report[] @relation("ReportResolver")
+  receivedWarnings UserWarning[] @relation("WarningTarget")
+  issuedWarnings UserWarning[] @relation("WarningActor")
+  receivedSanctions UserSanction[] @relation("SanctionTarget")
+  issuedSanctions UserSanction[] @relation("SanctionActor")
+  moderationLogsForTarget ModerationLog[] @relation("ModerationTarget")
+  moderationLogsForActor ModerationLog[] @relation("ModerationActor")
+  assignedModerationReports Report[] @relation("ReportAssignedModerator")
+
+  @@map("users")
+  @@schema("auth")
+}
+
+model Account {
+  id           String    @id @default(uuid())
+  userId       String    @unique @map("user_id")
+  username     String    @unique
+  email        String?   @unique
+  phoneNumber  String?   @unique @map("phone_number")
+  passwordHash String?   @map("password_hash")
+  role         PlatformRole @default(USER)
+  state        AccountState @default(ACTIVE)
+  stateChangedAt DateTime? @map("state_changed_at")
+  stateChangedBy String? @map("state_changed_by")
+  stateReason  String?   @db.Text @map("state_reason")
+  deletionRequestedAt DateTime? @map("deletion_requested_at")
+  recoveryDeadline DateTime? @map("recovery_deadline")
+  suspendedUntil DateTime? @map("suspended_until")
+  escalationLevel Int @default(0) @map("escalation_level")
+  updatedAt    DateTime? @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@map("accounts")
+  @@schema("auth")
+}
+
+model Profile {
+  id         String    @id @default(uuid())
+  userId     String    @unique @map("user_id")
+  firstName  String    @map("first_name")
+  secondName String?   @map("second_name")
+  avatarUrl  String?   @map("avatar_url")
+  bio        String? 
+  birthday   DateTime?
+  isPrivate  Boolean   @default(false) @map("is_private")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@map("profiles")
+  @@schema("main")
+}
+
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String   @map("follower_id")
+  followingId String   @map("following_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  status      FollowStatus @default(ACCEPTED)
+
+  follower    User     @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+  
+  @@index([followerId])
+  @@index([followingId])
+  @@unique([followerId, followingId])
+  @@map("follows")
+  @@schema("main")
+}
+
+model Post {
+  id          String   @id @default(uuid())
+  authorId    String   @map("author_id")
+  description String?  @db.Text
+  isArchived  Boolean  @default(false) @map("is_archived")
+  isHidden    Boolean  @default(false) @map("is_hidden")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime? @updatedAt @map("updated_at")
+  
+  assets      Asset[]
+  comments    Comment[]
+  likes       Like[]
+  reports     Report[]
+
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  @@index([authorId, createdAt])
+  @@map("posts")
+  @@schema("main")
+}
+
+model Story {
+  id        String   @id @default(uuid())
+  authorId  String   @map("author_id")
+  caption   String?  @db.Text
+  isHidden  Boolean  @default(false) @map("is_hidden")
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+
+  assets    Asset[]
+  views     StoryView[]
+  reactions StoryReaction[]
+
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([authorId, createdAt])
+  @@index([expiresAt])
+  @@index([authorId, expiresAt])
+  @@map("stories")
+  @@schema("main")
+}
+
+model Asset {
+  id     String    @id @default(uuid())
+  url    String
+  type   AssetType @default(IMAGE)
+  postId String?   @map("post_id")
+  messageId String? @map("message_id")
+  storyId String?  @map("story_id")
+
+  post   Post?     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  message Message? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  story  Story?    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  @@map("assets")
+  @@schema("main")
+}
+
+model StoryView {
+  id        String   @id @default(uuid())
+  storyId   String   @map("story_id")
+  viewerId  String   @map("viewer_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  story  Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  viewer User  @relation("StoryViewer", fields: [viewerId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, viewerId])
+  @@index([storyId, createdAt])
+  @@index([viewerId, createdAt])
+  @@map("story_views")
+  @@schema("main")
+}
+
+model StoryReaction {
+  id        String   @id @default(uuid())
+  storyId   String   @map("story_id")
+  userId    String   @map("user_id")
+  emoji     String   @default("❤️")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime? @updatedAt @map("updated_at")
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([storyId, createdAt])
+  @@index([storyId, userId])
+  @@index([userId, createdAt])
+  @@map("story_reactions")
+  @@schema("main")
+}
+
+model StoryExclusion {
+  id             String   @id @default(uuid())
+  authorId       String   @map("author_id")
+  excludedUserId String   @map("excluded_user_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  author       User @relation("StoryExclusionAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  excludedUser User @relation("StoryExclusionExcludedUser", fields: [excludedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([authorId, excludedUserId])
+  @@index([authorId, createdAt])
+  @@index([excludedUserId, createdAt])
+  @@map("story_exclusions")
+  @@schema("main")
+}
+  
+model Comment {
+  id        String   @id @default(uuid())
+  authorId  String   @map("author_id")
+  postId    String   @map("post_id")
+  parentId    String?   @map("parent_id")
+  content   String
+  isHidden  Boolean  @default(false) @map("is_hidden")
+  createdAt DateTime @default(now()) @map("created_at")
+  parent      Comment?  @relation("CommentChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children    Comment[] @relation("CommentChildren")
+  likes       Like[]
+
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  reports   Report[]
+  @@index([postId])
+  @@index([parentId])
+  @@map("comments")
+  @@schema("main")
+}
+
+model Report {
+  id          String        @id @default(uuid())
+  reporterId  String        @map("reporter_id")
+  postId      String?       @map("post_id")
+  commentId   String?       @map("comment_id")
+  reason      String        @db.Text
+  status      ReportStatus  @default(OPEN)
+  action      ModerationAction @default(NONE)
+  resolutionNote String?    @db.Text @map("resolution_note")
+  resolvedById String?      @map("resolved_by_id")
+  resolvedAt  DateTime?     @map("resolved_at")
+  priority    ReportPriority @default(NORMAL) @map("priority")
+  assignedModeratorId String? @map("assigned_moderator_id")
+  dueAt       DateTime?     @map("due_at")
+  firstResponseAt DateTime? @map("first_response_at")
+  slaNotifiedAt DateTime?   @map("sla_notified_at")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime?     @updatedAt @map("updated_at")
+
+  reporter    User          @relation("ReportAuthor", fields: [reporterId], references: [id], onDelete: Cascade)
+  post        Post?         @relation(fields: [postId], references: [id], onDelete: SetNull)
+  comment     Comment?      @relation(fields: [commentId], references: [id], onDelete: SetNull)
+  resolvedBy  User?         @relation("ReportResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  assignedModerator User?   @relation("ReportAssignedModerator", fields: [assignedModeratorId], references: [id], onDelete: SetNull)
+  warnings    UserWarning[]
+  sanctions   UserSanction[]
+
+  @@index([reporterId, createdAt])
+  @@index([status, createdAt])
+  @@index([postId])
+  @@index([commentId])
+  @@index([status, priority, createdAt])
+  @@index([assignedModeratorId, status])
+  @@map("reports")
+  @@schema("main")
+}
+
+model UserWarning {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  actorId   String   @map("actor_id")
+  reportId  String?  @map("report_id")
+  reason    String   @db.Text
+  source    WarningSource @default(MANUAL)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user   User   @relation("WarningTarget", fields: [userId], references: [id], onDelete: Cascade)
+  actor  User   @relation("WarningActor", fields: [actorId], references: [id], onDelete: Cascade)
+  report Report? @relation(fields: [reportId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([actorId, createdAt])
+  @@map("user_warnings")
+  @@schema("main")
+}
+
+model UserSanction {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  actorId   String   @map("actor_id")
+  reportId  String?  @map("report_id")
+  type      SanctionType
+  reason    String   @db.Text
+  until     DateTime? @map("until")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  revokedAt DateTime? @map("revoked_at")
+
+  user   User   @relation("SanctionTarget", fields: [userId], references: [id], onDelete: Cascade)
+  actor  User   @relation("SanctionActor", fields: [actorId], references: [id], onDelete: Cascade)
+  report Report? @relation(fields: [reportId], references: [id], onDelete: SetNull)
+
+  @@index([userId, isActive, createdAt])
+  @@index([actorId, createdAt])
+  @@map("user_sanctions")
+  @@schema("main")
+}
+
+model ModerationLog {
+  id         String   @id @default(uuid())
+  actorId    String   @map("actor_id")
+  targetUserId String @map("target_user_id")
+  actionType ModerationLogAction @map("action_type")
+  reason     String?  @db.Text
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  actor      User     @relation("ModerationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  targetUser User     @relation("ModerationTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@index([targetUserId, createdAt])
+  @@index([actorId, createdAt])
+  @@map("moderation_logs")
+  @@schema("main")
+}
+
+model Like {
+  id        String   @id @default(uuid())
+  authorId  String   @map("author_id")
+  postId      String?   @map("post_id")
+  commentId   String?   @map("comment_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post        Post?     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment     Comment?  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  @@unique([authorId, postId])
+  @@unique([authorId, commentId])
+
+  @@map("likes")
+  @@schema("main")
+}
+
+model Chat {
+  id          String    @id @default(uuid())
+  name        String?
+  description String?   @db.Text
+  type        ChatType  @default(PRIVATE)
+  creatorId   String?   @map("creator_id")
+
+  creator     User?    @relation("ChatCreator", fields: [creatorId], references: [id], onDelete: SetNull)
+  participants ChatParticipant[]
+  messages    Message[]
+
+  @@map("chats")
+  @@schema("main")
+}
+
+model ChatParticipant {
+  id     String   @id @default(uuid())
+  chatId String   @map("chat_id")
+  userId String   @map("user_id")
+  role   ChatRole @default(MEMBER)
+
+  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([chatId, userId])
+  @@map("chat_participants")
+  @@schema("main")
+}
+
+model Message {
+  id        String    @id @default(uuid())
+  content   String?   @db.Text
+  isRead    Boolean   @default(false) @map("is_read")
+  isEdited  Boolean   @default(false) @map("is_edited")
+  deletedAt DateTime? @map("deleted_at")
+  chatId    String    @map("chat_id")
+  senderId  String    @map("sender_id")
+  replyToId String?   @map("reply_to_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime? @updatedAt @map("updated_at")
+
+  assets Asset[]
+
+  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo   Message? @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   Message[] @relation("MessageReplies")
+  @@map("messages")
+  @@schema("main")
+}
+
+model Notification {
+  id          String           @id @default(uuid())
+  type        NotificationType
+  recipientId String           @map("recipient_id")
+  actorId     String           @map("actor_id")
+  itemId      String?          @map("item_id")
+  postId      String?          @map("post_id")
+  message     String?          @db.Text
+  isRead      Boolean          @default(false) @map("is_read")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  recipient   User             @relation("recipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor       User             @relation("actor", fields: [actorId], references: [id], onDelete: Cascade)
+  @@index([recipientId, createdAt])
+  @@map("notifications")
+  @@schema("notifications")
+}
+
+enum NotificationType {
+  LIKE
+  COMMENT
+  FOLLOW
+  SYSTEM
+  MENTION
+
+  @@schema("notifications")
+}
+
+enum AssetType {
+  IMAGE
+  VIDEO
+
+  @@schema("main")
+}
+
+enum FollowStatus {
+  PENDING
+  ACCEPTED
+
+  @@schema("main")
+}
+
+enum ChatType {
+  PRIVATE
+  GROUP
+
+  @@schema("main")
+}
+
+enum ChatRole {
+  ADMIN
+  MEMBER
+
+  @@schema("main")
+}
+
+enum PlatformRole {
+  USER
+  MODERATOR
+  ADMIN
+
+  @@schema("auth")
+}
+
+enum AccountState {
+  ACTIVE
+  SUSPENDED
+  DELETED
+
+  @@schema("auth")
+}
+
+enum ReportPriority {
+  LOW
+  NORMAL
+  HIGH
+
+  @@schema("main")
+}
+
+enum ReportStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  REJECTED
+
+  @@schema("main")
+}
+
+enum ModerationAction {
+  NONE
+  HIDE
+  DELETE
+  WARN
+
+  @@schema("main")
+}
+
+enum WarningSource {
+  MANUAL
+  REPORT
+
+  @@schema("main")
+}
+
+enum SanctionType {
+  SUSPEND
+
+  @@schema("main")
+}
+
+enum ModerationLogAction {
+  ROLE_CHANGED
+  WARNING_ISSUED
+  SUSPENDED
+  UNSUSPENDED
+  ESCALATED
+
+  @@schema("main")
+}
