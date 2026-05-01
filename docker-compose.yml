@@ -27,19 +27,19 @@ services:
     networks:
       - innogram-network
   minio:
-      image: minio/minio
-      container_name: minio_container
-      ports:
-        - "9000:9000"
-        - "9001:9001"
-      environment:
-        MINIO_ROOT_USER: minioadmin
-        MINIO_ROOT_PASSWORD: minioadmin
-      volumes:
-        - minio_data:/data
-      command: server /data --console-address ":9001"
-      networks:
-        - innogram-network
+    image: minio/minio
+    container_name: minio_container
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - innogram-network
   createbuckets:
     image: minio/mc
     depends_on:
@@ -54,11 +54,11 @@ services:
         until /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin; do
           sleep 1
         done
-        
+
         echo "MinIO is UP!"
         /usr/bin/mc mb myminio/rika-bucket
         /usr/bin/mc anonymous set public myminio/rika-bucket
-        
+
         echo "Bucket created."
         exit 0
   rabbitmq:
@@ -82,7 +82,7 @@ services:
     networks:
       - innogram-network
     extra_hosts:
-        - "host.docker.internal:host-gateway"
+      - "host.docker.internal:host-gateway"
   grafana:
     image: grafana/grafana:latest
     container_name: grafana-container
@@ -106,6 +106,95 @@ services:
       - .env
     environment:
       ASSISTANT_PORT: "3003"
+    networks:
+      - innogram-network
+    restart: unless-stopped
+
+  auth-microservice:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: auth_microservice
+    container_name: auth-microservice
+    env_file:
+      - .env
+    environment:
+      PORT: "3001"
+      DATABASE_URL: postgresql://postgres:Jadirus33@postgres:5432/innogram?schema=auth
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - innogram-network
+    restart: unless-stopped
+
+  core-microservice:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: core_microservice
+    container_name: core-microservice
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://postgres:Jadirus33@postgres:5432/innogram?schema=main
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      ASSISTANT_MICROSERVICE_URL: http://assistant-microservice:3003
+      AUTH_MICROSERVICE_URL: http://auth-microservice:3001/internal/auth
+      ASSISTANT_SERVICE_SECRET: change_me_assistant_shared_secret
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+      - assistant-microservice
+    networks:
+      - innogram-network
+    restart: unless-stopped
+
+  client-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: client_app
+        NEXT_PUBLIC_API_URL: http://localhost:3000
+        NEXT_PUBLIC_WS_URL: http://localhost:3000
+    container_name: client-app
+    environment:
+      PORT: "3002"
+      HOSTNAME: "0.0.0.0"
+    ports:
+      - "3002:3002"
+    depends_on:
+      - core-microservice
+      - auth-microservice
+    networks:
+      - innogram-network
+    restart: unless-stopped
+
+  notifications-consumer-microservice:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: notifications_consumer_microservice
+    container_name: notifications-consumer-microservice
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://postgres:Jadirus33@postgres:5432/innogram?schema=notifications
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      - postgres
+      - rabbitmq
     networks:
       - innogram-network
     restart: unless-stopped

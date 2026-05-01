@@ -24,6 +24,7 @@ import { ReportsModule } from './reports/reports.module';
 import { AdminUsersModule } from './admin-users/admin-users.module';
 import { AdminDashboardModule } from './admin-dashboard/admin-dashboard.module';
 import { AssistantModule } from './assistant/assistant.module';
+import { StoryModule } from './story/story.module';
 @Module({
   imports: [
     ScheduleModule,
@@ -50,6 +51,7 @@ import { AssistantModule } from './assistant/assistant.module';
     AdminUsersModule,
     AdminDashboardModule,
     AssistantModule,
+    StoryModule,
     HealthModule,
     ConfigModule.forRoot({
       isGlobal: true,

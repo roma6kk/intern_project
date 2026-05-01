@@ -9,5 +9,6 @@ import { UsersModule } from '../users/users.module';
   imports: [ChatModule, FilesModule, UsersModule],
   controllers: [MessageController],
   providers: [MessageService],
+  exports: [MessageService],
 })
 export class MessageModule {}

@@ -11,7 +11,7 @@ ST = Local
 L = Local
 O = Innogram
 OU = Dev
-CN = app.local
+CN = localhost
 
 [v3_req]
 subjectAltName = @alt_names
@@ -19,5 +19,4 @@ keyUsage = critical, digitalSignature, keyEncipherment
 extendedKeyUsage = serverAuth
 
 [alt_names]
-DNS.1 = app.local
-DNS.2 = api.local
+DNS.1 = localhost

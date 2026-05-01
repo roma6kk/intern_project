@@ -1,8 +1,8 @@
-FROM node:20-alpine AS base
+FROM node:20-bookworm-slim AS base
 
 FROM base AS builder
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
+RUN corepack enable
 RUN npm install -g turbo
 COPY . .
 ARG APP_NAME
@@ -10,7 +10,7 @@ RUN turbo prune ${APP_NAME} --docker
 
 FROM base AS installer
 WORKDIR /app
-RUN apk add --no-cache libc6-compat
+RUN corepack enable
 
 COPY --from=builder /app/out/json/ .
 COPY --from=builder /app/out/package-lock.json ./package-lock.json

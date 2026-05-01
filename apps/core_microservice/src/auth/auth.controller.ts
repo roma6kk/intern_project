@@ -28,7 +28,7 @@ import { SignUpDto } from './dto/signup.dto';
 @Controller('auth')
 export class AuthController {
   private readonly frontendPublicUrl =
-    process.env.FRONTEND_PUBLIC_URL ?? 'https://app.local';
+    process.env.FRONTEND_PUBLIC_URL ?? 'https://localhost';
 
   constructor(private readonly authService: AuthService) {}
 

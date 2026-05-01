@@ -20,11 +20,11 @@ cd innogram
 
 2. Create `.env` in repository root from `.env.example` and set at least:
 
-- `NEXT_PUBLIC_API_URL=https://api.local`
-- `NEXT_PUBLIC_WS_URL=https://api.local`
-- `FRONTEND_PUBLIC_URL=https://app.local`
+- `NEXT_PUBLIC_API_URL=https://localhost`
+- `NEXT_PUBLIC_WS_URL=https://localhost`
+- `FRONTEND_PUBLIC_URL=https://localhost`
 - `AUTH_MICROSERVICE_URL=http://auth-api:3001/internal/auth`
-- `GOOGLE_CALLBACK_URL=https://api.local/auth/google/callback`
+- `GOOGLE_CALLBACK_URL=https://localhost/auth/google/callback`
 
 Important notes:
 
@@ -33,8 +33,8 @@ Important notes:
 
 3. Add hostnames locally (example for local/LAN test):
 
-- `api.local`
-- `app.local`
+- `localhost`
+- `localhost`
 
 Map them to your server IP in hosts file on client machines.
 
@@ -104,9 +104,9 @@ If `auth_microservice` / `notifications_consumer_microservice` are deployed to a
 
 ## 6. Verify
 
-- API: `https://api.local/api`
-- App: `https://app.local`
-- Health: `https://api.local/health`
+- API: `https://localhost/api`
+- App: `https://localhost`
+- Health: `https://localhost/health`
 
 If TLS error appears, import certificate into trusted store on each client machine.
 
