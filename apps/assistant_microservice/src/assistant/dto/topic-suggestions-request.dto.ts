@@ -16,6 +16,11 @@ export class TopicSuggestionsRequestDto {
   @IsUUID()
   requesterId!: string;
 
+  /** User who invoked the assistant — personalisation target. Must match requesterId. */
+  @ValidateNested()
+  @Type(() => TargetUserProfileDto)
+  requesterUserProfile!: TargetUserProfileDto;
+
   @ValidateNested()
   @Type(() => TargetUserProfileDto)
   targetUserProfile!: TargetUserProfileDto;

@@ -38,7 +38,7 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="rika-shell min-h-screen flex flex-col bg-transparent text-foreground">
+    <div className="innogram-shell min-h-screen flex flex-col bg-transparent text-foreground">
       <TopNav />
       <main
         className={cn(

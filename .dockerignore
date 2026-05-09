@@ -32,8 +32,8 @@ Dockerfile*
 # Heavy local folders not needed in image context
 out
 out/**
-Rika
-Rika/**
+Innogram
+Innogram/**
 
 # TLS certs are mounted as volumes, never build into images
 nginx/certs

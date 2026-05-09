@@ -7,6 +7,7 @@ import { X, ChevronLeft, ChevronRight, Send, Users, EyeOff, Eye, Trash2 } from '
 import api from '@/shared/api';
 import { cn } from '@/shared/lib/cn';
 import modal from '@/shared/styles/modal.module.css';
+import animations from '@/shared/styles/animations.module.css';
 import type { StoriesFeedGroup, StoryItem } from '../model/types';
 import { STORY_QUICK_REACTIONS } from '../model/story-reactions';
 import reactionsCss from './story-reactions.module.css';
@@ -111,6 +112,7 @@ export function StoryViewerModal({
   const [ownerHidden, setOwnerHidden] = useState<Record<string, boolean>>({});
   const [viewersOpen, setViewersOpen] = useState(false);
   const [viewersLoading, setViewersLoading] = useState(false);
+  const [mediaAspect, setMediaAspect] = useState<number | null>(null);
   const [viewers, setViewers] = useState<
     Array<{
       id: string;
@@ -226,7 +228,6 @@ export function StoryViewerModal({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open, onClose, goPrev, goNext]);
 
-  // Auto-advance for images (not for video). Disabled in read-only.
   useEffect(() => {
     if (!open) return;
     if (effectiveReadOnly) return;
@@ -250,6 +251,10 @@ export function StoryViewerModal({
 
   useEffect(() => {
     setVideoProgress(0);
+  }, [asset?.id, asset?.type]);
+
+  useEffect(() => {
+    setMediaAspect(null);
   }, [asset?.id, asset?.type]);
 
   useEffect(() => {
@@ -362,12 +367,18 @@ export function StoryViewerModal({
   if (!open) return null;
 
   const segments = group?.stories ?? [];
+  const effectiveAspect = mediaAspect ?? (asset?.type === 'VIDEO' ? 16 / 9 : 9 / 16);
+  const isLandscape = effectiveAspect > 1.05;
 
   return (
     <div className={cn(modal.root, 'overscroll-y-contain')} role="dialog" aria-modal="true">
       <button type="button" className={modal.dim} onClick={onClose} aria-label="Закрыть" />
       <div
-        className={cn(modal.shell, 'max-w-3xl flex flex-col overscroll-y-contain')}
+        className={cn(
+          modal.shell,
+          isLandscape ? 'max-w-5xl' : 'max-w-md',
+          'flex flex-col overscroll-y-contain',
+        )}
         onClick={(e) => e.stopPropagation()}
       >
         <div className={cn(modal.header, 'relative flex flex-col gap-3 py-3 shrink-0')}>
@@ -570,7 +581,7 @@ export function StoryViewerModal({
             )}
             onWheel={(e) => e.stopPropagation()}
           >
-          <div className="bg-black/90 flex items-center justify-center relative w-full max-w-full min-h-[min(36vh,260px)] max-h-[min(50vh,560px)] overflow-hidden shrink-0">
+          <div className="flex items-center justify-center relative w-full max-w-full overflow-hidden shrink-0">
             {/* Click/tap zones */}
             <button
               type="button"
@@ -587,27 +598,47 @@ export function StoryViewerModal({
               style={{ background: 'transparent' }}
             />
 
-            {!asset ? (
-              <div className="text-white/70 text-sm">No media</div>
-            ) : asset.type === 'VIDEO' ? (
-              <video
-                ref={videoRef}
-                src={asset.url}
-                controls
-                autoPlay
-                playsInline
-                className="block max-w-full max-h-[min(50vh,560px)] w-auto h-auto mx-auto object-contain"
-              />
-            ) : (
-              <Image
-                src={asset.url}
-                alt="story"
-                fill
-                unoptimized
-                sizes="100vw"
-                className="block w-auto h-auto mx-auto object-contain select-none"
-              />
-            )}
+            <div
+              key={asset?.id ?? 'no-asset'}
+              className={cn('relative w-full max-h-[78vh] overflow-hidden', animations.fadeIn)}
+              style={{
+                aspectRatio: String(effectiveAspect),
+              }}
+            >
+              {!asset ? (
+                <div className="h-full w-full flex items-center justify-center text-muted-foreground text-sm bg-muted/30">
+                  No media
+                </div>
+              ) : asset.type === 'VIDEO' ? (
+                <video
+                  ref={videoRef}
+                  src={asset.url}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="absolute inset-0 w-full h-full object-cover"
+                  onLoadedMetadata={(e) => {
+                    const w = e.currentTarget.videoWidth;
+                    const h = e.currentTarget.videoHeight;
+                    if (w > 0 && h > 0) setMediaAspect(w / h);
+                  }}
+                />
+              ) : (
+                <Image
+                  src={asset.url}
+                  alt="story"
+                  fill
+                  unoptimized
+                  sizes="100vw"
+                  className="absolute inset-0 w-full h-full object-cover select-none"
+                  onLoadingComplete={(img) => {
+                    const w = img.naturalWidth;
+                    const h = img.naturalHeight;
+                    if (w > 0 && h > 0) setMediaAspect(w / h);
+                  }}
+                />
+              )}
+            </div>
           </div>
 
           {(story?.caption || !effectiveReadOnly || (effectiveReadOnly && !isOwnStory)) && (
@@ -646,11 +677,6 @@ export function StoryViewerModal({
                 </div>
               )}
 
-              {effectiveReadOnly && !isOwnStory && (
-                <div className="text-xs text-muted-foreground">
-                  {expired ? 'Expired stories are read-only.' : 'Read-only.'}
-                </div>
-              )}
             </div>
           )}
           </div>

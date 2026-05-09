@@ -61,7 +61,7 @@ const SettingsPage = () => {
         setFormData({ ...profile, birthday: formattedBirthday });
         setAvatarPreview(profile.avatarUrl);
       } catch (err) {
-        setError('Failed to load profile');
+        setError('Не удалось загрузить профиль');
         console.error(err);
       } finally {
         setLoading(false);
@@ -137,7 +137,7 @@ const SettingsPage = () => {
         router.push('/profile/me');
       }, 1500);
     } catch (err) {
-      setError('Failed to update profile');
+      setError('Не удалось обновить профиль');
       console.error(err);
     } finally {
       setSaving(false);
@@ -152,7 +152,7 @@ const SettingsPage = () => {
       await api.delete('/users/me');
       await logout();
     } catch (err) {
-      setError('Failed to delete account');
+      setError('Не удалось удалить аккаунт');
       console.error(err);
     } finally {
       setDeleting(false);
@@ -188,12 +188,12 @@ const SettingsPage = () => {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-xl font-semibold text-foreground">Settings</h1>
+          <h1 className="text-xl font-semibold text-foreground">Настройки</h1>
         </div>
       </div>
 
       <div className="max-w-3xl mx-auto px-4 py-8 pb-24 md:pb-8">
-        <div className={cn(surface.card, animations.slideUp, 'p-5 mb-8 space-y-3 rika-glow-edge')}>
+        <div className={cn(surface.card, animations.slideUp, 'p-5 mb-8 space-y-3 innogram-glow-edge')}>
           <h2 className="text-sm font-semibold text-foreground">Оформление</h2>
           <p className="text-xs text-muted-foreground">Как отображать приложение на этом устройстве.</p>
           <div className="flex flex-wrap gap-2">
@@ -215,14 +215,14 @@ const SettingsPage = () => {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className={cn(surface.card, animations.slideUp, 'space-y-6 p-6 sm:p-7 rounded-3xl rika-glow-edge')}>
+        <form onSubmit={handleSubmit} className={cn(surface.card, animations.slideUp, 'space-y-6 p-6 sm:p-7 rounded-3xl innogram-glow-edge')}>
           <div className="space-y-3">
-            <label className="block text-sm font-semibold text-foreground">Profile Photo</label>
+            <label className="block text-sm font-semibold text-foreground">Фото профиля</label>
             <div className="flex items-end gap-4">
               <div className="w-24 h-24 relative rounded-full bg-muted overflow-hidden border border-border ring-2 ring-primary/20">
                 <Image
                   src={avatarPreview || '/default-avatar.svg'}
-                  alt="Avatar preview"
+                  alt="Предпросмотр аватара"
                   fill
                   className="object-cover"
                 />
@@ -230,7 +230,7 @@ const SettingsPage = () => {
               <div className="flex-1">
                 <label className="flex items-center gap-2 px-4 py-2 border border-border rounded-full font-semibold hover:bg-muted transition-colors cursor-pointer w-fit text-foreground">
                   <Upload className="w-4 h-4" />
-                  <span>Change photo</span>
+                  <span>Изменить фото</span>
                   <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
                 </label>
               </div>
@@ -239,7 +239,7 @@ const SettingsPage = () => {
 
           <div className="space-y-2">
             <label htmlFor="firstName" className="block text-sm font-semibold text-foreground">
-              First Name
+              Имя
             </label>
             <input
               type="text"
@@ -248,13 +248,13 @@ const SettingsPage = () => {
               value={formData.firstName}
               onChange={handleInputChange}
               className={inputClass}
-              placeholder="Enter first name"
+              placeholder="Введите имя"
             />
           </div>
 
           <div className="space-y-2">
             <label htmlFor="secondName" className="block text-sm font-semibold text-foreground">
-              Last Name
+              Фамилия
             </label>
             <input
               type="text"
@@ -263,13 +263,13 @@ const SettingsPage = () => {
               value={formData.secondName}
               onChange={handleInputChange}
               className={inputClass}
-              placeholder="Enter last name"
+              placeholder="Введите фамилию"
             />
           </div>
 
           <div className="space-y-2">
             <label htmlFor="bio" className="block text-sm font-semibold text-foreground">
-              Bio
+              О себе
             </label>
             <textarea
               id="bio"
@@ -278,14 +278,14 @@ const SettingsPage = () => {
               onChange={handleInputChange}
               rows={4}
               className={cn(inputClass, 'resize-none')}
-              placeholder="Tell us about yourself"
+              placeholder="Расскажите о себе"
             />
             <p className="text-xs text-muted-foreground">{(formData.bio || '').length}/150</p>
           </div>
 
           <div className="space-y-2">
             <label htmlFor="birthday" className="block text-sm font-semibold text-foreground">
-              Birthday
+              Дата рождения
             </label>
             <input
               type="date"
@@ -306,10 +306,10 @@ const SettingsPage = () => {
                 onChange={handleInputChange}
                 className="w-4 h-4 rounded border-border text-primary focus:ring-primary/30"
               />
-              <span className="text-sm font-medium text-foreground">Private Account</span>
+              <span className="text-sm font-medium text-foreground">Закрытый аккаунт</span>
             </label>
             <p className="text-xs text-muted-foreground ml-7">
-              When your account is private, only people you approve can see your posts and profile information.
+              Если аккаунт закрыт, ваши посты и профиль видны только тем, кого вы одобрили.
             </p>
           </div>
 
@@ -332,7 +332,7 @@ const SettingsPage = () => {
               className="px-6 py-2 border border-border rounded-full font-semibold hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-foreground"
               disabled={saving}
             >
-              Cancel
+              Отмена
             </button>
             <button
               type="submit"
@@ -342,18 +342,18 @@ const SettingsPage = () => {
               {saving ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Saving...</span>
+                  <span>Сохранение...</span>
                 </>
               ) : (
-                <span>Save Changes</span>
+                <span>Сохранить</span>
               )}
             </button>
           </div>
 
           <div className="pt-12 mt-12 border-t border-border">
-            <h2 className="text-lg font-semibold text-foreground mb-2">Danger zone</h2>
+            <h2 className="text-lg font-semibold text-foreground mb-2">Опасная зона</h2>
             <p className="text-sm text-muted-foreground mb-4">
-              Once you delete your account, you have 30 days to recover it. After that, your data will be permanently removed.
+              После удаления аккаунта у вас будет 30 дней на восстановление. Затем данные будут удалены навсегда.
             </p>
             <button
               type="button"
@@ -361,7 +361,7 @@ const SettingsPage = () => {
               className="flex items-center gap-2 px-4 py-2 text-destructive border border-destructive/40 rounded-full font-semibold hover:bg-destructive/10 transition-colors"
             >
               <Trash2 className="w-4 h-4" />
-              Delete account
+              Удалить аккаунт
             </button>
           </div>
         </form>
@@ -370,18 +370,18 @@ const SettingsPage = () => {
           <div className={modal.root}>
             <button type="button" className={modal.dim} onClick={() => setShowDeleteModal(false)} aria-label="Закрыть" />
             <div className={cn(modal.shell, 'max-w-md p-6 space-y-4')}>
-              <h3 className="text-lg font-semibold text-foreground">Delete account?</h3>
+              <h3 className="text-lg font-semibold text-foreground">Удалить аккаунт?</h3>
               <p className="text-sm text-muted-foreground">
-                This will schedule your account for deletion. You can recover within 30 days by logging in again.
+                Мы запланируем удаление аккаунта. В течение 30 дней вы сможете восстановить его, просто войдя снова.
               </p>
               <p className="text-sm text-muted-foreground">
-                Type <strong className="text-foreground">DELETE</strong> to confirm:
+                Введите <strong className="text-foreground">DELETE</strong>, чтобы подтвердить:
               </p>
               <input
                 type="text"
                 value={deleteConfirm}
                 onChange={e => setDeleteConfirm(e.target.value)}
-                placeholder="Type DELETE"
+                placeholder="Введите DELETE"
                 className={cn(inputClass, 'border-destructive/30 focus:ring-destructive/25')}
               />
               <div className="flex gap-3 pt-2">
@@ -393,7 +393,7 @@ const SettingsPage = () => {
                   }}
                   className="flex-1 py-2 border border-border rounded-xl font-semibold hover:bg-muted transition-colors text-foreground"
                 >
-                  Cancel
+                  Отмена
                 </button>
                 <button
                   type="button"
@@ -404,10 +404,10 @@ const SettingsPage = () => {
                   {deleting ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Deleting...
+                      Удаление...
                     </>
                   ) : (
-                    'Delete account'
+                    'Удалить аккаунт'
                   )}
                 </button>
               </div>

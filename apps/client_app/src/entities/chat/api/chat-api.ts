@@ -6,6 +6,11 @@ export const getUserChats = async (): Promise<Chat[]> => {
   return data;
 };
 
+export const getOnlineUsers = async (): Promise<string[]> => {
+  const { data } = await api.get('/chats/online');
+  return Array.isArray(data) ? data : [];
+};
+
 export const getChatMessages = async (chatId: string): Promise<Message[]> => {
   const { data } = await api.get(`/chats/${chatId}`);
   return data.messages || [];
@@ -63,6 +68,7 @@ export interface CreateChatParams {
   name?: string;
   description?: string;
   type?: 'PRIVATE' | 'GROUP';
+  avatarFile?: File;
 }
 
 export const createChat = async (params: CreateChatParams | string[]) => {
@@ -70,6 +76,18 @@ export const createChat = async (params: CreateChatParams | string[]) => {
     typeof params === 'object' && !Array.isArray(params)
       ? params
       : { memberIds: params };
+
+  if (typeof body === 'object' && body.avatarFile) {
+    const formData = new FormData();
+    formData.append('file', body.avatarFile);
+    formData.append('type', body.type ?? 'PRIVATE');
+    body.memberIds.forEach((id) => formData.append('memberIds', id));
+    if (body.name != null) formData.append('name', body.name);
+    if (body.description != null) formData.append('description', body.description);
+    const { data } = await api.post('/chats', formData);
+    return data;
+  }
+
   const { data } = await api.post('/chats', body);
   return data;
 };
@@ -87,9 +105,26 @@ export interface UpdateChatParams {
   promoteToAdminId?: string;
   name?: string;
   description?: string;
+  avatarFile?: File;
+  removeAvatar?: boolean;
 }
 
 export const updateChat = async (chatId: string, payload: UpdateChatParams) => {
+  if (payload.avatarFile) {
+    const formData = new FormData();
+    formData.append('file', payload.avatarFile);
+    if (payload.name !== undefined) formData.append('name', payload.name);
+    if (payload.description !== undefined) formData.append('description', payload.description);
+    if (payload.removeAvatar !== undefined) formData.append('removeAvatar', String(payload.removeAvatar));
+    if (payload.leaveChat !== undefined) formData.append('leaveChat', String(payload.leaveChat));
+    if (payload.newAdminId) formData.append('newAdminId', payload.newAdminId);
+    if (payload.promoteToAdminId) formData.append('promoteToAdminId', payload.promoteToAdminId);
+    payload.addMemberIds?.forEach((id) => formData.append('addMemberIds', id));
+    payload.removeMemberIds?.forEach((id) => formData.append('removeMemberIds', id));
+    const { data } = await api.patch(`/chats/${chatId}`, formData);
+    return data;
+  }
+
   const { data } = await api.patch(`/chats/${chatId}`, payload);
   return data;
 };
@@ -108,7 +143,7 @@ export const leaveChat = async (chatId: string, newAdminId?: string) => {
 
 export const updateChatInfo = async (
   chatId: string,
-  info: { name?: string; description?: string },
+  info: { name?: string; description?: string; avatarFile?: File; removeAvatar?: boolean },
 ) => {
   return updateChat(chatId, info);
 };

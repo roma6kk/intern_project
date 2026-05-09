@@ -8,11 +8,11 @@ interface EmptyStateProps {
 
 export default function EmptyState({ type }: EmptyStateProps) {
   const map: Record<string, { icon?: typeof Grid | typeof Heart | typeof MessageCircle | typeof Archive; text: string; subtext?: string }> = {
-    posts: { icon: Grid, text: 'No posts yet' },
-    liked: { icon: Heart, text: 'No liked posts yet' },
-    commented: { icon: MessageCircle, text: 'No commented posts yet' },
-    archived: { icon: Archive, text: 'No archived posts yet' },
-    private: { text: 'This Account is Private', subtext: 'Follow this account to see their posts' },
+    posts: { icon: Grid, text: 'Постов пока нет' },
+    liked: { icon: Heart, text: 'Нет понравившихся постов' },
+    commented: { icon: MessageCircle, text: 'Нет постов с вашими комментариями' },
+    archived: { icon: Archive, text: 'Нет архивных постов' },
+    private: { text: 'Это закрытый аккаунт', subtext: 'Подпишитесь, чтобы видеть посты' },
   };
 
   const config = map[type];

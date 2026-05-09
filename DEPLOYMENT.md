@@ -136,5 +136,5 @@ docker compose -f docker-compose.prod.yml restart nginx
 
 This repo uses a monorepo `COPY . .` during image build. Keep your Docker build context small:
 
-- `out/`, `Rika/`, `.next/`, `node_modules/` and TLS certs should be ignored in `.dockerignore`.
+- `out/`, `Innogram/`, `.next/`, `node_modules/` and TLS certs should be ignored in `.dockerignore`.
 - After optimization, build context should be tens of MB, not multiple GB.

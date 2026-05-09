@@ -7,8 +7,16 @@ import {
   Param,
   Delete,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import type { ICurrentUser } from 'src/auth/interfaces/ICurrentUser';
 import { ChatService } from './chat.service';
 import { CreateChatDto } from './dto/create-chat.dto';
@@ -29,12 +37,15 @@ export class ChatController {
   ) {}
 
   @Post()
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Create a private or group chat' })
   create(
     @CurrentUser() user: ICurrentUser,
     @Body() createChatDto: CreateChatDto,
+    @UploadedFile() file?: Express.Multer.File,
   ) {
-    return this.chatService.create(user.userId, createChatDto);
+    return this.chatService.create(user.userId, createChatDto, file);
   }
 
   @Get()
@@ -59,13 +70,16 @@ export class ChatController {
   }
 
   @Patch(':id')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Update chat (add/remove members)' })
   update(
     @CurrentUser() user: ICurrentUser,
     @Param('id') id: string,
     @Body() updateChatDto: UpdateChatDto,
+    @UploadedFile() file?: Express.Multer.File,
   ) {
-    return this.chatService.update(id, user.userId, updateChatDto);
+    return this.chatService.update(id, user.userId, updateChatDto, file);
   }
 
   @Delete(':id')

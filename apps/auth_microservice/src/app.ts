@@ -1,25 +1,29 @@
-import express from 'express';
-import dotenv from 'dotenv';
-import cors from 'cors';
-import cookieParser from 'cookie-parser';
-import { connectDB } from './config/prisma';
-import './config/redis';
-import './config/passport';
-import routes from './routes/auth.routes';
-import { collectDefaultMetrics } from 'prom-client';
-import { metricsEndpoint, metricsMiddleware } from './utils/metrics';
-import swaggerUi from 'swagger-ui-express';
-import swaggerJsdoc from 'swagger-jsdoc';
-import Sentry from '@sentry/node';
-import { nodeProfilingIntegration } from '@sentry/profiling-node';
+import express from "express";
+import dotenv from "dotenv";
+import cors from "cors";
+import cookieParser from "cookie-parser";
+import path from "path";
+import fs from "fs";
+import { connectDB } from "./config/prisma";
+import "./config/redis";
+import "./config/passport";
+import routes from "./routes/auth.routes";
+import { collectDefaultMetrics } from "prom-client";
+import { metricsEndpoint, metricsMiddleware } from "./utils/metrics";
+import swaggerUi from "swagger-ui-express";
+import swaggerJsdoc from "swagger-jsdoc";
+import Sentry from "@sentry/node";
+import { nodeProfilingIntegration } from "@sentry/profiling-node";
 
+const rootEnvPath = path.resolve(process.cwd(), ".env");
+if (fs.existsSync(rootEnvPath)) {
+  dotenv.config({ path: rootEnvPath });
+}
 dotenv.config();
 
 Sentry.init({
-  dsn: process.env.AUTH_SENTRY_DSN ?? process.env.SENTRY_DSN,
-  integrations: [
-    nodeProfilingIntegration(),
-  ],
+  dsn: process.env.AUTH_SENTRY_DSN,
+  integrations: [nodeProfilingIntegration()],
   tracesSampleRate: 1.0,
   profilesSampleRate: 1.0,
 });
@@ -37,11 +41,12 @@ app.use(cookieParser());
 
 const swaggerOptions: swaggerJsdoc.Options = {
   definition: {
-    openapi: '3.0.0',
+    openapi: "3.0.0",
     info: {
-      title: 'Auth Microservice API',
-      version: '1.0.0',
-      description: 'Authentication and authorization API for the Innogram platform',
+      title: "Auth Microservice API",
+      version: "1.0.0",
+      description:
+        "Authentication and authorization API for the Innogram platform",
     },
     servers: [
       {
@@ -51,9 +56,9 @@ const swaggerOptions: swaggerJsdoc.Options = {
     components: {
       securitySchemes: {
         bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
         },
       },
     },
@@ -63,25 +68,25 @@ const swaggerOptions: swaggerJsdoc.Options = {
       },
     ],
   },
-  apis: ['src/routes/**/*.ts'],
+  apis: ["src/routes/**/*.ts"],
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-app.get('/debug-sentry', function mainHandler() {
-  throw new Error('My first Sentry error in Auth Service!');
+app.get("/debug-sentry", function mainHandler() {
+  throw new Error("My first Sentry error in Auth Service!");
 });
 
-app.get('/api-docs-json', (_req, res) => {
-  res.setHeader('Content-Type', 'application/json');
+app.get("/api-docs-json", (_req, res) => {
+  res.setHeader("Content-Type", "application/json");
   res.send(swaggerSpec);
 });
 
-app.get('/metrics', metricsEndpoint);
+app.get("/metrics", metricsEndpoint);
 
-app.use('/internal/auth', routes);
+app.use("/internal/auth", routes);
 
 const start = async () => {
   try {
@@ -91,12 +96,12 @@ const start = async () => {
       console.log(`[Auth Service] Running on http://localhost:${PORT}`);
     });
   } catch (error) {
-    console.error('Error starting server:', error);
+    console.error("Error starting server:", error);
   }
 };
 
-app.get('/health', (req, res) => {
-  res.status(200).send('OK');
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
 });
 
 Sentry.setupExpressErrorHandler(app);

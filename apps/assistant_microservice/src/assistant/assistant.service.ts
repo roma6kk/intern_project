@@ -76,8 +76,10 @@ export class AssistantService {
       return this.wrapFallback(fb, AssistantErrorCode.LLM_ERROR);
     }
     const { system, user } = buildTopicSuggestionPrompts({
-      profile: dto.targetUserProfile,
+      requesterProfile: dto.requesterUserProfile,
+      counterpartyProfile: dto.targetUserProfile,
       recentMessages: dto.recentMessages,
+      viewer: { viewerUserId: dto.requesterUserProfile.userId },
     });
     const { content, outcome } = await this.llm.completeChat({
       system,
@@ -123,8 +125,11 @@ export class AssistantService {
       return this.wrapFallback(fb, AssistantErrorCode.LLM_ERROR);
     }
     const { system, user } = buildDialogSummaryPrompts({
+      requesterProfile: dto.requesterUserProfile,
+      counterpartyProfile: dto.targetUserProfile,
       recentMessages: dto.recentMessages,
       maxBullets,
+      viewer: { viewerUserId: dto.requesterUserProfile.userId },
     });
     const { content, outcome } = await this.llm.completeChat({
       system,
@@ -169,8 +174,11 @@ export class AssistantService {
       return this.wrapFallback(fb, AssistantErrorCode.LLM_ERROR);
     }
     const { system, user } = buildChatQaPrompts({
+      requesterProfile: dto.requesterUserProfile,
+      counterpartyProfile: dto.targetUserProfile,
       question: dto.question,
       recentMessages: dto.recentMessages,
+      viewer: { viewerUserId: dto.requesterUserProfile.userId },
     });
     const { content, outcome } = await this.llm.completeChat({
       system,

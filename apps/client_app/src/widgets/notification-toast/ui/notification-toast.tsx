@@ -37,17 +37,19 @@ export function NotificationToast({
         : `/profile/${actor.username}`;
     return (
       <Link href={link} className="flex items-start gap-3 p-2">
-        <div className="w-10 h-10 rounded-full overflow-hidden bg-amber-100 flex items-center justify-center flex-shrink-0">
+        <div className="relative w-10 h-10 rounded-full overflow-hidden bg-amber-100 flex-shrink-0">
           {actor.avatarUrl ? (
             <Image
               src={actor.avatarUrl}
               alt={actor.username}
-              width={40}
-              height={40}
+              fill
               className="object-cover"
+              sizes="40px"
             />
           ) : (
-            <User className="w-5 h-5 text-amber-700" />
+            <div className="w-full h-full flex items-center justify-center">
+              <User className="w-5 h-5 text-amber-700" />
+            </div>
           )}
         </div>
         <div className="flex-1 min-w-0">
@@ -70,11 +72,19 @@ export function NotificationToast({
 
   return (
     <Link href={link} className="flex items-center gap-3 p-2">
-      <div className="w-10 h-10 rounded-full overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
+      <div className="relative w-10 h-10 rounded-full overflow-hidden bg-muted flex-shrink-0">
         {actor.avatarUrl ? (
-          <Image src={actor.avatarUrl} alt={actor.username} width={40} height={40} className="object-cover" />
+          <Image
+            src={actor.avatarUrl}
+            alt={actor.username}
+            fill
+            className="object-cover"
+            sizes="40px"
+          />
         ) : (
-          <User className="w-5 h-5 text-muted-foreground" />
+          <div className="w-full h-full flex items-center justify-center">
+            <User className="w-5 h-5 text-muted-foreground" />
+          </div>
         )}
       </div>
       <div className="flex-1 min-w-0">

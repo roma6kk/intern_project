@@ -1,4 +1,3 @@
-/** Error codes returned when success is false (client/core can branch on these). */
 export const AssistantErrorCode = {
   VALIDATION: 'VALIDATION',
   LLM_TIMEOUT: 'LLM_TIMEOUT',
@@ -13,6 +12,8 @@ export type AssistantErrorCodeType =
 export interface RecentMessagePayload {
   id: string;
   senderId: string;
+  /** Display handle for transcripts; omit only if unavailable. */
+  senderUsername?: string;
   content: string | null;
   createdAt: string;
 }
@@ -48,7 +49,6 @@ export interface ChatQaData {
   citations: ChatCitation[];
 }
 
-/** When LLM fails we may still return structured fallback data with meta.source=fallback */
 export interface AssistantMeta {
   source: 'llm' | 'fallback';
   llmError?: AssistantErrorCodeType;

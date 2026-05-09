@@ -178,7 +178,7 @@ export default function AdminUserDetailsPage() {
           </Link>
         </div>
 
-        <div className={cn(surface.card, animations.slideUp, 'mb-8 rounded-3xl border border-border p-5 rika-glow-edge')}>
+        <div className={cn(surface.card, animations.slideUp, 'mb-8 rounded-3xl border border-border p-5 innogram-glow-edge')}>
           <h2 className="mb-3 text-sm font-semibold text-foreground">Quick actions</h2>
           <textarea
             value={reason}

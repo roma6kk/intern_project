@@ -3,6 +3,7 @@ import { ChatService } from './chat.service';
 import { PrismaService } from '../database/prisma.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ChatType } from '@prisma/client';
+import { FilesService } from '../files/files.service';
 
 describe('ChatService', () => {
   let service: ChatService;
@@ -20,6 +21,10 @@ describe('ChatService', () => {
       createMany: jest.fn(),
     },
   };
+  const mockFilesService = {
+    uploadFile: jest.fn(),
+    getReadableUrl: jest.fn(async (url: string) => url),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -28,6 +33,10 @@ describe('ChatService', () => {
         {
           provide: PrismaService,
           useValue: mockPrismaService,
+        },
+        {
+          provide: FilesService,
+          useValue: mockFilesService,
         },
       ],
     }).compile();
@@ -118,6 +127,18 @@ describe('ChatService', () => {
 
       expect(result).toBeDefined();
       expect(result.id).toBe('chat1');
+    });
+
+    it('should throw BadRequestException when trying to create private chat with yourself', async () => {
+      const createChatDto = {
+        memberIds: ['user1'],
+        type: ChatType.PRIVATE,
+      };
+      const currentUserId = 'user1';
+
+      await expect(service.create(currentUserId, createChatDto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw BadRequestException when group chat has no name', async () => {

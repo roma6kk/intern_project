@@ -182,9 +182,7 @@ export class ChatGateway
   handleSendNotification(
     @MessageBody() data: { recipientId: string; notification: unknown },
   ) {
-    this.server
-      .to(`user_${data.recipientId}`)
-      .emit('notification', data.notification);
+    this.emitNotificationToRecipient(data.recipientId, data.notification);
   }
 
   async getOnlineUsers(): Promise<string[]> {
@@ -228,7 +226,34 @@ export class ChatGateway
   }
 
   sendNotification(recipientId: string, notification: unknown) {
-    this.server.to(`user_${recipientId}`).emit('notification', notification);
+    this.emitNotificationToRecipient(recipientId, notification);
+  }
+
+  /**
+   * With @socket.io/redis-adapter, `server.to(room).emit` occasionally failed to reach
+   * all clients in multi-tab scenarios; fetch members of `user_<id>` and emit via socket id.
+   */
+  private emitNotificationToRecipient(recipientId: string, notification: unknown) {
+    const roomName = `user_${recipientId}`;
+    void this.emitNotificationToRecipientAsync(roomName, notification).catch(
+      () => this.server.to(roomName).emit('notification', notification),
+    );
+  }
+
+  private async emitNotificationToRecipientAsync(
+    roomName: string,
+    notification: unknown,
+  ): Promise<void> {
+    const sockets = await this.server.in(roomName).fetchSockets();
+
+    if (sockets.length > 0) {
+      for (const s of sockets) {
+        /** RemoteSocket#emit was unreliable here with redis-adapter; `to(id)` delivers. */
+        this.server.to(s.id).emit('notification', notification);
+      }
+    } else {
+      this.server.to(roomName).emit('notification', notification);
+    }
   }
 
   private extractToken(client: Socket): string | undefined {

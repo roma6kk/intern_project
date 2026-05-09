@@ -62,7 +62,7 @@ export function CommentItem({
       });
 
       const author = reply.author || { id: reply.authorId };
-      const username = author.username || author?.account?.username || author?.profile?.firstName || 'Unknown';
+      const username = author.username || author?.account?.username || author?.profile?.firstName || 'Неизвестно';
       const profile = author.profile || {};
       const normalizedReply = { ...reply, author: { ...author, id: author.id || reply.authorId, username, profile } };
 
@@ -70,7 +70,7 @@ export function CommentItem({
       setShowReplyInput(false);
       onReplyAdded(comment.id, normalizedReply);
     } catch (err) {
-      console.error('Reply error:', err);
+      console.error('Ошибка ответа:', err);
     } finally {
       setIsReplying(false);
     }
@@ -87,7 +87,7 @@ export function CommentItem({
       setLikesCount(newLikesCount);
       onLikeToggle(comment.id, nowLiked, newLikesCount);
     } catch (err) {
-      console.error('Like error:', err);
+      console.error('Ошибка лайка:', err);
     } finally {
       setIsLiking(false);
     }
@@ -101,7 +101,7 @@ export function CommentItem({
       onCommentUpdated?.(comment.id, editText.trim());
       setIsEditing(false);
     } catch (err) {
-      console.error('Edit comment error:', err);
+      console.error('Ошибка редактирования комментария:', err);
     } finally {
       setIsUpdating(false);
     }
@@ -119,7 +119,7 @@ export function CommentItem({
       await deleteComment(comment.id);
       onCommentDeleted?.(comment.id);
     } catch (err) {
-      console.error('Delete comment error:', err);
+      console.error('Ошибка удаления комментария:', err);
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirm(false);
@@ -167,14 +167,14 @@ export function CommentItem({
               onClick={() => window.location.href = `/profile/${comment.author?.username || 'unknown'}`}
               className="font-semibold hover:underline mr-1 text-muted-foreground"
             >
-              {comment.author?.username || 'Unknown'}
+              {comment.author?.username || 'Неизвестно'}
             </button>
             {isEditing ? (
               <div className="mt-2 flex flex-col gap-2">
                 <MentionTextarea
                   value={editText}
                   onChange={setEditText}
-                  placeholder="Edit comment..."
+                  placeholder="Редактировать комментарий..."
                   className="flex-1 text-sm text-muted-foreground bg-background border border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 rounded-lg px-3 py-2 min-h-[60px]"
                 />
                 <div className="flex gap-2">
@@ -183,7 +183,7 @@ export function CommentItem({
                     onClick={handleEditCancel}
                     className="px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted rounded"
                   >
-                    Cancel
+                    Отмена
                   </button>
                   <button
                     type="button"
@@ -191,7 +191,7 @@ export function CommentItem({
                     disabled={!editText.trim() || editText === comment.content || isUpdating}
                     className="px-2 py-1 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded disabled:opacity-50"
                   >
-                    {isUpdating ? 'Saving...' : 'Save'}
+                    {isUpdating ? 'Сохранение...' : 'Сохранить'}
                   </button>
                 </div>
               </div>
@@ -215,7 +215,7 @@ export function CommentItem({
               onClick={() => setShowReplyInput(!showReplyInput)}
               className="hover:text-foreground transition-colors"
             >
-              Reply
+              Ответить
             </button>
 
             {isOwnComment && !isEditing && (
@@ -229,25 +229,25 @@ export function CommentItem({
                   className="hover:text-foreground transition-colors flex items-center gap-1"
                 >
                   <Pencil size={12} />
-                  Edit
+                  Редактировать
                 </button>
                 {showDeleteConfirm ? (
                   <span className="flex items-center gap-1">
-                    <span className="text-red-600">Delete?</span>
+                    <span className="text-red-600">Удалить?</span>
                     <button
                       type="button"
                       onClick={handleDelete}
                       disabled={isDeleting}
                       className="text-red-600 hover:underline font-medium"
                     >
-                      {isDeleting ? '...' : 'Yes'}
+                      {isDeleting ? '...' : 'Да'}
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowDeleteConfirm(false)}
                       className="hover:text-foreground"
                     >
-                      No
+                      Нет
                     </button>
                   </span>
                 ) : (
@@ -257,7 +257,7 @@ export function CommentItem({
                     className="hover:text-red-600 transition-colors flex items-center gap-1"
                   >
                     <Trash2 size={12} />
-                    Delete
+                    Удалить
                   </button>
                 )}
               </>
@@ -269,7 +269,7 @@ export function CommentItem({
                 onClick={() => onLoadReplies?.(comment.id)}
                 className="hover:text-blue-600 transition-colors"
               >
-                View {comment._count?.children} replies
+                Показать ответов: {comment._count?.children}
               </button>
             )}
           </div>
@@ -289,7 +289,7 @@ export function CommentItem({
                 <MentionTextarea
                   value={replyText}
                   onChange={setReplyText}
-                  placeholder={`Reply to ${comment.author?.username}...`}
+                  placeholder={`Ответить ${comment.author?.username}...`}
                   className="flex-1 text-sm text-muted-foreground bg-background border border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 rounded-lg px-3 py-2 min-h-[60px]"
                 />
                 <div className="flex justify-end gap-2">
@@ -298,7 +298,7 @@ export function CommentItem({
                     onClick={() => setShowReplyInput(false)}
                     className="px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted rounded-md"
                   >
-                    Cancel
+                    Отмена
                   </button>
                   <button
                     type="button"
@@ -306,7 +306,7 @@ export function CommentItem({
                     disabled={!replyText.trim() || isReplying}
                     className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:opacity-50 transition-colors"
                   >
-                    {isReplying ? 'Sending...' : 'Reply'}
+                    {isReplying ? 'Отправка...' : 'Ответить'}
                   </button>
                 </div>
               </div>

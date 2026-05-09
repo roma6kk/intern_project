@@ -348,6 +348,7 @@ model Chat {
   id          String    @id @default(uuid())
   name        String?
   description String?   @db.Text
+  avatarUrl   String?   @map("avatar_url")
   type        ChatType  @default(PRIVATE)
   creatorId   String?   @map("creator_id")
 

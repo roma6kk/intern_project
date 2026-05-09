@@ -54,7 +54,7 @@ export default function PostPage() {
 
   return (
     <div className="min-h-screen bg-transparent flex justify-center py-6">
-      <div className={cn(surface.card, animations.slideUp, 'w-full max-w-3xl px-4 sm:px-6 py-4 sm:py-6 rounded-3xl rika-glow-edge')}>
+      <div className={cn(surface.card, animations.slideUp, 'w-full max-w-3xl px-4 sm:px-6 py-4 sm:py-6 rounded-3xl innogram-glow-edge')}>
         <PostCard post={post} fullView={true} />
       </div>
     </div>

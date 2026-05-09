@@ -30,9 +30,9 @@ export interface Comment {
 export interface CommentResponse {
   data: Comment[];
   meta: {
-    page: number;
+    cursor: string | null;
+    hasNextPage: boolean;
     limit: number;
-    total: number;
   };
 }
 

@@ -22,6 +22,8 @@ import { EditPostModal } from '@/features/post-edit';
 import { ReportPostModal } from '@/features/post-report';
 import { createReport } from '@/entities/report';
 import { cn } from '@/shared/lib/cn';
+import { isVideoUrl } from '@/shared/lib/is-video-url';
+import { notify } from '@/shared/lib/notify';
 import surface from '@/shared/styles/surface.module.css';
 import animations from '@/shared/styles/animations.module.css';
 
@@ -29,20 +31,22 @@ function timeAgo(date?: string) {
   if (!date) return '';
   const d = new Date(date);
   const diff = Math.floor((Date.now() - d.getTime()) / 1000);
-  if (diff < 60) return `${diff}s`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-  return `${Math.floor(diff / 86400)}d`;
+  if (diff < 60) return `${diff}с`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}м`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}ч`;
+  return `${Math.floor(diff / 86400)}д`;
 }
 
 export function PostCard({ post, fullView = false }: { post: Post; fullView?: boolean }) {
   const { user } = useAuth();
+  const FEED_COMMENTS_PAGE_SIZE = 5;
+  const FULL_VIEW_COMMENTS_PAGE_SIZE = 20;
   const [showFull, setShowFull] = useState(false);
   const [likesCount, setLikesCount] = useState<number>(post.likesCount || 0);
   const [comments, setComments] = useState<Comment[]>([]);
-  const [commentsPage, setCommentsPage] = useState(1);
   const [commentsHasMore, setCommentsHasMore] = useState(true);
   const [commentsCount, setCommentsCount] = useState<number>(0);
+  const [commentsCursor, setCommentsCursor] = useState<string | null>(null);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [liked, setLiked] = useState<boolean>(false);
   const [isLiking, setIsLiking] = useState(false);
@@ -94,7 +98,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
     
   } catch (error) {
     console.error('Failed to archive post:', error);
-    alert('Failed to update archive status');
+    notify.error('Не удалось обновить статус архивации');
   } finally {
     setIsArchiving(false);
   }
@@ -120,19 +124,28 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
     );
   }, [user?.id]);
 
+  // Показывать "всего комментариев" можем только если это пришло вместе с постом
+  const totalCommentsCount = post.commentsCount;
+  const showOpenAllLink =
+    !fullView &&
+    ((typeof post.commentsCount === 'number' && post.commentsCount > comments.length) ||
+      commentsHasMore);
+
   const loadPreviewComments = useCallback(async () => {
     try {
-      const res = await getPostComments(post.id, 1, 3);
+      const res = await getPostComments(post.id, null, FEED_COMMENTS_PAGE_SIZE);
       const processed = await processComments(res.data || []);
       setComments(processed);
-      setCommentsCount(res.meta.total);
+      setCommentsCursor(res?.meta?.cursor ?? null);
+      setCommentsHasMore(res?.meta?.hasNextPage === true);
+      setCommentsCount(typeof post.commentsCount === 'number' ? post.commentsCount : processed.length);
     } catch {}
-  }, [post.id, processComments]);
+  }, [post.id, processComments, post.commentsCount]);
 
   useEffect(() => {
     setComments([]);
-    setCommentsPage(1);
     setCommentsHasMore(true);
+    setCommentsCursor(null);
     if (!fullView && post.id) {
       loadPreviewComments();
    }
@@ -183,7 +196,8 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
   
     setCommentsLoading(true);
     try {
-      const res = await getPostComments(post.id, commentsPage, 20);
+      const pageSize = fullView ? FULL_VIEW_COMMENTS_PAGE_SIZE : FEED_COMMENTS_PAGE_SIZE;
+      const res = await getPostComments(post.id, commentsCursor, pageSize);
       const newComments = await processComments(res.data || []);
   
       setComments(prev => {
@@ -192,18 +206,22 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
         return Array.from(map.values());
       });
   
-      setCommentsHasMore(comments.length + newComments.length < res.meta.total);
-      setCommentsPage(p => p + 1);
-      setCommentsCount(res.meta.total);
+      setCommentsCursor(res?.meta?.cursor ?? null);
+      setCommentsHasMore(res?.meta?.hasNextPage === true);
+      setCommentsCount(
+        typeof post.commentsCount === 'number'
+          ? post.commentsCount
+          : (comments.length + newComments.length)
+      );
     } catch {}
     setCommentsLoading(false);
-  }, [post.id, commentsPage, commentsHasMore, commentsLoading, comments.length, processComments]);
+  }, [post.id, commentsHasMore, commentsLoading, comments.length, processComments, post.commentsCount, fullView, commentsCursor]);
 
   useEffect(() => {
-    if (fullView && commentsPage === 1 && comments.length === 0) {
+    if (fullView && comments.length === 0) {
       loadMoreComments();
     }
-  }, [fullView, loadMoreComments, commentsPage, comments.length]);
+  }, [fullView, loadMoreComments, comments.length]);
   
   
 
@@ -234,7 +252,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
   const handleDeletePost = async () => {
     if (!post.id || isDeleting) return;
     
-    if (!confirm('Are you sure you want to delete this post?')) {
+    if (!confirm('Вы уверены, что хотите удалить этот пост?')) {
       return;
     }
 
@@ -245,7 +263,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
       window.location.reload();
     } catch (error) {
       console.error('Failed to delete post:', error);
-      alert('Failed to delete post');
+      notify.error('Не удалось удалить пост');
       setIsDeleting(false);
     }
   };
@@ -253,7 +271,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
   const handleReportPost = async () => {
     if (!post.id || isReporting || !user?.id) return;
     if (reportReason.trim().length < 5) {
-      alert('Please provide at least 5 characters in reason');
+      notify.info('Укажите причину (минимум 5 символов)');
       return;
     }
     setIsReporting(true);
@@ -265,10 +283,10 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
       setShowReportModal(false);
       setReportReason('');
       setShowMenu(false);
-      alert('Report submitted');
+      notify.success('Жалоба отправлена');
     } catch (error) {
       console.error('Failed to report post:', error);
-      alert('Failed to submit report');
+      notify.error('Не удалось отправить жалобу');
     } finally {
       setIsReporting(false);
     }
@@ -420,7 +438,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
   return (
     <>
       <article
-        className={cn(surface.card, animations.slideUp, animations.hoverLift, 'p-3 sm:p-4 rika-glow-edge overflow-hidden')}
+        className={cn(surface.card, animations.slideUp, animations.hoverLift, 'p-3 sm:p-4 innogram-glow-edge overflow-hidden')}
         ref={articleRef}
       >
         <header className="flex items-center mb-3">
@@ -466,7 +484,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
                         }}
                         className="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-muted flex items-center gap-2"
                       >
-                        <Edit2 size={16} /> Edit
+                        <Edit2 size={16} /> Редактировать
                       </button>
 
                       <button
@@ -478,11 +496,11 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
                           <span className="w-4 h-4 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
                         ) : isArchived ? (
                           <>
-                            <ArchiveRestore size={16} /> Unarchive
+                            <ArchiveRestore size={16} /> Убрать из архива
                           </>
                         ) : (
                           <>
-                            <Archive size={16} /> Archive
+                            <Archive size={16} /> В архив
                           </>
                         )}
                       </button>
@@ -492,7 +510,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
                         disabled={isDeleting}
                         className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 disabled:opacity-50"
                       >
-                        <Trash2 size={16} /> {isDeleting ? 'Deleting...' : 'Delete'}
+                        <Trash2 size={16} /> {isDeleting ? 'Удаление...' : 'Удалить'}
                       </button>
                     </>
                   ) : (
@@ -500,7 +518,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
                       onClick={() => setShowReportModal(true)}
                       className="w-full text-left px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 flex items-center gap-2"
                     >
-                      <Flag size={16} /> Report
+                      <Flag size={16} /> Пожаловаться
                     </button>
                   )}
                 </div>
@@ -509,10 +527,10 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
           )}
         </header>
 
-        {isArchived && fullView && (
+        {isArchived && fullView && user?.id === post.author?.id && (
             <div className="bg-yellow-50 text-yellow-800 text-sm px-4 py-2 flex items-center gap-2 border-b border-yellow-100">
                 <Archive size={16} />
-                This post is archived and only visible to you.
+                Этот пост в архиве и виден только вам.
             </div>
         )}
   
@@ -526,7 +544,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
             {(() => {
               const asset = post.assets![currentAssetIndex];
               if (!asset) return null;
-              const isVideo = asset.type === 'VIDEO' || !!asset.url.match(/\.(mp4|webm|ogg|mov)$/i);
+              const isVideo = asset.type === 'VIDEO' || isVideoUrl(asset.url);
   
               return (
                 <>
@@ -536,8 +554,18 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
                       ref={videoRef}
                       src={asset.url}
                       className="w-full max-h-[72vh] object-contain h-auto"
+                      preload="metadata"
                       muted={isMuted}
+                      playsInline
                       loop
+                      onLoadedMetadata={(e) => {
+                        try {
+                          e.currentTarget.currentTime = 0;
+                        } catch {}
+                      }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
                     />
                   ) : (
                     <Image
@@ -555,14 +583,14 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
                       <button
                         onClick={goToPrev}
                         className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/45 hover:bg-black/70 text-white rounded-xl p-2 transition-all opacity-0 group-hover:opacity-100 backdrop-blur-sm"
-                        aria-label="Previous image"
+                        aria-label="Предыдущее изображение"
                       >
                         <ChevronLeft size={24} />
                       </button>
                       <button
                         onClick={goToNext}
                         className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/45 hover:bg-black/70 text-white rounded-xl p-2 transition-all opacity-0 group-hover:opacity-100 backdrop-blur-sm"
-                        aria-label="Next image"
+                        aria-label="Следующее изображение"
                       >
                         <ChevronRight size={24} />
                       </button>
@@ -580,7 +608,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
                               ? 'bg-card w-6' 
                               : 'bg-card bg-opacity-50 hover:bg-opacity-75'
                           }`}
-                          aria-label={`Go to image ${index + 1}`}
+                          aria-label={`Перейти к изображению ${index + 1}`}
                         />
                       ))}
                     </div>
@@ -612,7 +640,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
               <MentionText text={showFull ? post.description : descShort} />
               {post.description.length > 120 && (
                 <button className="ml-2 text-sm text-primary hover:text-primary/80 transition-colors" onClick={() => setShowFull(s => !s)}>
-                  {showFull ? 'less' : 'more'}
+                  {showFull ? 'Свернуть' : 'Ещё'}
                 </button>
               )}
             </p>
@@ -649,7 +677,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
             </button>
 
             <button
-                aria-label="Send"
+                aria-label="Поделиться"
                 onClick={() => setShowShareModal(true)}
                 className="p-2 rounded-xl hover:bg-muted active:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
@@ -657,16 +685,12 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
               </button>
             </div>
 
-          <button className="p-2 rounded-xl hover:bg-muted transition">
-            <Bookmark size={20} className="text-foreground" />
-          </button>
         </div>
 
   
-        {/* Likes & Description for posts with media */}
         {post.assets && post.assets.length > 0 && (
           <>
-            {likesCount > 0 && <div className="text-sm font-semibold text-muted-foreground mb-1">{likesCount} likes</div>}
+            {likesCount > 0 && <div className="text-sm font-semibold text-muted-foreground mb-1">Нравится: {likesCount}</div>}
   
             {post.description && (
               <div className="text-sm text-foreground mb-2">
@@ -679,7 +703,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
                 <MentionText text={showFull ? post.description : descShort} />
                 {post.description.length > 120 && (
                   <button className="ml-2 text-sm text-primary hover:text-primary/80 transition-colors" onClick={() => setShowFull(s => !s)}>
-                    {showFull ? 'less' : 'more'}
+                    {showFull ? 'Свернуть' : 'Ещё'}
                   </button>
                 )}
               </div>
@@ -689,7 +713,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
 
         {/* Likes count for posts without media */}
         {(!post.assets || post.assets.length === 0) && likesCount > 0 && (
-          <div className="text-sm font-semibold text-muted-foreground mb-1">{likesCount} likes</div>
+          <div className="text-sm font-semibold text-muted-foreground mb-1">Нравится: {likesCount}</div>
         )}
   
         {/* Comments */}
@@ -707,13 +731,29 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
             />
           ))}
         </div>
-        {!fullView && commentsCount > comments.length && (
-          <Link
-            href={`/post/${post.id}`}
-            className="inline-flex text-sm font-medium text-primary hover:text-primary/80 transition-colors mb-2"
-          >
-            Показать все комментарии ({commentsCount})
-          </Link>
+        {!fullView && (commentsHasMore || showOpenAllLink) && (
+          <div className="flex items-center gap-3 mb-2">
+            {commentsHasMore && (
+              <button
+                type="button"
+                onClick={loadMoreComments}
+                disabled={commentsLoading}
+                className="inline-flex text-sm font-medium text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
+              >
+                {commentsLoading ? 'Загрузка...' : 'Показать ещё'}
+              </button>
+            )}
+            {showOpenAllLink && (
+              <Link
+                href={`/post/${post.id}`}
+                className="inline-flex text-sm font-medium text-muted-foreground hover:text-muted-foreground/80 transition-colors"
+              >
+                {typeof totalCommentsCount === 'number'
+                  ? `Открыть все (${totalCommentsCount})`
+                  : 'Открыть все'}
+              </Link>
+            )}
+          </div>
         )}
   
         {/* Add Comment */}
@@ -731,7 +771,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
             <MentionTextarea
               value={commentText}
               onChange={setCommentText}
-              placeholder="Add a comment... (use @ to mention)"
+              placeholder="Добавьте комментарий... (используйте @, чтобы упомянуть)"
               className="flex-1 text-sm bg-muted/80 text-foreground placeholder:text-muted-foreground px-3 py-2.5 rounded-2xl border border-border resize-none min-h-[42px] mb-1 box-border focus:outline-none focus:ring-2 focus:ring-primary/25"
               inputId={`comment-input-${post.id}`}
             />
@@ -753,12 +793,12 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
               disabled={!commentText?.trim() || isPublishing}
               className="self-end mt-1 text-sm text-primary font-semibold px-3 py-1 rounded-lg hover:bg-primary/10 active:bg-primary/15 transition disabled:opacity-50"
             >
-              {isPublishing ? 'Posting...' : 'Publish'}
+              {isPublishing ? 'Публикация...' : 'Опубликовать'}
             </button>
           </div>
         </div>
   
-        <div className="text-xs text-muted-foreground mt-2">{timeAgo(post.createdAt)} ago</div>
+        <div className="text-xs text-muted-foreground mt-2">{timeAgo(post.createdAt)} назад</div>
       </article>
       {showShareModal && (
         <SharePostModal 

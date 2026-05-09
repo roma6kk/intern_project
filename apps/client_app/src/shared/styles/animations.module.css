@@ -1,13 +1,13 @@
 .fadeIn {
-  animation: rika-fade-in 0.34s ease-out forwards;
+  animation: innogram-fade-in 0.34s ease-out forwards;
 }
 
 .slideUp {
-  animation: rika-slide-up 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: innogram-slide-up 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .scaleIn {
-  animation: rika-scale-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: innogram-scale-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .hoverLift {
@@ -21,13 +21,13 @@
 }
 
 .softPulse {
-  animation: rika-fade-in 1.5s ease-in-out infinite alternate;
+  animation: innogram-fade-in 1.5s ease-in-out infinite alternate;
 }
 
 .staggerChild {
   opacity: 0;
   transform: translateY(8px) scale(0.985);
-  animation: rika-slide-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: innogram-slide-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .staggerChild:nth-child(1) { animation-delay: 20ms; }
@@ -55,7 +55,7 @@
       color-mix(in srgb, var(--hero-to) 35%, transparent) 196deg,
       transparent 360deg
     );
-  animation: rika-aurora 11s linear infinite;
+  animation: innogram-aurora 11s linear infinite;
   pointer-events: none;
 }
 
@@ -80,17 +80,91 @@
   opacity: 1;
 }
 
+/* Stories */
+.storyItem {
+  opacity: 1;
+  transform: none;
+  animation: innogram-slide-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform;
+}
+
+.storyItem:nth-child(1) { animation-delay: 20ms; }
+.storyItem:nth-child(2) { animation-delay: 70ms; }
+.storyItem:nth-child(3) { animation-delay: 120ms; }
+.storyItem:nth-child(4) { animation-delay: 170ms; }
+.storyItem:nth-child(5) { animation-delay: 220ms; }
+.storyItem:nth-child(6) { animation-delay: 270ms; }
+.storyItem:nth-child(7) { animation-delay: 320ms; }
+.storyItem:nth-child(8) { animation-delay: 370ms; }
+.storyItem:nth-child(9) { animation-delay: 420ms; }
+.storyItem:nth-child(10) { animation-delay: 470ms; }
+.storyItem:nth-child(11) { animation-delay: 520ms; }
+.storyItem:nth-child(12) { animation-delay: 570ms; }
+
+.storyButton {
+  transition:
+    transform 220ms ease,
+    filter 220ms ease;
+}
+
+.storyButton:hover {
+  transform: translateY(-2px);
+  filter: drop-shadow(0 10px 22px color-mix(in srgb, var(--primary) 18%, transparent));
+}
+
+.storyButton:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.storyRing {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 2px;
+  background: color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+.storyRingUnseen {
+  background: conic-gradient(
+    from 0deg,
+    color-mix(in srgb, var(--hero-from) 90%, transparent),
+    color-mix(in srgb, var(--hero-via) 90%, transparent),
+    color-mix(in srgb, var(--hero-to) 90%, transparent),
+    color-mix(in srgb, var(--hero-from) 90%, transparent)
+  );
+}
+
+.storyRingInner {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  overflow: hidden;
+  background: var(--card);
+  box-shadow: 0 10px 22px -16px var(--overlay);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .fadeIn,
   .slideUp,
   .scaleIn,
   .softPulse,
   .staggerChild,
-  .auroraSweep::before {
+  .auroraSweep::before,
+  .storyItem,
+  .storyRingUnseen {
     animation: none;
   }
 
   .staggerChild {
+    opacity: 1;
+    transform: none;
+  }
+
+  .storyItem {
     opacity: 1;
     transform: none;
   }

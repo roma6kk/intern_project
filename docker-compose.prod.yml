@@ -48,8 +48,8 @@ services:
           sleep 1
         done
         echo "MinIO is UP!"
-        /usr/bin/mc mb --ignore-existing myminio/${AWS_BUCKET_NAME:-rika-bucket}
-        /usr/bin/mc anonymous set public myminio/${AWS_BUCKET_NAME:-rika-bucket}
+        /usr/bin/mc mb --ignore-existing myminio/${AWS_BUCKET_NAME:-innogram-bucket}
+        /usr/bin/mc anonymous set public myminio/${AWS_BUCKET_NAME:-innogram-bucket}
         echo "Bucket is ready."
         exit 0
     networks:
@@ -130,6 +130,30 @@ services:
     networks:
       - innogram_network
     restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus-container
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - innogram_network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana-container
+    ports:
+      - "3004:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+    networks:
+      - innogram_network
+
 
   assistant-microservice:
     build:

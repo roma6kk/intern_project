@@ -5,9 +5,10 @@ import { NotificationToast } from './notification-toast';
 
 jest.mock('next/image', () => ({
   __esModule: true,
-  default: (props: ImgHTMLAttributes<HTMLImageElement>) => {
+  default: (props: ImgHTMLAttributes<HTMLImageElement> & { fill?: boolean; sizes?: string }) => {
+    const { fill, sizes, ...rest } = props;
     // eslint-disable-next-line @next/next/no-img-element
-    return <img {...props} alt={props.alt} />;
+    return <img {...rest} alt={props.alt} />;
   },
 }));
 

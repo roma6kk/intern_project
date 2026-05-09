@@ -12,7 +12,7 @@ import {
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
-const STORAGE_KEY = 'rika-theme';
+const STORAGE_KEY = 'innogram-theme';
 
 function getStoredTheme(): ThemeMode | null {
   if (typeof window === 'undefined') return null;

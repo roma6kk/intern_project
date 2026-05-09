@@ -68,14 +68,14 @@ function profileHref(account: AccountRef): string | null {
 function targetFromReport(report: ReportItem) {
   if (report.comment) {
     return {
-      label: 'Author (reported)',
+      label: 'Автор (на него жалоба)',
       href: profileHref(report.comment.author.account),
       username: report.comment.author.account?.username ?? report.comment.authorId.slice(0, 8),
     };
   }
   if (report.post) {
     return {
-      label: 'Author (reported)',
+      label: 'Автор (на него жалоба)',
       href: profileHref(report.post.author.account),
       username: report.post.author.account?.username ?? report.post.authorId.slice(0, 8),
     };
@@ -98,7 +98,7 @@ function contentPreview(report: ReportItem): string {
     const t = report.post.description.trim();
     return t.length > 200 ? `${t.slice(0, 200)}…` : t;
   }
-  return '(no text)';
+  return '(нет текста)';
 }
 
 function isOverdue(report: ReportItem): boolean {
@@ -187,7 +187,7 @@ export default function ModerationPage() {
   const onDeletePost = async (report: ReportItem) => {
     if (
       !confirm(
-        'Delete this post or comment permanently? This cannot be undone.',
+        'Удалить этот пост/комментарий навсегда? Это действие нельзя отменить.',
       )
     ) {
       return;
@@ -197,7 +197,7 @@ export default function ModerationPage() {
 
   const submitWarn = async () => {
     if (!warnReportId) return;
-    const reason = warnReason.trim() || 'Violation warning';
+    const reason = warnReason.trim() || 'Предупреждение о нарушении';
     await runUpdate(warnReportId, 'IN_REVIEW', 'WARN', { warningReason: reason });
     setWarnReportId(null);
     setWarnReason('');
@@ -237,7 +237,7 @@ export default function ModerationPage() {
   if (!canModerate) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center text-muted-foreground">
-        Access denied.
+        Доступ запрещён.
       </div>
     );
   }
@@ -252,10 +252,10 @@ export default function ModerationPage() {
             </div>
             <div className="min-w-0 flex-1">
               <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-                Moderation queue
+                Очередь модерации
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Review reports, set priority and SLA, assign work, take action.
+                Просматривайте жалобы, задавайте приоритет и SLA, назначайте исполнителя и выполняйте действия.
               </p>
             </div>
           </div>
@@ -263,19 +263,19 @@ export default function ModerationPage() {
       </div>
 
       <div className="mx-auto max-w-5xl px-4 py-6 pb-24">
-        <div className={cn(surface.card, animations.slideUp, 'mb-6 flex flex-wrap items-center gap-2 rounded-3xl border border-border/80 p-4 rika-glow-edge')}>
+        <div className={cn(surface.card, animations.slideUp, 'mb-6 flex flex-wrap items-center gap-2 rounded-3xl border border-border/80 p-4 innogram-glow-edge')}>
           <div className="flex items-center gap-2 text-sm font-medium text-foreground">
             <Filter className="h-4 w-4 text-muted-foreground" />
-            Filters
+            Фильтры
           </div>
           <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-            <span>Status</span>
+            <span>Статус</span>
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus((e.target.value || '') as ReportStatus | '')}
               className="rounded-lg border border-border bg-muted/50/80 px-2.5 py-1.5 text-sm text-foreground focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
             >
-              <option value="">All</option>
+              <option value="">Все</option>
               <option value="OPEN">OPEN</option>
               <option value="IN_REVIEW">IN_REVIEW</option>
               <option value="RESOLVED">RESOLVED</option>
@@ -283,13 +283,13 @@ export default function ModerationPage() {
             </select>
           </label>
           <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-            <span>Priority</span>
+            <span>Приоритет</span>
             <select
               value={filterPriority}
               onChange={(e) => setFilterPriority((e.target.value || '') as ReportPriority | '')}
               className="rounded-lg border border-border bg-muted/50/80 px-2.5 py-1.5 text-sm text-foreground focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
             >
-              <option value="">All</option>
+              <option value="">Все</option>
               <option value="HIGH">HIGH</option>
               <option value="NORMAL">NORMAL</option>
               <option value="LOW">LOW</option>
@@ -302,7 +302,7 @@ export default function ModerationPage() {
               onChange={(e) => setFilterOverdue(e.target.checked)}
               className="rounded border-border text-amber-600 focus:ring-amber-500"
             />
-            Overdue SLA
+            Просрочен SLA
           </label>
           <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-muted/50/50 px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted">
             <input
@@ -312,7 +312,7 @@ export default function ModerationPage() {
               className="rounded border-border text-amber-600 focus:ring-amber-500"
             />
             <UserCheck className="h-4 w-4 text-muted-foreground" />
-            Assigned to me
+            Назначено мне
           </label>
         </div>
 
@@ -323,14 +323,14 @@ export default function ModerationPage() {
             aria-modal="true"
           >
             <div className="max-h-[90vh] w-full max-w-md overflow-auto rounded-2xl border border-border bg-card p-6 shadow-2xl">
-              <h2 className="text-lg font-semibold text-foreground">Issue warning</h2>
+              <h2 className="text-lg font-semibold text-foreground">Выдать предупреждение</h2>
               <p className="mt-2 text-sm text-muted-foreground">
-                The user gets a notification with this text and a formal warning in the log.
+                Пользователь получит уведомление с этим текстом, а предупреждение сохранится в журнале.
               </p>
               <textarea
                 value={warnReason}
                 onChange={(e) => setWarnReason(e.target.value)}
-                placeholder="Reason for warning"
+                placeholder="Причина предупреждения"
                 rows={4}
                 className="mt-4 w-full rounded-xl border border-border px-3 py-2 text-sm text-foreground focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500/25"
               />
@@ -343,7 +343,7 @@ export default function ModerationPage() {
                   }}
                   className="rounded-lg bg-muted px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
                 >
-                  Cancel
+                  Отмена
                 </button>
                 <button
                   type="button"
@@ -351,7 +351,7 @@ export default function ModerationPage() {
                   disabled={busyId === warnReportId}
                   className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
                 >
-                  {busyId === warnReportId ? 'Saving…' : 'Issue warning'}
+                  {busyId === warnReportId ? 'Сохранение…' : 'Выдать предупреждение'}
                 </button>
               </div>
             </div>
@@ -361,11 +361,11 @@ export default function ModerationPage() {
         {loading ? (
           <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-10 text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin text-amber-600" />
-            Loading reports…
+            Загрузка жалоб…
           </div>
         ) : reports.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card/60 px-6 py-14 text-center text-muted-foreground">
-            No reports match these filters.
+            Нет жалоб, подходящих под фильтры.
           </div>
         ) : (
           <ul className="space-y-5">
@@ -410,7 +410,7 @@ export default function ModerationPage() {
                       </span>
                       {overdue && (
                         <span className="rounded-md bg-rose-100 px-2 py-0.5 font-semibold text-rose-800">
-                          SLA overdue
+                          Просрочен SLA
                         </span>
                       )}
                       <span className="text-muted-foreground">
@@ -418,18 +418,18 @@ export default function ModerationPage() {
                       </span>
                       {report.dueAt && (
                         <span className="text-muted-foreground">
-                          Due {new Date(report.dueAt).toLocaleString()}
+                          До {new Date(report.dueAt).toLocaleString()}
                         </span>
                       )}
                     </div>
 
                     <div className="text-sm">
-                      <span className="font-medium text-muted-foreground">Assigned </span>
+                      <span className="font-medium text-muted-foreground">Назначено </span>
                       <span className="text-foreground">@{assigneeName}</span>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 text-sm">
-                      <span className="text-muted-foreground">Priority</span>
+                      <span className="text-muted-foreground">Приоритет</span>
                       <select
                         value={pri}
                         disabled={working || !isOpen}
@@ -450,7 +450,7 @@ export default function ModerationPage() {
                             onClick={() => void onAssignSelf(report.id)}
                             className="rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-800 hover:bg-indigo-100 disabled:opacity-50"
                           >
-                            Assign to me
+                            Назначить мне
                           </button>
                           <button
                             type="button"
@@ -458,14 +458,14 @@ export default function ModerationPage() {
                             onClick={() => void onUnassign(report.id)}
                             className="rounded-lg bg-muted px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50"
                           >
-                            Unassign
+                            Снять назначение
                           </button>
                         </>
                       )}
                     </div>
 
                     <div className="text-sm text-foreground">
-                      <span className="font-medium text-muted-foreground">Reporter </span>
+                      <span className="font-medium text-muted-foreground">Заявитель </span>
                       {reporterHref ? (
                         <Link
                           href={reporterHref}
@@ -496,7 +496,7 @@ export default function ModerationPage() {
 
                     <div className="rounded-xl border border-slate-100 bg-muted/50/80 p-4">
                       <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        {report.commentId ? 'Comment' : 'Post'}
+                        {report.commentId ? 'Комментарий' : 'Пост'}
                       </div>
                       <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">
                         {contentPreview(report)}
@@ -506,14 +506,14 @@ export default function ModerationPage() {
                           href={postHref}
                           className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-amber-800 hover:underline"
                         >
-                          Open post
+                          Открыть пост
                           <ExternalLink className="h-3.5 w-3.5" />
                         </Link>
                       )}
                     </div>
 
                     <div>
-                      <div className="text-xs font-semibold text-muted-foreground">Report reason</div>
+                      <div className="text-xs font-semibold text-muted-foreground">Причина жалобы</div>
                       <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">
                         {report.reason}
                       </p>
@@ -527,7 +527,7 @@ export default function ModerationPage() {
                           onClick={() => onResolve(report.id, 'IN_REVIEW', 'NONE')}
                           className="rounded-lg bg-blue-100 px-2.5 py-1.5 text-xs font-medium text-blue-900 hover:bg-blue-200 disabled:opacity-50"
                         >
-                          In review
+                          В работе
                         </button>
                         <button
                           type="button"
@@ -535,7 +535,7 @@ export default function ModerationPage() {
                           onClick={() => onResolve(report.id, 'RESOLVED', 'HIDE')}
                           className="rounded-lg bg-orange-100 px-2.5 py-1.5 text-xs font-medium text-orange-900 hover:bg-orange-200 disabled:opacity-50"
                         >
-                          Resolve + hide
+                          Решить и скрыть
                         </button>
                         <button
                           type="button"
@@ -543,7 +543,7 @@ export default function ModerationPage() {
                           onClick={() => setWarnReportId(report.id)}
                           className="rounded-lg bg-amber-100 px-2.5 py-1.5 text-xs font-medium text-amber-950 hover:bg-amber-200 disabled:opacity-50"
                         >
-                          Warn user
+                          Предупредить
                         </button>
                         <button
                           type="button"
@@ -551,7 +551,7 @@ export default function ModerationPage() {
                           onClick={() => void onDeletePost(report)}
                           className="rounded-lg bg-rose-50 px-2.5 py-1.5 text-xs font-medium text-rose-800 hover:bg-rose-100 disabled:opacity-50"
                         >
-                          Delete content
+                          Удалить контент
                         </button>
                         <button
                           type="button"
@@ -559,7 +559,7 @@ export default function ModerationPage() {
                           onClick={() => onResolve(report.id, 'REJECTED', 'NONE')}
                           className="rounded-lg bg-muted px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50"
                         >
-                          Reject
+                          Отклонить
                         </button>
                       </div>
                     )}

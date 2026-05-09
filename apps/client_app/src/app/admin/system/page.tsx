@@ -108,7 +108,7 @@ export default function AdminSystemPage() {
   if (!isAdmin) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center text-muted-foreground">
-        Access denied.
+        Доступ запрещён.
       </div>
     );
   }
@@ -150,15 +150,15 @@ export default function AdminSystemPage() {
               ← Admin
             </Link>
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              System &amp; statistics
+              Система и статистика
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Aggregated counts and health checks (ADMIN only).
+              Сводные показатели и проверки здоровья сервисов (только ADMIN).
             </p>
           </div>
           {stats && (
             <p className="text-xs text-muted-foreground">
-              Updated{' '}
+              Обновлено{' '}
               {new Date(stats.generatedAt).toLocaleString(undefined, {
                 dateStyle: 'medium',
                 timeStyle: 'short',
@@ -170,7 +170,7 @@ export default function AdminSystemPage() {
         {loading ? (
           <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-8 text-muted-foreground shadow-sm">
             <Loader2 className="h-5 w-5 animate-spin text-indigo-500" />
-            Loading metrics…
+            Загрузка метрик…
           </div>
         ) : (
           <div className="space-y-10">
@@ -184,7 +184,7 @@ export default function AdminSystemPage() {
                       </div>
                       <div>
                         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          Open queue
+                          Открытая очередь
                         </p>
                         <p className="text-2xl font-semibold tabular-nums text-foreground">
                           {stats.reports.openQueue}
@@ -199,7 +199,7 @@ export default function AdminSystemPage() {
                       </div>
                       <div>
                         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          SLA overdue
+                          Просрочен SLA
                         </p>
                         <p className="text-2xl font-semibold tabular-nums text-foreground">
                           {stats.reports.openOverdue}
@@ -214,26 +214,26 @@ export default function AdminSystemPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          Reports snapshot
+                          Снимок по жалобам
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Open / in-review vs overdue helps spot queue pressure.
+                          OPEN / IN_REVIEW и просрочка помогают понять нагрузку на очередь.
                         </p>
                         <div className="mt-3 flex flex-wrap gap-2">
                           <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-medium text-indigo-700">
-                            Open: {openReports}
+                            OPEN: {openReports}
                           </span>
                           <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700">
-                            In review: {inReviewReports}
+                            IN_REVIEW: {inReviewReports}
                           </span>
                           <span className="rounded-full bg-rose-100 px-2.5 py-1 text-xs font-medium text-rose-700">
-                            Overdue: {stats.reports.openOverdue}
+                            Просрочено: {stats.reports.openOverdue}
                           </span>
                           <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
-                            Resolved: {resolvedReports}
+                            RESOLVED: {resolvedReports}
                           </span>
                           <span className="rounded-full bg-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700">
-                            Rejected: {rejectedReports}
+                            REJECTED: {rejectedReports}
                           </span>
                         </div>
                       </div>
@@ -243,13 +243,13 @@ export default function AdminSystemPage() {
 
                 <div className="grid gap-6 lg:grid-cols-3">
                   {stateRows.length > 0 && (
-                    <SimpleDistributionBars title="Accounts by state" rows={stateRows} />
+                    <SimpleDistributionBars title="Аккаунты по состоянию" rows={stateRows} />
                   )}
                   {roleRows.length > 0 && (
-                    <SimpleDistributionBars title="Accounts by role" rows={roleRows} />
+                    <SimpleDistributionBars title="Аккаунты по ролям" rows={roleRows} />
                   )}
                   {reportStatusRows.length > 0 && (
-                    <SimpleDistributionBars title="Reports by status" rows={reportStatusRows} />
+                    <SimpleDistributionBars title="Жалобы по статусам" rows={reportStatusRows} />
                   )}
                 </div>
               </>
@@ -257,14 +257,14 @@ export default function AdminSystemPage() {
 
             {!stats && !loading && (
               <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                Could not load statistics. Check your session and API.
+                Не удалось загрузить статистику. Проверьте сессию и API.
               </p>
             )}
 
             <section>
               <div className="mb-4 flex items-center gap-2">
                 <Server className="h-5 w-5 text-muted-foreground" />
-                <h2 className="text-lg font-semibold text-foreground">Service checks</h2>
+                <h2 className="text-lg font-semibold text-foreground">Проверки сервисов</h2>
               </div>
               {health && health.services.length > 0 ? (
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -319,7 +319,7 @@ export default function AdminSystemPage() {
                             svc.ok ? 'text-xs text-emerald-600' : 'text-xs text-rose-600'
                           }
                         >
-                          {svc.ok ? 'OK' : 'Fail'}
+                          {svc.ok ? 'OK' : 'Ошибка'}
                         </p>
                       </div>
                     </div>
@@ -327,12 +327,12 @@ export default function AdminSystemPage() {
                 </div>
               ) : (
                 !loading && (
-                  <p className="text-sm text-muted-foreground">No health data available.</p>
+                  <p className="text-sm text-muted-foreground">Нет данных о состоянии.</p>
                 )
               )}
               {health && (
                 <p className="mt-3 text-xs text-muted-foreground">
-                  Checked at{' '}
+                  Проверено:{' '}
                   {new Date(health.checkedAt).toLocaleString(undefined, {
                     dateStyle: 'medium',
                     timeStyle: 'medium',

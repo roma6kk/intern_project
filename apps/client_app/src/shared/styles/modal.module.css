@@ -18,7 +18,7 @@
   background: var(--overlay);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  animation: rika-fade-in 0.24s ease-out forwards;
+  animation: innogram-fade-in 0.24s ease-out forwards;
 }
 
 .shell {
@@ -41,7 +41,7 @@
   box-shadow:
     0 26px 56px -16px var(--overlay),
     0 0 0 1px color-mix(in srgb, var(--border) 80%, transparent);
-  animation: rika-scale-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: innogram-scale-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .header {

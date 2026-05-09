@@ -10,6 +10,8 @@ import { firstValueFrom, catchError } from 'rxjs';
 import { AxiosError } from 'axios';
 import { LoginDto } from './dto/login.dto';
 import { SignUpDto } from './dto/signup.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { AuthResponse } from './interfaces/IAuthResponse';
 import * as dotenv from 'dotenv';
 import { ICurrentUser } from './interfaces/ICurrentUser';
@@ -121,6 +123,36 @@ export class AuthService {
               error.response?.data || 'OAuth Callback Failed',
               error.response?.status || HttpStatus.UNAUTHORIZED,
             );
+          }),
+        ),
+    );
+    return data;
+  }
+
+  async handleForgotPassword(payload: ForgotPasswordDto): Promise<{ message: string }> {
+    this.logger.log(`Proxying Forgot Password for: ${payload.email}`);
+    const { data } = await firstValueFrom(
+      this.httpService
+        .post<{ message: string }>(`${this.authServiceUrl}/forgot-password`, payload)
+        .pipe(
+          catchError((error: AxiosError) => {
+            this.handleAxiosError(error);
+            throw error;
+          }),
+        ),
+    );
+    return data;
+  }
+
+  async handleResetPassword(payload: ResetPasswordDto): Promise<{ message: string }> {
+    this.logger.log(`Proxying Reset Password for: ${payload.email}`);
+    const { data } = await firstValueFrom(
+      this.httpService
+        .post<{ message: string }>(`${this.authServiceUrl}/reset-password`, payload)
+        .pipe(
+          catchError((error: AxiosError) => {
+            this.handleAxiosError(error);
+            throw error;
           }),
         ),
     );

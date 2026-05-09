@@ -13,6 +13,8 @@ router.post("/refresh", authController.refresh);
 router.post("/logout", authController.logout);
 
 router.post("/register", authController.register);
+router.post("/forgot-password", authController.forgotPassword);
+router.post("/reset-password", authController.resetPassword);
 
 router.get("/oauth/initiate", authController.initiateOAuth);
 

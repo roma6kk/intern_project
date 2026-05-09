@@ -96,7 +96,7 @@ export default function ProfileHeader({
                       className="px-4 py-2 border border-border rounded-full hover:bg-muted/50 transition-colors flex items-center gap-2 bg-background/70"
                     >
                       <Settings className="w-5 h-5 text-muted-foreground" />
-                      <span className="font-semibold text-muted-foreground">Settings</span>
+                      <span className="font-semibold text-muted-foreground">Настройки</span>
                     </button>
                   </>
                 ) : (
@@ -116,15 +116,15 @@ export default function ProfileHeader({
                         <>
                           <Loader2 className="w-4 h-4 animate-spin" />
                           <span>
-                            {isFollowingUser ? 'Unfollowing' : isPendingFollowRequest ? 'Canceling' : 'Following'}
+                            {isFollowingUser ? 'Отписка...' : isPendingFollowRequest ? 'Отмена...' : 'Подписка...'}
                           </span>
                         </>
                       ) : isPendingFollowRequest ? (
-                        <span>Cancel Request</span>
+                        <span>Отменить заявку</span>
                       ) : isFollowingUser ? (
-                        <span>Following</span>
+                        <span>Вы подписаны</span>
                       ) : (
-                        <span>Follow</span>
+                        <span>Подписаться</span>
                       )}
                     </button>
 
@@ -133,7 +133,7 @@ export default function ProfileHeader({
                       disabled={isMessageLoading}
                       className="px-4 py-2 bg-muted text-foreground rounded-full font-semibold hover:bg-muted/80 transition-colors disabled:opacity-70 flex items-center gap-2"
                     >
-                      {isMessageLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Message'}
+                      {isMessageLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Сообщение'}
                     </button>
                   </>
                 )}
@@ -143,21 +143,21 @@ export default function ProfileHeader({
             <div className="flex gap-8 mb-4">
               <div>
                 <span className="font-semibold text-muted-foreground">{postsCount || 0}</span>
-                <p className="text-muted-foreground text-sm">posts</p>
+                <p className="text-muted-foreground text-sm">посты</p>
               </div>
               <button
                 onClick={openFollowersModal}
                 className="text-left hover:opacity-70 transition-opacity cursor-pointer"
               >
                 <span className="font-semibold text-muted-foreground">{(followersCount || 0).toLocaleString()}</span>
-                <p className="text-muted-foreground text-sm">followers</p>
+                <p className="text-muted-foreground text-sm">подписчики</p>
               </button>
               <button
                 onClick={openFollowingModal}
                 className="text-left hover:opacity-70 transition-opacity cursor-pointer"
               >
                 <span className="font-semibold text-muted-foreground">{followingCount || 0}</span>
-                <p className="text-muted-foreground text-sm">following</p>
+                <p className="text-muted-foreground text-sm">подписки</p>
               </button>
             </div>
 
@@ -165,7 +165,7 @@ export default function ProfileHeader({
               {fullName && <p className="font-semibold mb-1 text-muted-foreground">{fullName}</p>}
               {!isPrivateAndNotFollowing && <p className="text-sm text-muted-foreground mb-2">{bio}</p>}
               {isPrivateAndNotFollowing && (
-                <p className="text-sm text-muted-foreground mb-2">This account is private</p>
+                <p className="text-sm text-muted-foreground mb-2">Этот аккаунт закрыт</p>
               )}
             </div>
           </div>

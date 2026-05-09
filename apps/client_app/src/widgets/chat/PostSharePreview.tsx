@@ -3,21 +3,27 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { EyeOff } from 'lucide-react';
 import api from '@/shared/api';
 import type { Post } from '@/entities/post';
+import { isVideoUrl } from '@/shared/lib/is-video-url';
+import { StoryVideoThumb } from '@/features/stories/ui/story-video-thumb';
 
 type PreviewState =
   | { kind: 'loading'; postId: string }
   | { kind: 'ready'; postId: string; post: Post }
   | { kind: 'error'; postId: string };
 
-function getFirstAssetUrl(post: Post): string | null {
+function getFirstMedia(post: Post): { url: string; isVideo: boolean } | null {
   const a = post.assets?.[0];
-  if (a?.url) return a.url;
+  if (a?.url) {
+    const typedVideo = (a.type ?? '').toUpperCase() === 'VIDEO';
+    return { url: a.url, isVideo: typedVideo || isVideoUrl(a.url) };
+  }
   const f = post.files?.[0];
-  if (f?.url) return f.url;
+  if (f?.url) return { url: f.url, isVideo: isVideoUrl(f.url) };
   const m = post.media?.[0];
-  if (m?.url) return m.url;
+  if (m?.url) return { url: m.url, isVideo: isVideoUrl(m.url) };
   return null;
 }
 
@@ -61,15 +67,16 @@ export default function PostSharePreview({ postId }: { postId: string }) {
   const view = useMemo(() => {
     if (state.kind !== 'ready' || state.postId !== postId) return null;
     const post = state.post;
-    const mediaUrl = getFirstAssetUrl(post);
+    const media = getFirstMedia(post);
     const author = getAuthorLabel(post);
     const desc = getDescriptionSnippet(post, 120);
     const hasText = Boolean(desc);
-    return { mediaUrl, author, desc, hasText };
+    return { media, author, desc, hasText };
   }, [state, postId]);
 
-  // Always clickable; when loading/error, show empty placeholder (no text).
-  if (state.postId !== postId || state.kind === 'loading' || state.kind === 'error' || !view) {
+  if (state.postId !== postId) return null;
+
+  if (state.kind === 'loading') {
     return (
       <Link
         href={href}
@@ -81,22 +88,41 @@ export default function PostSharePreview({ postId }: { postId: string }) {
     );
   }
 
+  if (state.kind === 'error' || !view) {
+    return (
+      <div
+        className="mt-1 w-[260px] max-w-full overflow-hidden rounded-xl border border-border/70 bg-muted/25"
+        role="note"
+        aria-label="Пост недоступен"
+      >
+        <div className="h-[70px] w-full flex items-center gap-2 px-3 text-muted-foreground">
+          <EyeOff size={16} />
+          <span className="text-sm font-medium">Пост недоступен</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Link
       href={href}
       className="mt-1 block w-[260px] max-w-full overflow-hidden rounded-xl border border-border/70 bg-card/80 hover:bg-muted/30 transition-colors"
       aria-label="Открыть пост"
     >
-      {view.mediaUrl ? (
+      {view.media ? (
         <div className="relative h-[140px] w-full bg-muted">
-          <Image
-            src={view.mediaUrl}
-            alt=""
-            fill
-            className="object-cover"
-            sizes="260px"
-            priority={false}
-          />
+          {view.media.isVideo ? (
+            <StoryVideoThumb src={view.media.url} />
+          ) : (
+            <Image
+              src={view.media.url}
+              alt=""
+              fill
+              className="object-cover"
+              sizes="260px"
+              priority={false}
+            />
+          )}
         </div>
       ) : (
         <div className="h-[10px]" />

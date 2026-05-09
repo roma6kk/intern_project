@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ChatType } from '@prisma/client';
+import { Transform } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
@@ -18,6 +19,23 @@ export class CreateChatDto {
   @IsArray()
   @ArrayMinSize(1)
   @IsUUID('4', { each: true })
+  @Transform(({ value }) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed) return [];
+      if (trimmed.startsWith('[')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          return Array.isArray(parsed) ? parsed : [trimmed];
+        } catch {
+          return [trimmed];
+        }
+      }
+      return trimmed.includes(',') ? trimmed.split(',').map((v) => v.trim()) : [trimmed];
+    }
+    return value;
+  })
   memberIds: string[];
 
   @ApiPropertyOptional({

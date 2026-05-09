@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ChevronDown, ChevronUp, Loader2, LogIn } from 'lucide-react';
+import { ChevronDown, ChevronUp, Loader2, LogIn, Plus } from 'lucide-react';
 import api from '@/shared/api';
 import { PostCard } from '@/widgets/post-card';
 import type { Post } from '@/entities/post';
@@ -91,7 +91,7 @@ export function Feed() {
       const list: SuggestionUser[] = (data || []).map((p: { userId: string; avatarUrl?: string | null; user?: { account?: { username?: string } } }) => ({
         id: p.userId,
         userId: p.userId,
-        username: p.user?.account?.username || 'Unknown',
+        username: p.user?.account?.username || 'Неизвестно',
         avatarUrl: p.avatarUrl ?? null,
       }));
       setSuggestions(list);
@@ -135,7 +135,7 @@ export function Feed() {
     return posts.map((p: Post) => {
       const author = p.author || { id: p.authorId };
       const username =
-        author.username || author?.account?.username || author?.profile?.firstName || 'Unknown';
+        author.username || author?.account?.username || author?.profile?.firstName || 'Неизвестно';
       const profile = author.profile || {};
       return { ...p, author: { ...author, id: author.id || p.authorId, username, profile } };
     });
@@ -171,36 +171,53 @@ export function Feed() {
     <div className="min-h-screen bg-transparent">
       <div className="max-w-7xl mx-auto py-2 sm:py-4 grid grid-cols-1 xl:grid-cols-12 gap-5 lg:gap-6">
         <div className="xl:col-span-8">
-          <div className={cn(surface.card, animations.slideUp, 'p-4 sm:p-5 mb-6 rika-glow-edge')}>
+          <div className={cn(surface.card, animations.slideUp, 'p-4 sm:p-5 mb-6 innogram-glow-edge')}>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold text-foreground">Stories</h2>
+              <h2 className="font-semibold text-foreground">Истории</h2>
               <Link href="/stories/manage" className="text-sm text-primary font-medium hover:opacity-80">
-                Manage
+                Управление
               </Link>
             </div>
 
             <div className="flex gap-4 py-2 overflow-x-auto flex-nowrap snap-x snap-mandatory">
-              <Link href="/stories/manage" className="shrink-0 text-center w-20">
-                <div className="w-14 h-14 rounded-full overflow-hidden mx-auto border-2 border-primary shadow-[0_8px_20px_-12px_var(--primary)]">
-                  <Image
-                    src={user?.profile?.avatarUrl || '/default-avatar.svg'}
-                    alt={user?.username || 'You'}
-                    width={56}
-                    height={56}
-                    className="w-full h-full object-cover"
-                  />
+              <Link
+                href="/stories/manage"
+                className={cn('shrink-0 text-center w-20 snap-start', animations.storyItem, animations.storyButton)}
+              >
+                <div className={cn('w-14 h-14 mx-auto relative', animations.storyRing, animations.storyRingUnseen)}>
+                  <div className={cn('w-full h-full', animations.storyRingInner)}>
+                    <Image
+                      src={user?.profile?.avatarUrl || '/default-avatar.svg'}
+                      alt={user?.username || 'Вы'}
+                      width={56}
+                      height={56}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <span className="absolute -bottom-1 -right-1 inline-flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground border-2 border-background shadow-sm">
+                    <Plus className="w-3.5 h-3.5" />
+                  </span>
                 </div>
-                <div className="text-xs mt-1 truncate text-muted-foreground">Your story</div>
+                <div className="text-xs mt-1 truncate text-muted-foreground">Ваша история</div>
               </Link>
 
               {storiesLoading ? (
-                <div className="flex items-center text-xs text-muted-foreground px-2">
-                  Loading…
+                <div className="flex items-center gap-4">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div
+                      key={`story-skel-${i}`}
+                      className={cn('shrink-0 text-center w-20 snap-start', animations.storyItem)}
+                    >
+                      <div className={cn('w-14 h-14 mx-auto', animations.storyRing)}>
+                        <div className={cn('w-full h-full', animations.storyRingInner, 'bg-muted/60')} />
+                      </div>
+                      <div className="text-xs mt-1 truncate text-muted-foreground/60"> </div>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 (stories || []).slice(0, 10).map((g, index) => {
                   const a = g.author;
-                  const ring = g.hasUnseen ? 'border-fuchsia-400' : 'border-muted';
                   return (
                     <button
                       key={`story-${a?.id}-${index}`}
@@ -210,19 +227,31 @@ export function Feed() {
                         setViewerStoryId(g?.stories?.[0]?.id);
                         setViewerOpen(true);
                       }}
-                      className="shrink-0 text-center w-20 snap-start"
+                      className={cn(
+                        'shrink-0 text-center w-20 snap-start',
+                        animations.storyItem,
+                        animations.storyButton,
+                      )}
                     >
-                      <div className={cn('w-14 h-14 rounded-full overflow-hidden mx-auto border-2 shadow-[0_8px_20px_-12px_var(--hero-to)]', ring)}>
-                        <Image
-                          src={a?.profile?.avatarUrl || '/default-avatar.svg'}
-                          alt={a?.username || 'Story'}
-                          width={56}
-                          height={56}
-                          className="w-full h-full object-cover"
-                        />
+                      <div
+                        className={cn(
+                          'w-14 h-14 mx-auto',
+                          animations.storyRing,
+                          g.hasUnseen ? animations.storyRingUnseen : null,
+                        )}
+                      >
+                        <div className={cn('w-full h-full', animations.storyRingInner)}>
+                          <Image
+                            src={a?.profile?.avatarUrl || '/default-avatar.svg'}
+                            alt={a?.username || 'История'}
+                            width={56}
+                            height={56}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
                       </div>
                       <div className="text-xs mt-1 truncate text-muted-foreground">
-                        {a?.username || 'Unknown'}
+                        {a?.username || 'Неизвестно'}
                       </div>
                     </button>
                   );
@@ -248,14 +277,14 @@ export function Feed() {
               <div className="flex justify-center py-6">
                 <div className="bg-card rounded-lg border border-border shadow-sm px-6 py-4 flex items-center gap-3">
                   <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Loading posts...</span>
+                  <span className="text-sm text-muted-foreground">Загрузка постов...</span>
                 </div>
               </div>
             )}
             
             {!hasMore && normalizedPosts.length > 0 && (
               <div className="text-center py-6">
-                <p className="text-sm text-muted-foreground">You have viewed all posts</p>
+                <p className="text-sm text-muted-foreground">Вы просмотрели все посты</p>
               </div>
             )}
           </div>
@@ -263,30 +292,27 @@ export function Feed() {
 
         <aside className="hidden xl:block xl:col-span-4">
           <div className="sticky top-28 space-y-4">
-            <div className={cn(surface.card, animations.slideUp, 'p-4 flex items-center justify-between rika-glow-edge')}>
+            <div className={cn(surface.card, animations.slideUp, 'p-4 flex items-center justify-between innogram-glow-edge')}>
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full overflow-hidden">
                   <Image
                     src={user?.profile?.avatarUrl || '/default-avatar.svg'}
-                    alt={user?.username || 'You'}
+                    alt={user?.username || 'Вы'}
                     width={48}
                     height={48}
                     className="w-full h-full object-cover"
                   />
                 </div>
                 <div>
-                  <div className="font-semibold text-muted-foreground">{user?.username || 'Unknown'}</div>
+                  <div className="font-semibold text-muted-foreground">{user?.username || 'Неизвестно'}</div>
                   <div className="text-sm text-muted-foreground">{user?.profile?.firstName || ''}</div>
                 </div>
               </div>
-              <button type="button" className="text-sm text-primary font-medium">
-                Switch
-              </button>
             </div>
 
-            <div className={cn(surface.card, animations.slideUp, 'p-4 rika-glow-edge')}>
+            <div className={cn(surface.card, animations.slideUp, 'p-4 innogram-glow-edge')}>
               <div className="flex items-center justify-between mb-3">
-                <div className="text-sm text-muted-foreground font-semibold">Suggestions For You</div>
+                <div className="text-sm text-muted-foreground font-semibold">Рекомендации</div>
                 <button
                   onClick={handleExpandSuggestions}
                   className="text-xs text-primary hover:opacity-90 flex items-center gap-0.5"
@@ -322,7 +348,7 @@ export function Feed() {
                         </div>
                         <div className="text-sm min-w-0">
                           <div className="font-semibold truncate text-muted-foreground">{s.username}</div>
-                          <div className="text-xs text-muted-foreground">Suggested</div>
+                          <div className="text-xs text-muted-foreground">Рекомендовано</div>
                         </div>
                       </Link>
                       <button
@@ -330,7 +356,7 @@ export function Feed() {
                         disabled={followLoadingId === s.userId}
                         className="text-xs text-primary hover:opacity-90 shrink-0 disabled:opacity-50 px-2.5 py-1 rounded-lg bg-primary/10"
                       >
-                        {followLoadingId === s.userId ? '...' : 'Follow'}
+                        {followLoadingId === s.userId ? '...' : 'Подписаться'}
                       </button>
                     </div>
                   ))
@@ -338,7 +364,6 @@ export function Feed() {
               </div>
             </div>
 
-            <div className="text-xs text-muted-foreground">About · Help · Press · API · Jobs · Privacy · Terms</div>
           </div>
         </aside>
       </div>

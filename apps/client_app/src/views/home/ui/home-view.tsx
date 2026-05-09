@@ -1,11 +1,9 @@
 'use client';
 
 import Image from 'next/image';
-import { useToast } from '@/application/providers/toast-provider';
+import { notify } from '@/shared/lib/notify';
 
 export function HomeView() {
-  const { success, error, info, warning } = useToast();
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-background font-sans">
       <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-8 sm:px-16 bg-background sm:items-start">
@@ -43,28 +41,28 @@ export function HomeView() {
           <button
             type="button"
             className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-success px-5 text-white transition-opacity hover:opacity-90 md:w-auto"
-            onClick={() => success('Успешно!')}
+            onClick={() => notify.success('Успешно!')}
           >
             Success
           </button>
           <button
             type="button"
             className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-destructive px-5 text-destructive-foreground transition-opacity hover:opacity-90 md:w-auto"
-            onClick={() => error('Ошибка!')}
+            onClick={() => notify.error('Ошибка!')}
           >
             Error
           </button>
           <button
             type="button"
             className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 text-primary-foreground transition-opacity hover:opacity-90 md:w-auto"
-            onClick={() => info('Информация')}
+            onClick={() => notify.info('Информация')}
           >
             Info
           </button>
           <button
             type="button"
             className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-warning px-5 text-white transition-opacity hover:opacity-90 md:w-auto"
-            onClick={() => warning('Предупреждение')}
+            onClick={() => notify.warning('Предупреждение')}
           >
             Warning
           </button>

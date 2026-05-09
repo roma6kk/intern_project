@@ -15,6 +15,10 @@ import { useChatSocket } from '@/features/chat-socket';
 import { useAuth } from '@/entities/session';
 import MessageBubble from './MessageBubble';
 import ChatManagementModal from './ChatManagementModal';
+import PostSharePreview from './PostSharePreview';
+import { extractPostIdFromText } from '@/shared/lib/post-link';
+import { getMessagePreviewText } from '@/shared/lib/message-preview';
+import { StoryVideoThumb } from '@/features/stories/ui/story-video-thumb';
 import {
   Send,
   Loader2,
@@ -25,19 +29,69 @@ import {
   Lightbulb,
   ListOrdered,
   MessageCircleQuestion,
+  ChevronDown,
 } from 'lucide-react';
 
 const MAX_ATTACHMENTS = 10;
 
+function AssistantLlmResultCard({
+  title,
+  showFallbackLabel,
+  expanded,
+  onToggle,
+  children,
+}: {
+  title: string;
+  showFallbackLabel: boolean;
+  expanded: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-lg border border-border/60 bg-card/80 text-sm overflow-hidden">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        aria-label={expanded ? 'Свернуть ответ AI' : 'Развернуть ответ AI'}
+        className="flex w-full items-start gap-2 p-3 text-left hover:bg-muted/40 transition-colors"
+      >
+        <ChevronDown
+          size={18}
+          className={`mt-0.5 shrink-0 text-muted-foreground transition-transform duration-200 ${
+            expanded ? '' : '-rotate-90'
+          }`}
+          aria-hidden
+        />
+        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-2">
+          <span className="font-medium text-foreground">{title}</span>
+          {showFallbackLabel && (
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground shrink-0">
+              без LLM
+            </span>
+          )}
+        </div>
+      </button>
+      {expanded && (
+        <div className="border-t border-border/50 px-3 pb-3 pt-2 space-y-2 animate-in fade-in duration-150">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface ChatWindowProps {
   chat: Chat;
+  onlineUserIds?: Set<string>;
   onMessagesRead?: () => void;
+  onLatestMessage?: (chatId: string, message: Message | null) => void;
   onChatUpdated?: (updatedChat: Chat) => void;
   onLeftChat?: () => void;
   onBack?: () => void;
 }
 
-export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeftChat, onBack }: ChatWindowProps) {
+export default function ChatWindow({ chat, onlineUserIds, onMessagesRead, onLatestMessage, onChatUpdated, onLeftChat, onBack }: ChatWindowProps) {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
@@ -56,11 +110,20 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
     | { kind: 'summary'; data: DialogSummaryData; meta?: AssistantMeta }
     | { kind: 'qa'; data: ChatQaData; meta?: AssistantMeta };
   const [assistantPanel, setAssistantPanel] = useState<AssistantPanel>({ kind: 'idle' });
+  const [assistantAnswerExpanded, setAssistantAnswerExpanded] = useState(true);
   const [topicTargetUserId, setTopicTargetUserId] = useState<string | undefined>(undefined);
   const [qaInput, setQaInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const hasMarkedAsReadRef = useRef(false);
+  const onMessagesReadRef = useRef(onMessagesRead);
+  const onLatestMessageRef = useRef(onLatestMessage);
+  const fetchSeqRef = useRef(0);
+
+  useEffect(() => {
+    onMessagesReadRef.current = onMessagesRead;
+    onLatestMessageRef.current = onLatestMessage;
+  }, [onMessagesRead, onLatestMessage]);
 
   useEffect(() => {
     setCurrentChat(chat);
@@ -73,6 +136,7 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
 
   useEffect(() => {
     setAssistantPanel({ kind: 'idle' });
+    setAssistantAnswerExpanded(true);
     setAssistantError(null);
     setQaInput('');
   }, [chat.id]);
@@ -89,23 +153,34 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
     currentChat.type === 'GROUP'
       ? (currentChat.name || 'Group Chat')
       : (otherMember?.account?.username ?? 'User');
+  const isOtherMemberOnline = Boolean(otherMember?.id && onlineUserIds?.has(otherMember.id));
+  const onlineMembersCount = useMemo(
+    () => currentChat.members?.filter((member) => onlineUserIds?.has(member.id)).length ?? 0,
+    [currentChat.members, onlineUserIds],
+  );
+  const replyingToPostId = extractPostIdFromText(replyingTo?.content);
 
+  const uid = user?.id;
   const fetchMessages = useCallback(() => {
+    const seq = ++fetchSeqRef.current;
     setLoading(true);
     getChatMessages(chat.id)
       .then((msgs) => {
+        if (seq !== fetchSeqRef.current) return;
         setMessages(msgs);
-        if (user && msgs.length > 0 && !hasMarkedAsReadRef.current) {
-          const hasUnread = msgs.some((m) => !m.isRead && m.senderId !== user.id);
+        onLatestMessageRef.current?.(chat.id, msgs[msgs.length - 1] ?? null);
+        if (uid && msgs.length > 0 && !hasMarkedAsReadRef.current) {
+          const hasUnread = msgs.some((m) => !m.isRead && m.senderId !== uid);
           if (hasUnread) {
             markChatAsRead(chat.id)
               .then(() => {
+                if (seq !== fetchSeqRef.current) return;
                 setMessages((prev) =>
                   prev.map((m) =>
-                    m.senderId !== user.id ? { ...m, isRead: true } : m,
+                    m.senderId !== uid ? { ...m, isRead: true } : m,
                   ),
                 );
-                onMessagesRead?.();
+                onMessagesReadRef.current?.();
               })
               .catch(console.error);
             hasMarkedAsReadRef.current = true;
@@ -113,8 +188,10 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
         }
       })
       .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [chat.id, user, onMessagesRead]);
+      .finally(() => {
+        if (seq === fetchSeqRef.current) setLoading(false);
+      });
+  }, [chat.id, uid]);
 
   useEffect(() => {
     hasMarkedAsReadRef.current = false;
@@ -148,18 +225,21 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
         }
         return [...prev, msg];
       });
+      onLatestMessageRef.current?.(chat.id, msg);
     },
     onMessageUpdated: (msg) => {
-      setMessages((prev) =>
-        prev.map((m) => (m.id === msg.id ? { ...m, ...msg } : m)),
-      );
+      setMessages((prev) => {
+        const next = prev.map((m) => (m.id === msg.id ? { ...m, ...msg } : m));
+        onLatestMessageRef.current?.(chat.id, next[next.length - 1] ?? null);
+        return next;
+      });
     },
     onMessageDeleted: (payload) => {
       setMessages((prev) => {
         const id = 'id' in payload ? payload.id : (payload as Message).id;
         const full = payload as Message;
         const deletedAt = full.deletedAt ?? new Date().toISOString();
-        return prev.map((m) => {
+        const next = prev.map((m) => {
           if (m.id === id) {
             return full.chatId !== undefined && full.deletedAt !== undefined
               ? { ...m, ...full }
@@ -173,6 +253,8 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
           }
           return m;
         });
+        onLatestMessageRef.current?.(chat.id, next[next.length - 1] ?? null);
+        return next;
       });
     },
   });
@@ -185,7 +267,7 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
       setPreviewUrls((urls) => {
         urls.forEach((u) => u && URL.revokeObjectURL(u));
         return next.map((f) =>
-          f.type.startsWith('image/') ? URL.createObjectURL(f) : '',
+          f.type.startsWith('image/') || f.type.startsWith('video/') ? URL.createObjectURL(f) : '',
         );
       });
       return next;
@@ -218,6 +300,7 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
           if (prev.some((m) => m.id === sent.id)) return prev;
           return [...prev, sent];
         });
+        onLatestMessageRef.current?.(chat.id, sent);
       }
       setInputText('');
       setReplyingTo(null);
@@ -251,6 +334,7 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
           : undefined;
       const res = await assistantTopicSuggestions(chat.id, targetUserId);
       if (res.success) {
+        setAssistantAnswerExpanded(true);
         setAssistantPanel({ kind: 'topic', data: res.data, meta: res.meta });
       } else {
         setAssistantError(res.message);
@@ -271,6 +355,7 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
     try {
       const res = await assistantDialogSummary(chat.id, 5);
       if (res.success) {
+        setAssistantAnswerExpanded(true);
         setAssistantPanel({ kind: 'summary', data: res.data, meta: res.meta });
       } else {
         setAssistantError(res.message);
@@ -291,6 +376,7 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
     try {
       const res = await assistantChatQa(chat.id, qaInput.trim());
       if (res.success) {
+        setAssistantAnswerExpanded(true);
         setAssistantPanel({ kind: 'qa', data: res.data, meta: res.meta });
       } else {
         setAssistantError(res.message);
@@ -331,8 +417,14 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
           )}
           {currentChat.type === 'GROUP' && (
             <span className="text-xs font-normal text-muted-foreground">
-              ({currentChat.members?.length ?? 0} members)
+              ({currentChat.members?.length ?? 0} members, {onlineMembersCount} online)
             </span>
+          )}
+          {currentChat.type === 'PRIVATE' && (
+            <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+              {isOtherMemberOnline && <span className="size-2 rounded-full bg-emerald-500" aria-hidden />}
+              <span>{isOtherMemberOnline ? 'В сети' : 'Не в сети'}</span>
+            </div>
           )}
         </div>
         {currentChat.type === 'GROUP' && (
@@ -424,28 +516,26 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
           </p>
         )}
         {assistantPanel.kind === 'topic' && (
-          <div className="rounded-lg border border-border/60 bg-card/80 p-3 text-sm space-y-2">
-            <div className="flex justify-between items-start gap-2">
-              <span className="font-medium text-foreground">Идеи для разговора</span>
-              {assistantPanel.meta?.source === 'fallback' && (
-                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">без LLM</span>
-              )}
-            </div>
+          <AssistantLlmResultCard
+            title="Идеи для разговора"
+            showFallbackLabel={assistantPanel.meta?.source === 'fallback'}
+            expanded={assistantAnswerExpanded}
+            onToggle={() => setAssistantAnswerExpanded((v) => !v)}
+          >
             <ul className="list-disc pl-4 space-y-1 text-muted-foreground">
               {assistantPanel.data.suggestions.map((s, i) => (
                 <li key={i}>{s}</li>
               ))}
             </ul>
-          </div>
+          </AssistantLlmResultCard>
         )}
         {assistantPanel.kind === 'summary' && (
-          <div className="rounded-lg border border-border/60 bg-card/80 p-3 text-sm space-y-2">
-            <div className="flex justify-between items-start gap-2">
-              <span className="font-medium text-foreground">Краткое резюме</span>
-              {assistantPanel.meta?.source === 'fallback' && (
-                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">без LLM</span>
-              )}
-            </div>
+          <AssistantLlmResultCard
+            title="Краткое резюме"
+            showFallbackLabel={assistantPanel.meta?.source === 'fallback'}
+            expanded={assistantAnswerExpanded}
+            onToggle={() => setAssistantAnswerExpanded((v) => !v)}
+          >
             <p className="text-muted-foreground">{assistantPanel.data.summary}</p>
             {assistantPanel.data.actionItems.length > 0 && (
               <ul className="list-disc pl-4 space-y-1 text-muted-foreground">
@@ -454,16 +544,15 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
                 ))}
               </ul>
             )}
-          </div>
+          </AssistantLlmResultCard>
         )}
         {assistantPanel.kind === 'qa' && (
-          <div className="rounded-lg border border-border/60 bg-card/80 p-3 text-sm space-y-2">
-            <div className="flex justify-between items-start gap-2">
-              <span className="font-medium text-foreground">Ответ</span>
-              {assistantPanel.meta?.source === 'fallback' && (
-                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">без LLM</span>
-              )}
-            </div>
+          <AssistantLlmResultCard
+            title="Ответ"
+            showFallbackLabel={assistantPanel.meta?.source === 'fallback'}
+            expanded={assistantAnswerExpanded}
+            onToggle={() => setAssistantAnswerExpanded((v) => !v)}
+          >
             <p className="text-muted-foreground whitespace-pre-wrap">{assistantPanel.data.answer}</p>
             {assistantPanel.data.citations.length > 0 && (
               <div className="text-xs text-muted-foreground space-y-1">
@@ -475,7 +564,7 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
                 ))}
               </div>
             )}
-          </div>
+          </AssistantLlmResultCard>
         )}
       </div>
 
@@ -505,13 +594,28 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
       {/* Input */}
       <div className="p-4 bg-card/85 border-t border-border/60 backdrop-blur-sm">
         {replyingTo && (
-          <div className="mb-2 flex items-center justify-between gap-2 rounded-xl border border-border/70 bg-muted/45 px-3 py-2 text-sm">
-            <span className="truncate text-muted-foreground">
-              Ответ на <strong>{replyingTo.sender?.account?.username ?? replyingTo.sender?.profile?.firstName ?? 'User'}</strong>
-              {replyingTo.content != null && replyingTo.content !== '' && (
-                <>: {replyingTo.content.slice(0, 50)}{replyingTo.content.length > 50 ? '…' : ''}</>
-              )}
-            </span>
+          <div className="mb-2 flex items-start justify-between gap-2 rounded-xl border border-border/70 bg-muted/45 px-3 py-2 text-sm">
+            <div className="min-w-0">
+              <span className="truncate text-muted-foreground">
+                Ответ на <strong>{replyingTo.sender?.account?.username ?? replyingTo.sender?.profile?.firstName ?? 'User'}</strong>
+              </span>
+              {replyingToPostId ? (
+                <div className="mt-1 max-w-[240px]">
+                  <PostSharePreview postId={replyingToPostId} />
+                </div>
+              ) : (replyingTo.content != null && replyingTo.content !== '') || (replyingTo.assets?.length ?? 0) > 0 ? (
+                <p className="truncate text-muted-foreground">
+                  {(() => {
+                    const preview = getMessagePreviewText({
+                      content: replyingTo.content,
+                      deletedAt: replyingTo.deletedAt,
+                      assetsCount: replyingTo.assets?.length,
+                    });
+                    return preview.length > 50 ? `${preview.slice(0, 50)}…` : preview;
+                  })()}
+                </p>
+              ) : null}
+            </div>
             <button
               type="button"
               onClick={() => setReplyingTo(null)}
@@ -549,6 +653,10 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
                       alt=""
                       className="w-full h-full object-cover"
                     />
+                  ) : file.type.startsWith('video/') && previewUrls[i] ? (
+                    <div className="relative w-full h-full">
+                      <StoryVideoThumb src={previewUrls[i]} />
+                    </div>
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center p-1 text-center">
                       <span className="text-muted-foreground text-xs truncate w-full">{file.name}</span>
@@ -572,7 +680,7 @@ export default function ChatWindow({ chat, onMessagesRead, onChatUpdated, onLeft
             ref={fileInputRef}
             type="file"
             multiple
-            accept="image/*"
+            accept="image/*,video/*"
             className="hidden"
             onChange={handleFileSelect}
           />

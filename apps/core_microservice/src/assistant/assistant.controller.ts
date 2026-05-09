@@ -41,12 +41,18 @@ export class AssistantController {
       user.userId,
       body.chatId,
       body.maxBullets,
+      body.targetUserId,
     );
   }
 
   @Post('chat-qa')
   @ApiOperation({ summary: 'AI: answer a question using chat history' })
   chatQa(@CurrentUser() user: ICurrentUser, @Body() body: ChatQaBodyDto) {
-    return this.assistant.chatQa(user.userId, body.chatId, body.question);
+    return this.assistant.chatQa(
+      user.userId,
+      body.chatId,
+      body.question,
+      body.targetUserId,
+    );
   }
 }

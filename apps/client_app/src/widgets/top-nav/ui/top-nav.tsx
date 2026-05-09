@@ -23,7 +23,7 @@ import api from '@/shared/api';
 import type { Notification } from '@/entities/notification';
 import { useSocketNotifications } from '@/shared/lib/use-socket-notifications';
 import { useSocket } from '@/entities/session';
-import { getUserChats } from '@/entities/chat';
+import { getUserChats, lastMessageIsUnreadIncomingForUser } from '@/entities/chat';
 import { currentChatIdRef } from '@/shared/lib/current-chat-id';
 import type { Chat, Message } from '@/entities/chat';
 import { cn } from '@/shared/lib/cn';
@@ -44,20 +44,6 @@ const navBtn =
 function notificationLooksUnread(n: Notification & { is_read?: boolean }): boolean {
   const read = n.isRead ?? n.is_read;
   return read !== true;
-}
-
-/** Preview row from GET /chats omits top-level senderId; only nested sender.id is present. */
-function lastMessageIsUnreadIncomingForUser(
-  lastMessage: Message & { sender_id?: string; sender?: { id?: string } | null },
-  myUserId: string
-): boolean {
-  if (lastMessage.isRead) return false;
-  const senderId =
-    lastMessage.senderId ??
-    lastMessage.sender_id ??
-    lastMessage.sender?.id;
-  if (!senderId) return false;
-  return senderId !== myUserId;
 }
 
 export function TopNav() {
@@ -220,7 +206,7 @@ export function TopNav() {
                 onClick={() => setIsSearchOpen(true)}
                 className="w-full pl-10 pr-4 py-2.5 text-left text-sm text-muted-foreground bg-muted/65 border border-border rounded-2xl hover:bg-muted hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/40 transition-all cursor-pointer"
               >
-                Search posts, people, tags...
+                Поиск по постам, людям...
               </button>
             </div>
           </div>

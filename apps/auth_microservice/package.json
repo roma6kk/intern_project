@@ -19,6 +19,8 @@
     "@prisma/client": "^6.19.1",
     "@sentry/node": "^10.42.0",
     "@sentry/profiling-node": "^10.42.0",
+    "@types/amqplib": "^0.10.8",
+    "amqplib": "^1.0.5",
     "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",

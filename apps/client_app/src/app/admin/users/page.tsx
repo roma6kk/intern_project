@@ -99,10 +99,10 @@ export default function AdminUsersPage() {
   const runBulk = async (action: 'WARN' | 'SUSPEND' | 'UNSUSPEND' | 'ROLE') => {
     const ids = [...selected];
     if (ids.length === 0) {
-      setBulkMessage('Select at least one user');
+      setBulkMessage('Выберите хотя бы одного пользователя');
       return;
     }
-    const reason = bulkReason.trim() || 'Bulk admin action';
+    const reason = bulkReason.trim() || 'Массовое действие администратора';
     setBulkWorking(true);
     setBulkMessage(null);
     try {
@@ -121,12 +121,12 @@ export default function AdminUsersPage() {
                 };
       const res = await bulkAdminUsers(payload);
       setBulkMessage(
-        `Done: ${res.succeeded.length} ok, ${res.failed.length} failed`,
+        `Готово: успешно ${res.succeeded.length}, с ошибками ${res.failed.length}`,
       );
       setSelected(new Set());
       await load();
     } catch {
-      setBulkMessage('Bulk request failed');
+      setBulkMessage('Массовый запрос не выполнен');
     } finally {
       setBulkWorking(false);
     }
@@ -135,7 +135,7 @@ export default function AdminUsersPage() {
   if (!isAdmin) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center text-muted-foreground">
-        Access denied.
+        Доступ запрещён.
       </div>
     );
   }
@@ -150,9 +150,9 @@ export default function AdminUsersPage() {
             </div>
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-                Users
+                Пользователи
               </h1>
-              <p className="text-sm text-muted-foreground">Accounts, roles, bulk moderation</p>
+              <p className="text-sm text-muted-foreground">Аккаунты, роли, массовые действия</p>
             </div>
           </div>
           <Link
@@ -160,16 +160,16 @@ export default function AdminUsersPage() {
             className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 transition-colors hover:text-indigo-800"
           >
             <ArrowLeft className="h-4 w-4" />
-            Admin home
+            Главная админки
           </Link>
         </div>
 
-        <div className={cn(surface.card, animations.slideUp, 'mb-6 rounded-3xl border border-indigo-100 p-4 ring-1 ring-indigo-500/5 rika-glow-edge')}>
+        <div className={cn(surface.card, animations.slideUp, 'mb-6 rounded-3xl border border-indigo-100 p-4 ring-1 ring-indigo-500/5 innogram-glow-edge')}>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <span className="text-sm font-medium text-foreground">
-              Bulk actions
+              Массовые действия
               <span className="ml-2 rounded-full bg-card/80 px-2 py-0.5 text-xs font-mono text-muted-foreground ring-1 ring-border">
-                {selected.size} selected
+                выбрано: {selected.size}
               </span>
             </span>
             <button
@@ -177,23 +177,23 @@ export default function AdminUsersPage() {
               onClick={toggleAll}
               className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
             >
-              {selected.size === rows.length ? 'Clear all' : 'Select all'}
+              {selected.size === rows.length ? 'Снять выделение' : 'Выбрать всех'}
             </button>
           </div>
           <textarea
             value={bulkReason}
             onChange={(e) => setBulkReason(e.target.value)}
-            placeholder="Reason for bulk warn / suspend / unsuspend / role reset"
+            placeholder="Причина для массового предупреждения / блокировки / разблокировки / сброса роли"
             className="mb-3 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground shadow-inner placeholder:text-muted-foreground focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
             rows={2}
           />
           <div className="flex flex-wrap gap-2">
             {(
               [
-                ['WARN', 'Bulk warn', 'bg-amber-100 text-amber-950 hover:bg-amber-200/90'],
-                ['SUSPEND', 'Suspend 7d', 'bg-rose-100 text-rose-900 hover:bg-rose-200/90'],
-                ['UNSUSPEND', 'Unsuspend', 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200/90'],
-                ['ROLE', 'Set role USER', 'bg-muted text-foreground hover:bg-muted/90'],
+                ['WARN', 'Предупредить', 'bg-amber-100 text-amber-950 hover:bg-amber-200/90'],
+                ['SUSPEND', 'Заблокировать на 7 дней', 'bg-rose-100 text-rose-900 hover:bg-rose-200/90'],
+                ['UNSUSPEND', 'Разблокировать', 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200/90'],
+                ['ROLE', 'Установить роль USER', 'bg-muted text-foreground hover:bg-muted/90'],
               ] as const
             ).map(([action, label, cls]) => (
               <button
@@ -210,7 +210,7 @@ export default function AdminUsersPage() {
           {bulkWorking && (
             <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Working…
+              Выполняется…
             </p>
           )}
           {bulkMessage && !bulkWorking && (
@@ -221,7 +221,7 @@ export default function AdminUsersPage() {
         {loading ? (
           <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-8 text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin text-indigo-500" />
-            Loading users…
+            Загрузка пользователей…
           </div>
         ) : (
           <ul className="space-y-3">
@@ -248,7 +248,7 @@ export default function AdminUsersPage() {
                     <span className="text-xs text-muted-foreground">{row.role}</span>
                   </div>
                   <p className="mt-0.5 truncate text-sm text-muted-foreground">
-                    {row.email || 'No email'}
+                    {row.email || 'Нет email'}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
@@ -262,13 +262,13 @@ export default function AdminUsersPage() {
                       }}
                       className="rounded-lg bg-indigo-50 px-2.5 py-1.5 text-xs font-medium text-indigo-800 transition-colors hover:bg-indigo-100"
                     >
-                      Toggle USER / MODERATOR
+                      Переключить USER / MODERATOR
                     </button>
                     <Link
                       href={`/admin/users/${row.userId}`}
                       className="rounded-lg bg-muted px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
                     >
-                      Details &amp; timeline
+                      Детали и история
                     </Link>
                   </div>
                 </div>

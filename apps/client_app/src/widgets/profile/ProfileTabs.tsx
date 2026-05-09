@@ -1,8 +1,12 @@
-'use client';
+"use client";
 
-import { Grid, Heart, MessageCircle, Archive } from 'lucide-react';
+import { Grid, Heart, MessageCircle, Archive } from "lucide-react";
 
-type ProfileTabKey = 'posts' | 'liked' | 'commented' | 'archived';
+export type ProfileTabKey =
+  | "posts"
+  | "liked"
+  | "commented"
+  | "archived";
 
 interface ProfileTabsProps {
   activeTab: ProfileTabKey;
@@ -11,14 +15,27 @@ interface ProfileTabsProps {
   showArchived?: boolean;
 }
 
-export default function ProfileTabs({ activeTab, setActiveTab, showLikedCommented = false, showArchived = false }: ProfileTabsProps) {
+export default function ProfileTabs({
+  activeTab,
+  setActiveTab,
+  showLikedCommented = false,
+  showArchived = false,
+}: ProfileTabsProps) {
   const tabs = [
-    { key: 'posts' as const, icon: Grid, label: 'Posts' },
-    ...(showLikedCommented ? [
-      { key: 'liked' as const, icon: Heart, label: 'Liked' },
-      { key: 'commented' as const, icon: MessageCircle, label: 'Commented' },
-    ] : []),
-    ...(showArchived ? [{ key: 'archived' as const, icon: Archive, label: 'Archived' }] : []),
+    { key: "posts" as const, icon: Grid, label: "Посты" },
+    ...(showLikedCommented
+      ? [
+          { key: "liked" as const, icon: Heart, label: "Лайки" },
+          {
+            key: "commented" as const,
+            icon: MessageCircle,
+            label: "Комментарии",
+          },
+        ]
+      : []),
+    ...(showArchived
+      ? [{ key: "archived" as const, icon: Archive, label: "Архив" }]
+      : []),
   ];
 
   return (
@@ -32,7 +49,9 @@ export default function ProfileTabs({ activeTab, setActiveTab, showLikedCommente
                 key={t.key}
                 onClick={() => setActiveTab(t.key)}
                 className={`py-4 px-3 font-semibold text-sm uppercase tracking-wider transition-colors relative ${
-                  activeTab === t.key ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                  activeTab === t.key
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <div className="flex items-center gap-2">

@@ -99,7 +99,7 @@ export default function StoriesManagePage() {
       {
         author: {
           id: user?.id ?? 'me',
-          username: user?.username ?? 'My stories',
+          username: user?.username ?? 'Мои истории',
           profile: { avatarUrl: user?.profile?.avatarUrl ?? null, isPrivate: true },
         },
         stories: stories.map((s) => ({
@@ -189,34 +189,34 @@ export default function StoriesManagePage() {
   return (
     <div className="min-h-screen bg-transparent">
       <div className="max-w-4xl mx-auto py-4 px-2 sm:px-4 space-y-4">
-        <div className={cn(surface.card, animations.slideUp, 'p-4 rika-glow-edge')}>
+        <div className={cn(surface.card, animations.slideUp, 'p-4 innogram-glow-edge')}>
           <div className="flex items-center justify-between gap-2">
             <div>
-              <h1 className="text-lg font-semibold text-foreground">Stories</h1>
+              <h1 className="text-lg font-semibold text-foreground">Истории</h1>
               <p className="text-sm text-muted-foreground">
-                Create, manage, and review active/expired stories.
+                Создавайте, управляйте и просматривайте активные/истёкшие истории.
               </p>
             </div>
             <Link href="/feed" className="text-sm text-primary hover:opacity-90">
-              Back to feed
+              Назад в ленту
             </Link>
           </div>
 
           <div className="mt-4 grid gap-3">
             <div className="grid gap-2">
-              <label className="text-sm text-muted-foreground font-medium">Caption (optional)</label>
+              <label className="text-sm text-muted-foreground font-medium">Подпись (необязательно)</label>
               <input
                 value={caption}
                 onChange={(e) => setCaption(e.target.value)}
                 className="w-full border border-border rounded-xl px-3 py-2 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/25"
-                placeholder="Write something…"
+                placeholder="Напишите что-нибудь…"
               />
             </div>
 
             <div className="grid gap-2">
-              <label className="text-sm text-muted-foreground font-medium">Media (1 file)</label>
+              <label className="text-sm text-muted-foreground font-medium">Медиа (1 файл)</label>
               <label className="flex items-center justify-between gap-3 border border-border rounded-2xl px-3 py-3 bg-background/30 hover:bg-muted/40 cursor-pointer">
-                <span className="text-sm text-foreground font-medium">Choose files</span>
+                <span className="text-sm text-foreground font-medium">Выбрать файл</span>
                 <span className="text-xs text-muted-foreground">image/video</span>
                 <input
                   type="file"
@@ -226,7 +226,7 @@ export default function StoriesManagePage() {
                 />
               </label>
               <div className="text-xs text-muted-foreground">
-                Selected: {files.length}
+                Выбрано: {files.length}
               </div>
 
               {filePreviews.length > 0 && (
@@ -256,13 +256,13 @@ export default function StoriesManagePage() {
                 onClick={() => void createStory()}
                 className="px-4 py-2 rounded-xl bg-primary text-white font-medium hover:opacity-90 disabled:opacity-50"
               >
-                {uploading ? 'Uploading…' : 'Publish story'}
+                {uploading ? 'Загрузка…' : 'Опубликовать историю'}
               </button>
             </div>
           </div>
         </div>
 
-        <div className={cn(surface.card, animations.slideUp, 'p-4 rika-glow-edge')}>
+        <div className={cn(surface.card, animations.slideUp, 'p-4 innogram-glow-edge')}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <button
@@ -273,7 +273,7 @@ export default function StoriesManagePage() {
                   tab === 'active' ? 'bg-primary text-white' : 'bg-muted text-foreground',
                 )}
               >
-                Active
+                Активные
               </button>
               <button
                 type="button"
@@ -283,7 +283,7 @@ export default function StoriesManagePage() {
                   tab === 'expired' ? 'bg-primary text-white' : 'bg-muted text-foreground',
                 )}
               >
-                Expired
+                Истёкшие
               </button>
             </div>
 
@@ -293,15 +293,15 @@ export default function StoriesManagePage() {
               className="text-sm text-primary hover:opacity-90"
               disabled={loading}
             >
-              Refresh
+              Обновить
             </button>
           </div>
 
           <div className="mt-4 space-y-3">
             {loading ? (
-              <div className="text-sm text-muted-foreground">Loading…</div>
+              <div className="text-sm text-muted-foreground">Загрузка…</div>
             ) : stories.length === 0 ? (
-              <div className="text-sm text-muted-foreground">No stories.</div>
+              <div className="text-sm text-muted-foreground">Историй нет.</div>
             ) : (
               stories.map((s) => (
                 <OwnerStoryCard
@@ -317,12 +317,12 @@ export default function StoriesManagePage() {
           </div>
         </div>
 
-        <div className={cn(surface.card, animations.slideUp, 'p-4 rika-glow-edge')}>
+        <div className={cn(surface.card, animations.slideUp, 'p-4 innogram-glow-edge')}>
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-sm font-semibold text-foreground">Story exclusions</h2>
+              <h2 className="text-sm font-semibold text-foreground">Исключения для историй</h2>
               <p className="text-xs text-muted-foreground">
-                Excluded users will not see your stories (global).
+                Исключённые пользователи не будут видеть ваши истории (глобально).
               </p>
             </div>
             <button
@@ -331,7 +331,7 @@ export default function StoriesManagePage() {
               className="text-sm text-primary hover:opacity-90"
               disabled={exclLoading}
             >
-              Refresh
+              Обновить
             </button>
           </div>
 
@@ -339,11 +339,11 @@ export default function StoriesManagePage() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Type username to exclude…"
+              placeholder="Введите username, чтобы исключить…"
               className="w-full border border-border rounded-xl px-3 py-2 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/25"
             />
             {suggestionsLoading && (
-              <div className="text-xs text-muted-foreground mt-2">Searching…</div>
+              <div className="text-xs text-muted-foreground mt-2">Поиск…</div>
             )}
             {!suggestionsLoading && suggestions.length > 0 && (
               <div className="mt-2 border border-border rounded-xl overflow-hidden">
@@ -379,9 +379,9 @@ export default function StoriesManagePage() {
 
           <div className="mt-4 space-y-2">
             {exclLoading ? (
-              <div className="text-sm text-muted-foreground">Loading…</div>
+              <div className="text-sm text-muted-foreground">Загрузка…</div>
             ) : exclusions.length === 0 ? (
-              <div className="text-sm text-muted-foreground">No excluded users.</div>
+              <div className="text-sm text-muted-foreground">Исключённых пользователей нет.</div>
             ) : (
               exclusions.map((e) => {
                 const u = e.excludedUser;
@@ -416,7 +416,7 @@ export default function StoriesManagePage() {
                       onClick={() => void removeExclusion(e.excludedUserId)}
                       className="px-3 py-2 rounded-xl bg-muted hover:bg-muted/80 text-xs"
                     >
-                      Remove
+                      Удалить
                     </button>
                   </div>
                 );

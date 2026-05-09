@@ -10,6 +10,7 @@ import {
   ArrayMaxSize,
 } from 'class-validator';
 import { RecentMessageDto } from './recent-message.dto';
+import { TargetUserProfileDto } from './target-user-profile.dto';
 
 export class DialogSummaryRequestDto {
   @IsUUID()
@@ -17,6 +18,15 @@ export class DialogSummaryRequestDto {
 
   @IsUUID()
   requesterId!: string;
+
+  @ValidateNested()
+  @Type(() => TargetUserProfileDto)
+  requesterUserProfile!: TargetUserProfileDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => TargetUserProfileDto)
+  targetUserProfile?: TargetUserProfileDto;
 
   @IsArray()
   @ValidateNested({ each: true })

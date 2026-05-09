@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import prisma from '../config/prisma';
 import { redisRepository } from '../repositories/redis.auth.repository';
+import { passwordResetEventService } from './password-reset-event.service';
 import { 
   generateTokens, 
   verifyRefreshToken, 
@@ -14,6 +15,9 @@ import { IRegisterUserDto } from './interfaces/IRegisterUserDto';
 
 
 export class AuthService {
+  private readonly resetCodeTTLSeconds = 10 * 60;
+  private readonly resetCodeCooldownSeconds = 60;
+  private readonly maxResetAttempts = 5;
 
   private async generateNewTokens(params: {
     userId: string;
@@ -23,6 +27,7 @@ export class AuthService {
     accountState: 'ACTIVE' | 'SUSPENDED' | 'DELETED';
     suspendedUntil?: string | null;
     escalationLevel?: number;
+    deletedAt?: string | null;
   }) {
     const tokens = generateTokens(params);
 
@@ -42,6 +47,7 @@ export class AuthService {
         accountState: params.accountState,
         suspendedUntil: params.suspendedUntil,
         escalationLevel: params.escalationLevel,
+        deletedAt: params.deletedAt,
       }
     };
   }
@@ -84,6 +90,7 @@ export class AuthService {
         accountState: user.account.state,
         suspendedUntil: user.account.suspendedUntil?.toISOString() ?? null,
         escalationLevel: user.account.escalationLevel,
+        deletedAt: user.deletedAt?.toISOString() ?? null,
       });
 
     } catch (e) {
@@ -94,14 +101,12 @@ export class AuthService {
 
   async authenticateUser(credentials: { email: string; pass: string }) {
     const account = await prisma.account.findUnique({ 
-      where: { email: credentials.email } 
+      where: { email: credentials.email },
+      include: { user: true }
     });
     
     if (!account || !account.passwordHash) {
       throw new Error('Invalid credentials');
-    }
-    if (account.state === 'DELETED') {
-      throw new Error('Account is not active');
     }
 
     const isValid = await bcrypt.compare(credentials.pass, account.passwordHash);
@@ -115,6 +120,7 @@ export class AuthService {
       accountState: account.state,
       suspendedUntil: account.suspendedUntil?.toISOString() ?? null,
       escalationLevel: account.escalationLevel,
+      deletedAt: account.user?.deletedAt?.toISOString() ?? null,
     });
   }
 
@@ -132,6 +138,7 @@ export class AuthService {
 
     const account = await prisma.account.findUnique({
       where: { userId: payload.userId },
+      include: { user: true }
     });
     if (!account) {
       throw new Error('Account not found');
@@ -144,6 +151,7 @@ export class AuthService {
       accountState: account.state,
       suspendedUntil: account.suspendedUntil?.toISOString() ?? null,
       escalationLevel: account.escalationLevel,
+      deletedAt: account.user?.deletedAt?.toISOString() ?? null,
     });
   }
 
@@ -172,6 +180,7 @@ export class AuthService {
     
     let account = await prisma.account.findUnique({
       where: { email: profile.email },
+      include: { user: true }
     });
 
     if (!account) {
@@ -199,15 +208,11 @@ export class AuthService {
             },
           },
         },
-        include: { account: true },
+        include: { account: { include: { user: true } } },
       });
 
       if (!newUser.account) throw new Error('Account creation failed');
       account = newUser.account;
-    }
-
-    if (account.state === 'DELETED') {
-      throw new Error('Account is not active');
     }
 
     return this.generateNewTokens({
@@ -218,6 +223,7 @@ export class AuthService {
       accountState: account.state,
       suspendedUntil: account.suspendedUntil?.toISOString() ?? null,
       escalationLevel: account.escalationLevel,
+      deletedAt: account.user?.deletedAt?.toISOString() ?? null,
     });
   }
 
@@ -226,6 +232,74 @@ export class AuthService {
     if (payload && payload.userId) {
       await redisRepository.deleteSession(payload.userId);
     }
+  }
+
+  async forgotPassword(email: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const account = await prisma.account.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (!account) {
+      throw new Error('Email not found');
+    }
+
+    const cooldownTTL = await redisRepository.getPasswordResetCooldown(normalizedEmail);
+    if (cooldownTTL > 0) {
+      throw new Error(`Try again in ${cooldownTTL} seconds`);
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    await redisRepository.storePasswordResetCode(normalizedEmail, code, this.resetCodeTTLSeconds);
+    await redisRepository.setPasswordResetCooldown(normalizedEmail, this.resetCodeCooldownSeconds);
+    await passwordResetEventService.publishPasswordResetEmail({
+      email: normalizedEmail,
+      code,
+      username: account.username,
+    });
+
+    return { message: 'Reset code sent' };
+  }
+
+  async resetPassword(params: { email: string; code: string; newPassword: string }) {
+    const normalizedEmail = params.email.trim().toLowerCase();
+    const account = await prisma.account.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (!account) {
+      throw new Error('Email not found');
+    }
+
+    const savedCode = await redisRepository.getPasswordResetCode(normalizedEmail);
+    if (!savedCode) {
+      throw new Error('Reset code expired');
+    }
+
+    const attempts = await redisRepository.incrementPasswordResetAttempts(
+      normalizedEmail,
+      this.resetCodeTTLSeconds,
+    );
+    if (attempts > this.maxResetAttempts) {
+      await redisRepository.deletePasswordResetCode(normalizedEmail);
+      throw new Error('Too many attempts');
+    }
+
+    if (savedCode !== params.code) {
+      throw new Error('Invalid reset code');
+    }
+
+    const newPasswordHash = await bcrypt.hash(params.newPassword, 10);
+    await prisma.account.update({
+      where: { email: normalizedEmail },
+      data: { passwordHash: newPasswordHash },
+    });
+
+    await redisRepository.deletePasswordResetCode(normalizedEmail);
+    await redisRepository.deleteSession(account.userId);
+
+    return { message: 'Password updated successfully' };
   }
 
    getGoogleOAuthURL() {

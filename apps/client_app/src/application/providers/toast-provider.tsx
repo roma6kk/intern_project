@@ -56,7 +56,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       if (currentChatIdRef.current === message.chatId) return;
       const myId = userIdRef.current;
       if (myId && message.senderId === myId) return;
-      toast(<ChatMessageToast message={message} />);
+      toast(<ChatMessageToast message={message} />, {
+        closeOnClick: false,
+        draggable: false,
+      });
     };
     socket.on('new_message', handleNewMessage);
     return () => {

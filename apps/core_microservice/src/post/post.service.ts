@@ -24,7 +24,9 @@ type PostWithRelations = Prisma.PostGetPayload<{
       select: {
         id: true;
         account: { select: { username: true } };
-        profile: { select: { firstName: true; avatarUrl: true } };
+        profile: {
+          select: { firstName: true; avatarUrl: true; isPrivate: true };
+        };
       };
     };
     assets: true;
@@ -448,11 +450,15 @@ export class PostService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, viewerId?: string) {
     const cacheKey = `post:${id}`;
 
     const cachedPost = await this.cacheManager.get<PostWithRelations>(cacheKey);
     if (cachedPost) {
+      if (cachedPost.isArchived && viewerId && cachedPost.authorId !== viewerId) {
+        throw new NotFoundException('Post not found');
+      }
+      await this.ensurePrivatePostVisibility(cachedPost, viewerId);
       this.logger.log(`Cache hit for post ${id}`);
       return this.withReadableAssetUrls(cachedPost);
     }
@@ -470,7 +476,7 @@ export class PostService {
           select: {
             id: true,
             account: { select: { username: true } },
-            profile: { select: { firstName: true, avatarUrl: true } },
+            profile: { select: { firstName: true, avatarUrl: true, isPrivate: true } },
           },
         },
         assets: true,
@@ -483,7 +489,7 @@ export class PostService {
               select: {
                 id: true,
                 account: { select: { username: true } },
-                profile: { select: { firstName: true, avatarUrl: true } },
+                profile: { select: { firstName: true, avatarUrl: true, isPrivate: true } },
               },
             },
           },
@@ -495,6 +501,23 @@ export class PostService {
       this.logger.warn(`Post ${id} not found`);
       throw new NotFoundException('Post not found');
     }
+
+    if (post.isArchived) {
+      // Archived posts must only be visible to the owner.
+      if (!viewerId || post.authorId !== viewerId) {
+        throw new NotFoundException('Post not found');
+      }
+      // Avoid caching archived posts globally (visibility is user-dependent).
+      return this.withReadableAssetUrls(post);
+    }
+
+    await this.ensurePrivatePostVisibility(post, viewerId);
+
+    if (post.author.profile?.isPrivate) {
+      // Do not cache private-author posts globally (visibility is user-dependent).
+      return this.withReadableAssetUrls(post);
+    }
+
     await this.cacheManager.set(cacheKey, post);
     this.logger.log(`Post ${id} cached in Redis`);
     return this.withReadableAssetUrls(post);
@@ -612,7 +635,7 @@ export class PostService {
   }
 
   async archive(id: string, userId: string) {
-    const post = await this.findOne(id);
+    const post = await this.findOne(id, userId);
 
     if (post.authorId !== userId) {
       throw new ForbiddenException('You can only archive your own posts');
@@ -635,7 +658,7 @@ export class PostService {
   }
 
   async remove(id: string, userId: string) {
-    const post = await this.findOne(id);
+    const post = await this.findOne(id, userId);
 
     if (post.authorId !== userId) {
       throw new ForbiddenException('You can only delete your own posts');
@@ -725,6 +748,40 @@ export class PostService {
       return String(error);
     }
     return 'Unknown error';
+  }
+
+  private async ensurePrivatePostVisibility(
+    post: { authorId: string; author: { profile?: { isPrivate?: boolean } | null } },
+    viewerId?: string,
+  ): Promise<void> {
+    let isPrivate = post.author.profile?.isPrivate;
+
+    // Backward compatibility for old cache entries that were saved
+    // before `isPrivate` was selected in `author.profile`.
+    if (typeof isPrivate !== 'boolean') {
+      const authorProfile = await this.prisma.profile.findUnique({
+        where: { userId: post.authorId },
+        select: { isPrivate: true },
+      });
+      isPrivate = authorProfile?.isPrivate ?? false;
+    }
+
+    if (!isPrivate) return;
+    if (!viewerId) throw new NotFoundException('Post not found');
+    if (viewerId === post.authorId) return;
+
+    const acceptedFollow = await this.prisma.follow.findFirst({
+      where: {
+        followerId: viewerId,
+        followingId: post.authorId,
+        status: 'ACCEPTED',
+      },
+      select: { id: true },
+    });
+
+    if (!acceptedFollow) {
+      throw new NotFoundException('Post not found');
+    }
   }
 
   private async withReadableAssetUrls<T>(data: T): Promise<T> {
