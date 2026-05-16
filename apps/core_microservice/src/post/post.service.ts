@@ -17,6 +17,7 @@ import { NotificationService } from '../notification/notification.service';
 import { CreateNotificationDto } from '../notification/dto/create-notification.dto';
 import { Prisma } from '@prisma/client';
 import { decodeCursor, encodeCursor } from '../common/utils/cursor.helper';
+import type { ICurrentUser } from '../auth/interfaces/ICurrentUser';
 
 type PostWithRelations = Prisma.PostGetPayload<{
   include: {
@@ -450,7 +451,11 @@ export class PostService {
     };
   }
 
-  async findOne(id: string, viewerId?: string) {
+  async findOne(
+    id: string,
+    viewerId?: string,
+    viewerRole?: ICurrentUser['role'],
+  ) {
     const cacheKey = `post:${id}`;
 
     const cachedPost = await this.cacheManager.get<PostWithRelations>(cacheKey);
@@ -458,7 +463,7 @@ export class PostService {
       if (cachedPost.isArchived && viewerId && cachedPost.authorId !== viewerId) {
         throw new NotFoundException('Post not found');
       }
-      await this.ensurePrivatePostVisibility(cachedPost, viewerId);
+      await this.ensurePrivatePostVisibility(cachedPost, viewerId, viewerRole);
       this.logger.log(`Cache hit for post ${id}`);
       return this.withReadableAssetUrls(cachedPost);
     }
@@ -511,7 +516,7 @@ export class PostService {
       return this.withReadableAssetUrls(post);
     }
 
-    await this.ensurePrivatePostVisibility(post, viewerId);
+    await this.ensurePrivatePostVisibility(post, viewerId, viewerRole);
 
     if (post.author.profile?.isPrivate) {
       // Do not cache private-author posts globally (visibility is user-dependent).
@@ -753,6 +758,7 @@ export class PostService {
   private async ensurePrivatePostVisibility(
     post: { authorId: string; author: { profile?: { isPrivate?: boolean } | null } },
     viewerId?: string,
+    viewerRole?: ICurrentUser['role'],
   ): Promise<void> {
     let isPrivate = post.author.profile?.isPrivate;
 
@@ -768,6 +774,9 @@ export class PostService {
 
     if (!isPrivate) return;
     if (!viewerId) throw new NotFoundException('Post not found');
+    if (viewerRole === 'MODERATOR' || viewerRole === 'ADMIN') {
+      return;
+    }
     if (viewerId === post.authorId) return;
 
     const acceptedFollow = await this.prisma.follow.findFirst({

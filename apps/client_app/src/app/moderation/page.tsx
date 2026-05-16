@@ -84,7 +84,9 @@ function targetFromReport(report: ReportItem) {
 }
 
 function postViewHref(report: ReportItem): string | null {
-  if (report.comment?.postId) return `/post/${report.comment.postId}`;
+  if (report.comment?.postId && report.comment?.id) {
+    return `/post/${report.comment.postId}?c=${encodeURIComponent(report.comment.id)}`;
+  }
   if (report.post?.id) return `/post/${report.post.id}`;
   return null;
 }

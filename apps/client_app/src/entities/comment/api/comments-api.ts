@@ -17,6 +17,11 @@ export const getPostComments = async (
   return res.data;
 };
 
+export const getCommentById = async (commentId: string): Promise<Comment> => {
+  const res = await api.get(`/comments/${commentId}`);
+  return res.data;
+};
+
 export const getCommentReplies = async (commentId: string): Promise<Comment[]> => {
   const res = await api.get(`/comments/${commentId}/replies`);
   return res.data;

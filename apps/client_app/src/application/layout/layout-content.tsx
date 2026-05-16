@@ -45,7 +45,7 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
           'flex-1 w-full min-h-0 relative',
           isChatPage
             ? 'flex flex-col pb-0'
-            : 'max-w-7xl mx-auto px-3 sm:px-5 lg:px-8 pb-24 md:pb-8 pt-4 sm:pt-6'
+            : 'max-w-7xl mx-auto min-w-0 px-3 sm:px-5 lg:px-8 pb-24 md:pb-8 pt-4 sm:pt-6 overflow-x-hidden'
         )}
       >
         {children}

@@ -161,6 +161,10 @@ export default function ProfilePage() {
           setFollowingCount(0);
         }
 
+        const staffCanViewPrivate =
+          currentUser?.role === "MODERATOR" ||
+          currentUser?.role === "ADMIN";
+
         let isFollowing = false;
         let isPending = false;
 
@@ -192,7 +196,12 @@ export default function ProfilePage() {
             (p: Post) => p.author?.id === profileData.userId && !p.isArchived,
           );
 
-          if (!profileData.isPrivate || isMyProfile || isFollowing) {
+          if (
+            !profileData.isPrivate ||
+            isMyProfile ||
+            isFollowing ||
+            staffCanViewPrivate
+          ) {
             setPosts(userPosts);
           } else setPosts([]);
 
@@ -256,7 +265,7 @@ export default function ProfilePage() {
     };
 
     fetchProfileData();
-  }, [username, isMyProfile]);
+  }, [username, isMyProfile, currentUser?.role]);
 
   const handleFollowToggle = async () => {
     if (!userProfile || isFollowLoading) return;
@@ -401,11 +410,15 @@ export default function ProfilePage() {
     );
   }
 
+  const staffCanViewPrivate =
+    currentUser?.role === "MODERATOR" || currentUser?.role === "ADMIN";
+
   const isPrivateAndNotFollowing =
     userProfile.isPrivate &&
     !isMyProfile &&
     !isFollowingUser &&
-    !isPendingFollowRequest;
+    !isPendingFollowRequest &&
+    !staffCanViewPrivate;
 
   return (
     <div className="min-h-screen bg-transparent">
@@ -426,6 +439,7 @@ export default function ProfilePage() {
         handleFollowToggle={handleFollowToggle}
         handleSendMessage={handleSendMessage}
         router={router}
+        isPrivateAndNotFollowing={isPrivateAndNotFollowing}
       />
 
       <ProfileTabs

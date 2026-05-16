@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Heart, Pencil, Trash2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Flag, Heart, Link2, Pencil, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/entities/session';
 import type { Comment } from '../model/types';
@@ -13,6 +13,24 @@ import {
 } from '../api/comments-api';
 import { MentionTextarea } from '@/shared/ui/mention-textarea';
 import { MentionText } from '@/shared/ui/mention-text';
+import { ReportPostModal } from '@/features/post-report';
+import { createReport } from '@/entities/report';
+import { notify } from '@/shared/lib/notify';
+import { cn } from '@/shared/lib/cn';
+
+// С этого уровня глубины начинается плоская колонка
+const MAX_VISUAL_REPLY_LEVEL = 8;
+//margin относительно родителя
+const REPLY_INDENT_PX = 24;
+
+function commentAuthorUsername(c: Comment): string {
+  return (
+    c.author?.username ||
+    c.author?.account?.username ||
+    c.author?.profile?.firstName ||
+    'Неизвестно'
+  );
+}
 
 interface CommentItemProps {
   comment: Comment;
@@ -23,6 +41,11 @@ interface CommentItemProps {
   onCommentUpdated?: (commentId: string, content: string) => void;
   onLoadReplies?: (commentId: string) => void;
   level?: number;
+  /** Логин автора комментария, на который отвечают (для глубокой ветки — плоский список). */
+  replyToUsername?: string | null;
+  /** id комментария для подсветки (диплинк); снимается через onConsumeHighlight */
+  highlightTargetId?: string | null;
+  onConsumeHighlight?: () => void;
 }
 
 export function CommentItem({
@@ -34,8 +57,16 @@ export function CommentItem({
   onCommentUpdated,
   onLoadReplies,
   level = 0,
+  replyToUsername = null,
+  highlightTargetId = null,
+  onConsumeHighlight,
 }: CommentItemProps) {
   const { user } = useAuth();
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  const highlightConsumedRef = useRef(false);
+  const highlightedUnread = Boolean(
+    highlightTargetId && highlightTargetId === comment.id,
+  );
   const [showReplyInput, setShowReplyInput] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [isReplying, setIsReplying] = useState(false);
@@ -47,6 +78,9 @@ export function CommentItem({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [isReporting, setIsReporting] = useState(false);
 
   const isOwnComment = (comment.authorId || comment.author?.id) === user?.id;
   const hasLoadedReplies = comment.replies && comment.replies.length > 0;
@@ -126,14 +160,84 @@ export function CommentItem({
     }
   };
 
-  const marginLeft = level * 24;
+  useEffect(() => {
+    highlightConsumedRef.current = false;
+  }, [highlightedUnread]);
+
+  useEffect(() => {
+    if (!highlightedUnread || !onConsumeHighlight) return;
+    const el = rowRef.current;
+    if (!el) return;
+
+    const consume = () => {
+      if (highlightConsumedRef.current) return;
+      highlightConsumedRef.current = true;
+      onConsumeHighlight();
+    };
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const e = entries[0];
+        if (e?.isIntersecting && e.intersectionRatio >= 0.28) {
+          if (timer) clearTimeout(timer);
+          timer = setTimeout(consume, 2200);
+        } else if (timer) {
+          clearTimeout(timer);
+        }
+      },
+      { threshold: [0, 0.15, 0.28, 0.5, 1] },
+    );
+    obs.observe(el);
+    return () => {
+      obs.disconnect();
+      if (timer) clearTimeout(timer);
+    };
+  }, [highlightedUnread, onConsumeHighlight]);
+
+  const copyCommentLink = () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const url = `${origin}/post/${postId}?c=${encodeURIComponent(comment.id)}`;
+    void navigator.clipboard.writeText(url).then(
+      () => notify.success('Ссылка скопирована'),
+      () => notify.error('Не удалось скопировать ссылку'),
+    );
+  };
+
+  const handleReportComment = async () => {
+    if (!comment.id || isReporting || !user?.id) return;
+    if (reportReason.trim().length < 5) {
+      notify.info('Укажите причину (минимум 5 символов)');
+      return;
+    }
+    setIsReporting(true);
+    try {
+      await createReport({
+        commentId: comment.id,
+        reason: reportReason.trim(),
+      });
+      setShowReportModal(false);
+      setReportReason('');
+      notify.success('Жалоба отправлена');
+    } catch (err) {
+      console.error('Ошибка жалобы на комментарий:', err);
+      notify.error('Не удалось отправить жалобу');
+    } finally {
+      setIsReporting(false);
+    }
+  };
+
+  const isDeepFlatReply = Boolean(replyToUsername);
+  // Раньше было level * шаг: при вложенных div отступы складывались (24+48+72…) и раздували карточку.
+  const marginLeft =
+    level === 0 || isDeepFlatReply ? 0 : REPLY_INDENT_PX;
 
   return (
     <div
-      className="relative"
+      className="relative min-w-0 w-full max-w-full"
       style={{ marginLeft: `${marginLeft}px`, marginTop: level > 0 ? '8px' : '0' }}
     >
-      {level > 0 && (
+      {level > 0 && !isDeepFlatReply && (
         <div
           className="absolute border-l-2 border-border"
           style={{ 
@@ -145,7 +249,22 @@ export function CommentItem({
         />
       )}
 
-      <div className={`flex items-start gap-3 p-2 rounded-lg transition-colors ${level > 0 ? 'bg-muted/40' : ''}`}>
+      <div
+        ref={rowRef}
+        id={`comment-${comment.id}`}
+        className={cn(
+          'flex min-w-0 w-full items-start gap-3 p-2 rounded-lg transition-colors',
+          level > 0 ? 'bg-muted/40' : '',
+          highlightedUnread &&
+            'ring-2 ring-amber-500/90 ring-offset-2 ring-offset-background bg-amber-50/50 dark:bg-amber-950/25 shadow-md',
+        )}
+        onPointerDownCapture={() => {
+          if (highlightedUnread && onConsumeHighlight && !highlightConsumedRef.current) {
+            highlightConsumedRef.current = true;
+            onConsumeHighlight();
+          }
+        }}
+      >
         <button
           type="button"
           onClick={() => window.location.href = `/profile/${comment.author?.username || 'unknown'}`}
@@ -161,7 +280,21 @@ export function CommentItem({
         </button>
 
         <div className="flex-1 min-w-0">
-          <div className="text-foreground text-sm break-words">
+          {replyToUsername && (
+            <div className="text-[11px] text-muted-foreground mb-1 leading-snug break-words">
+              Ответ на{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href = `/profile/${encodeURIComponent(replyToUsername)}`;
+                }}
+                className="font-medium text-primary hover:underline"
+              >
+                @{replyToUsername}
+              </button>
+            </div>
+          )}
+          <div className="text-foreground text-sm break-words [overflow-wrap:anywhere]">
             <button
               type="button"
               onClick={() => window.location.href = `/profile/${comment.author?.username || 'unknown'}`}
@@ -200,7 +333,7 @@ export function CommentItem({
             )}
           </div>
 
-          <div className="flex items-center gap-4 mt-1.5 text-xs text-muted-foreground font-medium">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-muted-foreground font-medium">
             <button
               type="button"
               onClick={handleLike}
@@ -217,6 +350,27 @@ export function CommentItem({
             >
               Ответить
             </button>
+
+            <button
+              type="button"
+              onClick={() => void copyCommentLink()}
+              className="hover:text-foreground transition-colors flex items-center gap-1"
+              title="Скопировать ссылку на комментарий"
+            >
+              <Link2 size={12} />
+              Ссылка
+            </button>
+
+            {user && !isOwnComment && !isEditing && (
+              <button
+                type="button"
+                onClick={() => setShowReportModal(true)}
+                className="hover:text-amber-700 transition-colors flex items-center gap-1"
+              >
+                <Flag size={12} />
+                Пожаловаться
+              </button>
+            )}
 
             {isOwnComment && !isEditing && (
               <>
@@ -316,8 +470,11 @@ export function CommentItem({
       </div>
 
       {hasLoadedReplies && (
-        <div className="mt-2">
-          {comment.replies!.map((reply) => (
+        <div className="mt-2 min-w-0">
+          {comment.replies!.map((reply) => {
+            const nextLevel = level + 1;
+            const parentName = commentAuthorUsername(comment);
+            return (
             <CommentItem
               key={reply.id}
               comment={reply}
@@ -327,11 +484,34 @@ export function CommentItem({
               onCommentDeleted={onCommentDeleted}
               onCommentUpdated={onCommentUpdated}
               onLoadReplies={onLoadReplies}
-              level={level + 1}
+              level={nextLevel}
+              replyToUsername={
+                nextLevel >= MAX_VISUAL_REPLY_LEVEL ? parentName : undefined
+              }
+              highlightTargetId={highlightTargetId}
+              onConsumeHighlight={onConsumeHighlight}
             />
-          ))}
+            );
+          })}
         </div>
       )}
+
+      <ReportPostModal
+        open={showReportModal}
+        reportReason={reportReason}
+        isReporting={isReporting}
+        onReasonChange={setReportReason}
+        onClose={() => {
+          setShowReportModal(false);
+          setReportReason('');
+        }}
+        onSubmit={() => void handleReportComment()}
+        title="Пожаловаться на комментарий"
+        placeholder="Опишите нарушение (не менее 5 символов)…"
+        cancelLabel="Отмена"
+        submitLabel="Отправить"
+        submittingLabel="Отправка…"
+      />
     </div>
   );
 }

@@ -68,7 +68,7 @@ export class PostController {
 
   @Get(':id')
   findOne(@Param('id') id: string, @CurrentUser() user: ICurrentUser) {
-    return this.postService.findOne(id, user.userId);
+    return this.postService.findOne(id, user.userId, user.role);
   }
 
   @Patch(':id/archive')

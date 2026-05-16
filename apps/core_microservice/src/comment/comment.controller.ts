@@ -50,6 +50,12 @@ export class CommentController {
     return this.commentService.findReplies(id);
   }
 
+  @Get(':id')
+  @ApiOperation({ summary: 'Get a single comment by id (for deep links)' })
+  findOneById(@Param('id') id: string) {
+    return this.commentService.findOne(id);
+  }
+
   @Patch(':id')
   @ApiOperation({ summary: 'Update a comment' })
   update(

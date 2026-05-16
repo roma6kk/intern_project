@@ -10,6 +10,11 @@ interface ReportPostModalProps {
   onReasonChange: (v: string) => void;
   onClose: () => void;
   onSubmit: () => void;
+  title?: string;
+  placeholder?: string;
+  cancelLabel?: string;
+  submitLabel?: string;
+  submittingLabel?: string;
 }
 
 export function ReportPostModal({
@@ -19,6 +24,11 @@ export function ReportPostModal({
   onReasonChange,
   onClose,
   onSubmit,
+  title = 'Report post',
+  placeholder = 'Describe the issue...',
+  cancelLabel = 'Cancel',
+  submitLabel = 'Send report',
+  submittingLabel = 'Sending...',
 }: ReportPostModalProps) {
   if (!open) return null;
 
@@ -31,12 +41,12 @@ export function ReportPostModal({
         aria-label="Закрыть"
       />
       <div className={cn(modal.shell, 'max-w-md p-6')} onClick={e => e.stopPropagation()}>
-        <h2 className="text-lg font-semibold text-foreground mb-3">Report post</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-3">{title}</h2>
         <textarea
           value={reportReason}
           onChange={e => onReasonChange(e.target.value)}
           className="w-full min-h-24 border border-border rounded-xl p-2 text-sm text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-primary/25"
-          placeholder="Describe the issue..."
+          placeholder={placeholder}
         />
         <div className="mt-4 flex justify-end gap-2">
           <button
@@ -45,7 +55,7 @@ export function ReportPostModal({
             className="px-4 py-2 rounded-xl bg-muted text-foreground hover:bg-muted/80"
             disabled={isReporting}
           >
-            Cancel
+            {cancelLabel}
           </button>
           <button
             type="button"
@@ -53,7 +63,7 @@ export function ReportPostModal({
             className="px-4 py-2 rounded-xl bg-warning text-white font-medium hover:opacity-90 disabled:opacity-50"
             disabled={isReporting}
           >
-            {isReporting ? 'Sending...' : 'Send report'}
+            {isReporting ? submittingLabel : submitLabel}
           </button>
         </div>
       </div>

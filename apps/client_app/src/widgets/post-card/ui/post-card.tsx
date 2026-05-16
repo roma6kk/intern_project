@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import { flushSync } from 'react-dom';
 import type { Post } from '@/entities/post';
 import { Heart, MessageCircle, MoreHorizontal, Send, Bookmark, Edit2, Trash2, Volume2, VolumeX, ArchiveRestore, Archive, ChevronLeft, ChevronRight, Flag } from 'lucide-react';
 import Image from 'next/image';
@@ -13,6 +14,7 @@ import {
   getPostComments,
   getCommentLikes,
   getCommentReplies,
+  getCommentById,
   type Comment,
 } from '@/entities/comment';
 import { MentionTextarea } from '@/shared/ui/mention-textarea';
@@ -37,7 +39,50 @@ function timeAgo(date?: string) {
   return `${Math.floor(diff / 86400)}д`;
 }
 
-export function PostCard({ post, fullView = false }: { post: Post; fullView?: boolean }) {
+function attachRepliesInTree(
+  list: Comment[],
+  parentId: string,
+  replies: Comment[],
+): Comment[] {
+  return list.map((c) => {
+    if (c.id === parentId) {
+      return { ...c, replies };
+    }
+    if (c.replies && c.replies.length > 0) {
+      return { ...c, replies: attachRepliesInTree(c.replies, parentId, replies) };
+    }
+    return c;
+  });
+}
+
+/**
+ * Центрирует элемент по вертикали в окне. Не используем scrollIntoView: при block: 'center'
+ * часть движков всё равно меняет горизонтальный скролл, из‑за чего «уезжает» колонка с mx-auto.
+ */
+function scrollViewportToCenterElementVertically(el: HTMLElement) {
+  const rect = el.getBoundingClientRect();
+  const centerAbsY = window.scrollY + rect.top + rect.height / 2;
+  const top = Math.max(0, centerAbsY - window.innerHeight / 2);
+  window.scrollTo({ top, left: 0, behavior: 'smooth' });
+  window.setTimeout(() => {
+    document.documentElement.scrollLeft = 0;
+    document.body.scrollLeft = 0;
+    if (window.scrollX !== 0) {
+      window.scrollTo({ top: window.scrollY, left: 0, behavior: 'auto' });
+    }
+  }, 500);
+}
+
+export function PostCard({
+  post,
+  fullView = false,
+  highlightCommentId,
+}: {
+  post: Post;
+  fullView?: boolean;
+  /** Открыть страницу поста с прокруткой и подсветкой комментария (`/post/:id?c=`) */
+  highlightCommentId?: string;
+}) {
   const { user } = useAuth();
   const FEED_COMMENTS_PAGE_SIZE = 5;
   const FULL_VIEW_COMMENTS_PAGE_SIZE = 20;
@@ -68,6 +113,8 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [isReporting, setIsReporting] = useState(false);
+  const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
+  const deepLinkHandledRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!post.id || !user?.id) return;
@@ -218,10 +265,109 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
   }, [post.id, commentsHasMore, commentsLoading, comments.length, processComments, post.commentsCount, fullView, commentsCursor]);
 
   useEffect(() => {
-    if (fullView && comments.length === 0) {
+    if (fullView && comments.length === 0 && !highlightCommentId) {
       loadMoreComments();
     }
-  }, [fullView, loadMoreComments, comments.length]);
+  }, [fullView, loadMoreComments, comments.length, highlightCommentId]);
+
+  useEffect(() => {
+    if (!highlightCommentId) {
+      setActiveHighlightId(null);
+    }
+  }, [highlightCommentId]);
+
+  useEffect(() => {
+    if (!fullView || !highlightCommentId || !post.id) return;
+    const token = `${post.id}:${highlightCommentId}`;
+    if (deepLinkHandledRef.current === token) return;
+
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        const leaf = await getCommentById(highlightCommentId);
+        if (cancelled || leaf.postId !== post.id) {
+          deepLinkHandledRef.current = token;
+          return;
+        }
+
+        const chainRootToLeaf: string[] = [];
+        let cur: Comment | null = leaf;
+        while (cur && cur.postId === post.id) {
+          chainRootToLeaf.unshift(cur.id);
+          if (!cur.parentId) break;
+          cur = await getCommentById(cur.parentId);
+        }
+
+        const rootId = chainRootToLeaf[0];
+        if (!rootId) {
+          deepLinkHandledRef.current = token;
+          return;
+        }
+
+        const collected: Comment[] = [];
+        let cursor: string | null = null;
+        let hasNext = true;
+        let lastMeta = { hasNextPage: false, cursor: null as string | null };
+
+        while (!cancelled && hasNext) {
+          const res = await getPostComments(post.id, cursor, FULL_VIEW_COMMENTS_PAGE_SIZE);
+          const batch = await processComments(res.data || []);
+          lastMeta = {
+            hasNextPage: res.meta?.hasNextPage === true,
+            cursor: res.meta?.cursor ?? null,
+          };
+          for (const c of batch) {
+            if (!collected.some((x) => x.id === c.id)) collected.push(c);
+          }
+          if (collected.some((c) => c.id === rootId)) break;
+          if (!res.meta?.hasNextPage) break;
+          cursor = res.meta.cursor ?? null;
+        }
+
+        if (!collected.some((c) => c.id === rootId)) {
+          deepLinkHandledRef.current = token;
+          return;
+        }
+
+        let tree = collected;
+        for (let i = 0; i < chainRootToLeaf.length - 1; i++) {
+          const parentId = chainRootToLeaf[i];
+          const rawReplies = await getCommentReplies(parentId);
+          const replies = await processComments(rawReplies);
+          tree = attachRepliesInTree(tree, parentId, replies);
+        }
+
+        flushSync(() => {
+          setComments(tree);
+          setCommentsCursor(lastMeta.cursor);
+          setCommentsHasMore(lastMeta.hasNextPage);
+        });
+        setCommentsCount(
+          typeof post.commentsCount === 'number' ? post.commentsCount : tree.length,
+        );
+
+        await new Promise<void>((r) => requestAnimationFrame(() => r()));
+        await new Promise<void>((r) => requestAnimationFrame(() => r()));
+
+        if (cancelled) return;
+
+        const el = document.getElementById(`comment-${highlightCommentId}`);
+        if (el) scrollViewportToCenterElementVertically(el);
+        setActiveHighlightId(highlightCommentId);
+        deepLinkHandledRef.current = token;
+      } catch (e) {
+        console.error('Deep link to comment failed', e);
+        deepLinkHandledRef.current = token;
+      }
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fullView, highlightCommentId, post.id, post.commentsCount, processComments]);
   
   
 
@@ -410,20 +556,22 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
         })
       );
       
-      setComments(prev => {
-        const updateRecursive = (list: Comment[]): Comment[] => {
-          return list.map(c => {
-            if (c.id === commentId) {
-              return { ...c, replies: repliesWithLikes };
-            }
-            if (c.replies && c.replies.length > 0) {
-              return { ...c, replies: updateRecursive(c.replies) };
-            }
-            return c;
-          });
-        };
+      flushSync(() => {
+        setComments((prev) => {
+          const updateRecursive = (list: Comment[]): Comment[] => {
+            return list.map((c) => {
+              if (c.id === commentId) {
+                return { ...c, replies: repliesWithLikes };
+              }
+              if (c.replies && c.replies.length > 0) {
+                return { ...c, replies: updateRecursive(c.replies) };
+              }
+              return c;
+            });
+          };
 
-        return updateRecursive(prev);
+          return updateRecursive(prev);
+        });
       });
     } catch (e) {
       console.error('Failed to load replies', e);
@@ -438,7 +586,12 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
   return (
     <>
       <article
-        className={cn(surface.card, animations.slideUp, animations.hoverLift, 'p-3 sm:p-4 innogram-glow-edge overflow-hidden')}
+        className={cn(
+          surface.card,
+          animations.slideUp,
+          animations.hoverLift,
+          'p-3 sm:p-4 innogram-glow-edge overflow-hidden min-w-0 max-w-full',
+        )}
         ref={articleRef}
       >
         <header className="flex items-center mb-3">
@@ -717,7 +870,7 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
         )}
   
         {/* Comments */}
-        <div className="space-y-2 mb-3">
+        <div className="space-y-2 mb-3 min-w-0">
           {comments.map((comment) => (
             <CommentItem
               key={comment.id}
@@ -728,6 +881,8 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
               onCommentDeleted={handleCommentDeleted}
               onCommentUpdated={handleCommentUpdated}
               onLoadReplies={handleLoadReplies}
+              highlightTargetId={activeHighlightId}
+              onConsumeHighlight={() => setActiveHighlightId(null)}
             />
           ))}
         </div>
@@ -817,6 +972,11 @@ export function PostCard({ post, fullView = false }: { post: Post; fullView?: bo
           setReportReason('');
         }}
         onSubmit={handleReportPost}
+        title="Пожаловаться на пост"
+        placeholder="Опишите нарушение (не менее 5 символов)…"
+        cancelLabel="Отмена"
+        submitLabel="Отправить"
+        submittingLabel="Отправка…"
       />
     </>
   );  
