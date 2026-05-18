@@ -10,10 +10,13 @@ export class TokenService {
   private readonly refreshSecret: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.accessSecret =
-      this.configService.get<string>('JWT_ACCESS_SECRET') ?? 'secret';
-    this.refreshSecret =
-      this.configService.get<string>('JWT_REFRESH_SECRET') ?? 'refresh_secret';
+    this.accessSecret = this.resolveSecret('JWT_ACCESS_SECRET', 'secret');
+    this.refreshSecret = this.resolveSecret('JWT_REFRESH_SECRET', 'refresh_secret');
+  }
+
+  private resolveSecret(key: string, fallback: string): string {
+    const value = this.configService.get<string>(key)?.trim();
+    return value ? value : fallback;
   }
 
   generateTokens(payload: ITokenPayload) {

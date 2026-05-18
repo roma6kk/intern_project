@@ -54,6 +54,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
+      JWT_ACCESS_SECRET: ${{ secrets.JWT_ACCESS_SECRET || 'innogram-ci-jwt-access-secret' }}
+      JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET || 'innogram-ci-jwt-refresh-secret' }}
+      AUTH_MICROSERVICE_URL: http://localhost:3001/internal/auth
       NEXT_PUBLIC_API_URL: http://localhost:3000
       NEXT_PUBLIC_WS_URL: http://localhost:3000
       AWS_REGION: us-east-1
@@ -105,13 +108,22 @@ jobs:
       - name: Start Services for Playwright
         run: |
           npm install -g pm2
-          export PORT=3001
+          export JWT_ACCESS_SECRET="${JWT_ACCESS_SECRET:-innogram-ci-jwt-access-secret}"
+          export JWT_REFRESH_SECRET="${JWT_REFRESH_SECRET:-innogram-ci-jwt-refresh-secret}"
           export DATABASE_URL=postgresql://postgres:Jadirus33@localhost:5432/innogram?schema=main
           export REDIS_URL=redis://localhost:6379
           export RABBITMQ_URL=amqp://guest:guest@localhost:5672
           export AUTH_MICROSERVICE_URL=http://localhost:3001/internal/auth
           pm2 start "npx ts-node -r tsconfig-paths/register src/main.ts" --name core --cwd apps/core_microservice
-          DATABASE_URL=postgresql://postgres:Jadirus33@localhost:5432/innogram?schema=auth pm2 start "npx ts-node src/main.ts" --name auth --cwd apps/auth_microservice
+          DATABASE_URL=postgresql://postgres:Jadirus33@localhost:5432/innogram?schema=auth \
+            JWT_ACCESS_SECRET="$JWT_ACCESS_SECRET" \
+            JWT_REFRESH_SECRET="$JWT_REFRESH_SECRET" \
+            REDIS_URL="$REDIS_URL" \
+            RABBITMQ_URL="$RABBITMQ_URL" \
+            GOOGLE_CLIENT_ID="$GOOGLE_CLIENT_ID" \
+            GOOGLE_CLIENT_SECRET="$GOOGLE_CLIENT_SECRET" \
+            GOOGLE_CALLBACK_URL="$GOOGLE_CALLBACK_URL" \
+            pm2 start "npx ts-node src/main.ts" --name auth --cwd apps/auth_microservice
           DATABASE_URL=postgresql://postgres:Jadirus33@localhost:5432/innogram?schema=notifications pm2 start "npx ts-node src/main.ts" --name consumer --cwd apps/notifications_consumer_microservice
           pm2 start "npm run dev" --name client --cwd apps/client_app
           echo "Waiting for core, auth and client services..."
