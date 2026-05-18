@@ -7,7 +7,6 @@ import api from '@/shared/api';
 import { useAuth } from '@/entities/session';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
-import { cn } from '@/shared/lib/cn';
 import { notify } from '@/shared/lib/notify';
 
 const signupSchema = z.object({
@@ -72,11 +71,8 @@ export default function SignUpForm({ onSwitch }: SignUpFormProps) {
   };
 
   return (
-    <div className={cn('w-full mx-auto rounded-2xl border border-border/70 bg-card/65 p-5 backdrop-blur-md sm:p-6')}>
-      <div className="mb-6">
-        <h3 className="text-xl font-semibold text-foreground">Создать аккаунт</h3>
-        <p className="mt-1 text-sm text-muted-foreground">Заполните данные, чтобы начать пользоваться Innogram.</p>
-      </div>
+    <div className="w-full">
+      <h3 className="mb-6 text-xl font-semibold text-foreground">Создать аккаунт</h3>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="flex gap-4">
@@ -132,7 +128,7 @@ export default function SignUpForm({ onSwitch }: SignUpFormProps) {
             <span className="w-full border-t border-border" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-2 text-muted-foreground">или продолжить с</span>
+            <span className="bg-background px-2 text-muted-foreground">или</span>
           </div>
         </div>
 

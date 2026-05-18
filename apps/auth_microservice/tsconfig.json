@@ -1,14 +1,25 @@
 {
-  "extends": "@repo/typescript-config/base.json",
   "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "baseUrl": "./src",
+    "module": "commonjs",
+    "moduleResolution": "node",
     "declaration": false,
-    "declarationMap": false,
+    "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "strictPropertyInitialization": false
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "target": "ES2022",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "baseUrl": "./",
+    "incremental": false,
+    "skipLibCheck": true,
+    "strictNullChecks": true,
+    "noImplicitAny": false,
+    "strictPropertyInitialization": false,
+    "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }

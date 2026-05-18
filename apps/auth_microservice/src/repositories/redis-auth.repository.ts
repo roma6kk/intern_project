@@ -1,14 +1,17 @@
-import redis from '../config/redis';
+import { Inject, Injectable } from '@nestjs/common';
+import Redis from 'ioredis';
+import { REDIS_CLIENT } from '../redis/redis.constants';
 
-export class RedisRepository {
-  private readonly redis = redis;
-  
+@Injectable()
+export class RedisAuthRepository {
   private readonly BLACKLIST_PREFIX = 'blacklist:';
   private readonly SESSION_TOKEN_PREFIX = 'session_token:';
   private readonly USER_SESSION_PREFIX = 'user_session:';
   private readonly PASSWORD_RESET_CODE_PREFIX = 'password_reset_code:';
   private readonly PASSWORD_RESET_ATTEMPTS_PREFIX = 'password_reset_attempts:';
   private readonly PASSWORD_RESET_COOLDOWN_PREFIX = 'password_reset_cooldown:';
+
+  constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis) {}
 
   async isTokenBlacklisted(tokenId: string): Promise<boolean> {
     const result = await this.redis.get(`${this.BLACKLIST_PREFIX}${tokenId}`);
@@ -20,13 +23,19 @@ export class RedisRepository {
       `${this.BLACKLIST_PREFIX}${tokenId}`,
       'true',
       'EX',
-      expiresIn
+      expiresIn,
     );
   }
 
-  async storeRefreshTokenId(userId: string, refreshTokenId: string, expiresIn: number): Promise<void> {
-    const oldTokenId = await this.redis.get(`${this.USER_SESSION_PREFIX}${userId}`);
-    
+  async storeRefreshTokenId(
+    userId: string,
+    refreshTokenId: string,
+    expiresIn: number,
+  ): Promise<void> {
+    const oldTokenId = await this.redis.get(
+      `${this.USER_SESSION_PREFIX}${userId}`,
+    );
+
     if (oldTokenId) {
       await this.redis.del(`${this.SESSION_TOKEN_PREFIX}${oldTokenId}`);
     }
@@ -35,14 +44,14 @@ export class RedisRepository {
       `${this.USER_SESSION_PREFIX}${userId}`,
       refreshTokenId,
       'EX',
-      expiresIn
+      expiresIn,
     );
 
     await this.redis.set(
       `${this.SESSION_TOKEN_PREFIX}${refreshTokenId}`,
       userId,
       'EX',
-      expiresIn
+      expiresIn,
     );
   }
 
@@ -51,14 +60,20 @@ export class RedisRepository {
   }
 
   async deleteSession(userId: string): Promise<void> {
-    const tokenId = await this.redis.get(`${this.USER_SESSION_PREFIX}${userId}`);
+    const tokenId = await this.redis.get(
+      `${this.USER_SESSION_PREFIX}${userId}`,
+    );
     if (tokenId) {
       await this.redis.del(`${this.SESSION_TOKEN_PREFIX}${tokenId}`);
     }
     await this.redis.del(`${this.USER_SESSION_PREFIX}${userId}`);
   }
 
-  async storePasswordResetCode(email: string, code: string, expiresIn: number): Promise<void> {
+  async storePasswordResetCode(
+    email: string,
+    code: string,
+    expiresIn: number,
+  ): Promise<void> {
     await this.redis.set(
       `${this.PASSWORD_RESET_CODE_PREFIX}${email}`,
       code,
@@ -76,7 +91,10 @@ export class RedisRepository {
     await this.redis.del(`${this.PASSWORD_RESET_ATTEMPTS_PREFIX}${email}`);
   }
 
-  async incrementPasswordResetAttempts(email: string, expiresIn: number): Promise<number> {
+  async incrementPasswordResetAttempts(
+    email: string,
+    expiresIn: number,
+  ): Promise<number> {
     const key = `${this.PASSWORD_RESET_ATTEMPTS_PREFIX}${email}`;
     const attempts = await this.redis.incr(key);
 
@@ -87,7 +105,10 @@ export class RedisRepository {
     return attempts;
   }
 
-  async setPasswordResetCooldown(email: string, expiresIn: number): Promise<void> {
+  async setPasswordResetCooldown(
+    email: string,
+    expiresIn: number,
+  ): Promise<void> {
     await this.redis.set(
       `${this.PASSWORD_RESET_COOLDOWN_PREFIX}${email}`,
       '1',
@@ -100,5 +121,3 @@ export class RedisRepository {
     return this.redis.ttl(`${this.PASSWORD_RESET_COOLDOWN_PREFIX}${email}`);
   }
 }
-
-export const redisRepository = new RedisRepository();

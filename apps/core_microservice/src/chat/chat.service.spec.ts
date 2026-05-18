@@ -23,7 +23,7 @@ describe('ChatService', () => {
   };
   const mockFilesService = {
     uploadFile: jest.fn(),
-    getReadableUrl: jest.fn(async (url: string) => url),
+    getReadableUrl: jest.fn((url: string) => url),
   };
 
   beforeEach(async () => {
@@ -136,9 +136,9 @@ describe('ChatService', () => {
       };
       const currentUserId = 'user1';
 
-      await expect(service.create(currentUserId, createChatDto)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.create(currentUserId, createChatDto),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when group chat has no name', async () => {

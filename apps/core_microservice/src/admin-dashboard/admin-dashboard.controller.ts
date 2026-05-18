@@ -25,7 +25,10 @@ export class AdminDashboardController {
   }
 
   @Get('system/health')
-  @ApiOperation({ summary: 'Reachability of core DB and configured services' })
+  @ApiOperation({
+    summary:
+      'Health of architecture components (NGINX, microservices, RabbitMQ, PostgreSQL, Redis)',
+  })
   getSystemHealth() {
     return this.system.checkExternalServices();
   }

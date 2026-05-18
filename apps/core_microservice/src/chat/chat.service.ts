@@ -345,18 +345,18 @@ export class ChatService {
       .slice()
       .reverse()
       .map((msg) => {
-      const replyTo = msg.replyTo;
-      if (replyTo && replyTo.deletedAt != null) {
-        return {
-          ...msg,
-          replyTo: {
-            ...replyTo,
-            content: null,
-            assets: [],
-          },
-        };
-      }
-      return msg;
+        const replyTo = msg.replyTo;
+        if (replyTo && replyTo.deletedAt != null) {
+          return {
+            ...msg,
+            replyTo: {
+              ...replyTo,
+              content: null,
+              assets: [],
+            },
+          };
+        }
+        return msg;
       });
 
     return this.resolveChatPayload({

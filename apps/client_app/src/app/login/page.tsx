@@ -1,7 +1,7 @@
 'use client';
 
+import Image from 'next/image';
 import { useState } from 'react';
-import { ShieldCheck } from 'lucide-react';
 import SignInForm from './signin';
 import SignUpForm from './signup';
 
@@ -9,108 +9,104 @@ export default function AuthPage() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
 
   return (
-    <div className="relative box-border h-[100dvh] overflow-hidden px-4 py-6 sm:px-6 sm:py-8 lg:py-10">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-20 top-0 h-72 w-72 rounded-full bg-violet-500/25 blur-3xl animate-[innogram-float_9s_ease-in-out_infinite]" />
-        <div className="absolute -right-16 top-8 h-72 w-72 rounded-full bg-cyan-500/20 blur-3xl animate-[innogram-float_11s_ease-in-out_infinite_reverse]" />
-        <div className="absolute -bottom-10 left-1/3 h-80 w-80 rounded-full bg-fuchsia-500/18 blur-3xl animate-[innogram-float_13s_ease-in-out_infinite]" />
-        <div className="absolute inset-0 opacity-30 [background:radial-gradient(circle_at_18%_18%,rgba(255,255,255,0.35)_0%,transparent_28%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.25)_0%,transparent_32%)]" />
-      </div>
+    <div className="grid min-h-[100dvh] lg:grid-cols-2">
+      {/* Left — visual */}
+      <aside className="relative hidden overflow-hidden bg-[#0c1029] lg:block">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute inset-0 bg-[conic-gradient(from_200deg_at_30%_40%,#4338ca_0%,#0891b2_35%,#c026d3_65%,#4338ca_100%)] opacity-90" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_70%_20%,rgba(255,255,255,0.12),transparent)]" />
+        </div>
 
-      <div className="relative mx-auto grid h-full w-full max-w-6xl items-center gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-        <section className="relative hidden h-full min-h-[36rem] overflow-hidden rounded-[2rem] border border-white/45 bg-white/40 shadow-[0_30px_100px_-40px_rgba(31,47,130,0.5)] backdrop-blur-xl dark:border-white/10 dark:bg-[#0f1736b0] lg:block">
-          <div className="absolute inset-0 bg-[conic-gradient(from_210deg_at_50%_50%,rgba(99,102,241,0.35),rgba(6,182,212,0.28),rgba(236,72,153,0.35),rgba(99,102,241,0.35))]" />
-          <div className="absolute inset-0 backdrop-blur-[48px]" />
-          <div className="absolute left-1/2 top-1/2 h-[27rem] w-[27rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/35" />
-          <div className="absolute left-1/2 top-1/2 h-[21rem] w-[21rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/30" />
-          <div className="absolute left-1/2 top-1/2 h-[15rem] w-[15rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/25" />
-
-          <div className="absolute left-14 top-14 h-24 w-24 rounded-3xl border border-white/35 bg-white/25 shadow-xl backdrop-blur-md animate-[innogram-float_8s_ease-in-out_infinite]" />
-          <div className="absolute bottom-16 right-14 h-20 w-20 rounded-full border border-white/40 bg-white/20 shadow-xl backdrop-blur-md animate-[innogram-float_10s_ease-in-out_infinite]" />
-          <div className="absolute right-18 top-24 h-3 w-3 rounded-full bg-white/80 animate-ping" />
-          <div className="absolute bottom-20 left-20 h-2.5 w-2.5 rounded-full bg-cyan-200/90 animate-pulse" />
-
-          <div className="relative z-10 flex h-full flex-col justify-between p-8 text-white">
-            <div>
-              <p className="text-xs uppercase tracking-[0.14em] text-white/80">Innogram</p>
-              <h2 className="mt-3 max-w-sm text-3xl font-semibold leading-tight">
-                Добро пожаловать
-              </h2>
-              <p className="mt-3 max-w-sm text-sm text-white/80">
-                Войдите или зарегистрируйтесь, чтобы продолжить.
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              <div className="rounded-2xl border border-white/35 bg-white/20 px-4 py-3 text-sm backdrop-blur-md">
-                Единый доступ к профилю, ленте и сообщениям
-              </div>
-              <div className="rounded-2xl border border-white/30 bg-white/15 px-4 py-3 text-sm text-white/90 backdrop-blur-md">
-                Надёжная аутентификация и защищённые сессии
-              </div>
-              <div className="rounded-2xl border border-white/30 bg-white/15 px-4 py-3 text-sm text-white/90 backdrop-blur-md">
-                Быстрый вход по email или через Google
-              </div>
-            </div>
+        <div className="pointer-events-none absolute left-1/2 top-1/2 h-[min(52vw,36rem)] w-[min(52vw,36rem)] -translate-x-1/2 -translate-y-1/2">
+          <div className="absolute inset-0 rounded-full border border-white/20" />
+          <div className="absolute inset-[12%] rounded-full border border-white/15" />
+          <div className="absolute inset-[24%] rounded-full border border-white/10" />
+          <div className="absolute inset-[36%] overflow-hidden rounded-full border border-white/20 bg-white/8 shadow-lg backdrop-blur-sm">
+            <Image
+              src="/login_image3.jpg"
+              alt=""
+              fill
+              sizes="(max-width: 1024px) 15vw, 240px"
+              className="object-cover"
+              priority
+            />
           </div>
-        </section>
+        </div>
 
-        <section className="relative w-full max-w-[34rem] justify-self-center overflow-hidden rounded-[2rem] border border-white/60 bg-white/70 p-4 shadow-[0_30px_90px_-35px_rgba(31,47,130,0.55)] backdrop-blur-xl dark:border-white/10 dark:bg-[#0f1736d9] sm:p-6">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(145,157,255,0.22),transparent_58%)] dark:bg-[radial-gradient(ellipse_at_top,rgba(124,135,255,0.25),transparent_52%)]" />
-          <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-violet-500/20 blur-3xl" />
-          <div className="pointer-events-none absolute -left-20 -bottom-16 h-44 w-44 rounded-full bg-cyan-500/20 blur-3xl" />
+        <div className="pointer-events-none absolute left-[12%] top-[18%] h-28 w-28 overflow-hidden rounded-3xl border border-white/25 bg-white/10 shadow-2xl backdrop-blur-md animate-[innogram-float_9s_ease-in-out_infinite]">
+          <Image
+            src="/login_image1.jpg"
+            alt=""
+            fill
+            sizes="112px"
+            className="object-cover"
+            priority
+          />
+        </div>
+        <div className="pointer-events-none absolute bottom-[22%] right-[14%] h-20 w-20 overflow-hidden rounded-full border border-white/30 bg-white/10 shadow-xl backdrop-blur-md animate-[innogram-float_11s_ease-in-out_infinite_reverse]">
+          <Image
+            src="/login_image2.jpg"
+            alt=""
+            fill
+            sizes="80px"
+            className="object-cover"
+            priority
+          />
+        </div>
+        <div className="pointer-events-none absolute right-[28%] top-[32%] h-3 w-3 rounded-full bg-white/70 animate-pulse" />
+        <div className="pointer-events-none absolute bottom-[38%] left-[22%] h-2 w-2 rounded-full bg-cyan-300/80" />
 
-          <div className="relative z-10">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">АВТОРИЗАЦИЯ</p>
-                <h1 className="mt-1 text-2xl font-semibold text-foreground">Вход в Innogram</h1>
-              </div>
-              <div className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-300">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Защищено
-              </div>
-            </div>
+        <div className="relative z-10 flex h-full flex-col justify-end p-10 xl:p-14">
+          <span className="text-2xl font-semibold tracking-tight text-white">Innogram</span>
+        </div>
+      </aside>
 
-            <div className="mb-5 grid grid-cols-2 rounded-2xl border border-border/70 bg-muted/50 p-1.5">
-              <button
-                type="button"
-                onClick={() => setMode('signin')}
-                className={`rounded-xl px-3 py-2 text-sm font-medium transition-all ${
-                  mode === 'signin' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Вход
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode('signup')}
-                className={`rounded-xl px-3 py-2 text-sm font-medium transition-all ${
-                  mode === 'signup' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Регистрация
-              </button>
-            </div>
+      {/* Right — form */}
+      <main className="relative flex flex-col justify-center overflow-y-auto bg-background px-6 py-10 sm:px-10 lg:px-14 xl:px-20">
+        <div className="pointer-events-none absolute inset-0 lg:hidden">
+          <div className="absolute -left-24 top-0 h-64 w-64 rounded-full bg-violet-500/15 blur-3xl" />
+          <div className="absolute -right-20 bottom-0 h-64 w-64 rounded-full bg-cyan-500/12 blur-3xl" />
+        </div>
 
-            <div className="relative overflow-hidden rounded-2xl">
-              <div className="pointer-events-none absolute inset-0 -z-10 opacity-50 [background:radial-gradient(circle_at_0%_0%,rgba(99,102,241,0.16),transparent_40%),radial-gradient(circle_at_100%_0%,rgba(236,72,153,0.16),transparent_38%)]" />
-              <div className="animate-[innogram-slide-up_0.45s_ease-out_both]">
-                {mode === 'signin' ? (
-                  <SignInForm onSwitch={() => setMode('signup')} />
-                ) : (
-                  <SignUpForm onSwitch={() => setMode('signin')} />
-                )}
-              </div>
-            </div>
+        <div className="relative mx-auto w-full max-w-md">
+          <span className="mb-8 block text-xl font-semibold tracking-tight text-foreground lg:hidden">
+            Innogram
+          </span>
 
-            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Соединение защищено и зашифровано</span>
-            </div>
+          <div className="mb-6 grid grid-cols-2 rounded-xl border border-border bg-muted/40 p-1">
+            <button
+              type="button"
+              onClick={() => setMode('signin')}
+              className={`rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                mode === 'signin'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Вход
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('signup')}
+              className={`rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                mode === 'signup'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Регистрация
+            </button>
           </div>
-        </section>
-      </div>
+
+          <div className="animate-[innogram-slide-up_0.4s_ease-out_both]">
+            {mode === 'signin' ? (
+              <SignInForm onSwitch={() => setMode('signup')} />
+            ) : (
+              <SignUpForm onSwitch={() => setMode('signin')} />
+            )}
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

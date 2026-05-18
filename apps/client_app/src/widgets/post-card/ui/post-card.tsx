@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { flushSync } from 'react-dom';
 import type { Post } from '@/entities/post';
-import { Heart, MessageCircle, MoreHorizontal, Send, Bookmark, Edit2, Trash2, Volume2, VolumeX, ArchiveRestore, Archive, ChevronLeft, ChevronRight, Flag } from 'lucide-react';
+import { Heart, MessageCircle, MoreHorizontal, Send, Edit2, Trash2, Volume2, VolumeX, ArchiveRestore, Archive, ChevronLeft, ChevronRight, Flag } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/entities/session';
@@ -19,6 +19,7 @@ import {
 } from '@/entities/comment';
 import { MentionTextarea } from '@/shared/ui/mention-textarea';
 import { MentionText } from '@/shared/ui/mention-text';
+import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
 import { SharePostModal } from '@/features/post-share';
 import { EditPostModal } from '@/features/post-edit';
 import { ReportPostModal } from '@/features/post-report';
@@ -90,7 +91,7 @@ export function PostCard({
   const [likesCount, setLikesCount] = useState<number>(post.likesCount || 0);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentsHasMore, setCommentsHasMore] = useState(true);
-  const [commentsCount, setCommentsCount] = useState<number>(0);
+  const [, setCommentsCount] = useState<number>(0);
   const [commentsCursor, setCommentsCursor] = useState<string | null>(null);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [liked, setLiked] = useState<boolean>(false);
@@ -100,6 +101,7 @@ export function PostCard({
   const [showMenu, setShowMenu] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -307,7 +309,7 @@ export function PostCard({
 
         const collected: Comment[] = [];
         let cursor: string | null = null;
-        let hasNext = true;
+        const hasNext = true;
         let lastMeta = { hasNextPage: false, cursor: null as string | null };
 
         while (!cancelled && hasNext) {
@@ -397,12 +399,9 @@ export function PostCard({
 
   const handleDeletePost = async () => {
     if (!post.id || isDeleting) return;
-    
-    if (!confirm('Вы уверены, что хотите удалить этот пост?')) {
-      return;
-    }
 
     setIsDeleting(true);
+    setShowDeleteConfirm(false);
     try {
       await deletePost(post.id);
       setShowMenu(false);
@@ -659,11 +658,14 @@ export function PostCard({
                       </button>
 
                       <button
-                        onClick={handleDeletePost}
+                        onClick={() => {
+                          setShowMenu(false);
+                          setShowDeleteConfirm(true);
+                        }}
                         disabled={isDeleting}
                         className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 disabled:opacity-50"
                       >
-                        <Trash2 size={16} /> {isDeleting ? 'Удаление...' : 'Удалить'}
+                        <Trash2 size={16} /> Удалить
                       </button>
                     </>
                   ) : (
@@ -962,6 +964,18 @@ export function PostCard({
         />
       )}
       <EditPostModal post={post} open={showEditModal} onClose={() => setShowEditModal(false)} />
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="Удалить пост?"
+        description="Пост будет удалён навсегда. Это действие нельзя отменить."
+        confirmLabel="Удалить"
+        destructive
+        loading={isDeleting}
+        onClose={() => {
+          if (!isDeleting) setShowDeleteConfirm(false);
+        }}
+        onConfirm={() => void handleDeletePost()}
+      />
       <ReportPostModal
         open={showReportModal}
         reportReason={reportReason}

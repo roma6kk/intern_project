@@ -13,7 +13,7 @@ import {
 } from '../api/comments-api';
 import { MentionTextarea } from '@/shared/ui/mention-textarea';
 import { MentionText } from '@/shared/ui/mention-text';
-import { ReportPostModal } from '@/features/post-report';
+import { ReportModal } from '@/shared/ui/report-modal';
 import { createReport } from '@/entities/report';
 import { notify } from '@/shared/lib/notify';
 import { cn } from '@/shared/lib/cn';
@@ -496,7 +496,7 @@ export function CommentItem({
         </div>
       )}
 
-      <ReportPostModal
+      <ReportModal
         open={showReportModal}
         reportReason={reportReason}
         isReporting={isReporting}

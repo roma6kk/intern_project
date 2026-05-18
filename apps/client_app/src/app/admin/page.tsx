@@ -17,7 +17,7 @@ const links = [
   {
     href: '/admin/system',
     title: 'Система и статистика',
-    description: 'Сводные метрики, очередь жалоб, проверки сервисов.',
+    description: 'Сводные метрики, очередь жалоб, состояние архитектуры.',
     icon: BarChart3,
     accent: 'from-sky-500 to-cyan-600',
   },

@@ -1,37 +1,58 @@
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
-import {ITokenPayload} from './interfaces/ITokenPayload'
-const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'secret';
-const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'refresh_secret';
+import { ITokenPayload } from './interfaces/ITokenPayload';
 
-export const generateTokens = (payload: ITokenPayload) => {
-  const accessJti = uuidv4();
-  const refreshJti = uuidv4();
+@Injectable()
+export class TokenService {
+  private readonly accessSecret: string;
+  private readonly refreshSecret: string;
 
-  const accessToken = jwt.sign({ ...payload, jti: accessJti }, ACCESS_SECRET, { 
-    expiresIn: '15m' 
-  });
-  
-  const refreshToken = jwt.sign({ ...payload, jti: refreshJti }, REFRESH_SECRET, { 
-    expiresIn: '7d' 
-  });
+  constructor(private readonly configService: ConfigService) {
+    this.accessSecret =
+      this.configService.get<string>('JWT_ACCESS_SECRET') ?? 'secret';
+    this.refreshSecret =
+      this.configService.get<string>('JWT_REFRESH_SECRET') ?? 'refresh_secret';
+  }
 
-  return { 
-    accessToken, 
-    refreshToken, 
-    accessJti,
-    refreshJti 
-  };
-};
+  generateTokens(payload: ITokenPayload) {
+    const accessJti = uuidv4();
+    const refreshJti = uuidv4();
 
-export const verifyRefreshToken = (token: string) => {
-  return jwt.verify(token, REFRESH_SECRET) as jwt.JwtPayload;
-};
+    const accessToken = jwt.sign(
+      { ...payload, jti: accessJti },
+      this.accessSecret,
+      {
+        expiresIn: '15m',
+      },
+    );
 
-export const verifyAccessToken = (token: string) => {
-  return jwt.verify(token, ACCESS_SECRET) as jwt.JwtPayload;
-};
+    const refreshToken = jwt.sign(
+      { ...payload, jti: refreshJti },
+      this.refreshSecret,
+      {
+        expiresIn: '7d',
+      },
+    );
 
-export const decodeToken = (token: string) => {
-  return jwt.decode(token) as jwt.JwtPayload;
-};
+    return {
+      accessToken,
+      refreshToken,
+      accessJti,
+      refreshJti,
+    };
+  }
+
+  verifyRefreshToken(token: string) {
+    return jwt.verify(token, this.refreshSecret) as jwt.JwtPayload;
+  }
+
+  verifyAccessToken(token: string) {
+    return jwt.verify(token, this.accessSecret) as jwt.JwtPayload;
+  }
+
+  decodeToken(token: string) {
+    return jwt.decode(token) as jwt.JwtPayload;
+  }
+}

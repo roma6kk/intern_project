@@ -7,6 +7,7 @@ import { X, ChevronLeft, ChevronRight, Send, Users, EyeOff, Eye, Trash2 } from '
 import api from '@/shared/api';
 import { cn } from '@/shared/lib/cn';
 import modal from '@/shared/styles/modal.module.css';
+import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
 import animations from '@/shared/styles/animations.module.css';
 import type { StoriesFeedGroup, StoryItem } from '../model/types';
 import { STORY_QUICK_REACTIONS } from '../model/story-reactions';
@@ -108,6 +109,7 @@ export function StoryViewerModal({
   const [storyIdx, setStoryIdx] = useState(0);
   const [replyText, setReplyText] = useState('');
   const [busy, setBusy] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [effects, setEffects] = useState<{ id: number; emoji: string }[]>([]);
   const [ownerHidden, setOwnerHidden] = useState<Record<string, boolean>>({});
   const [viewersOpen, setViewersOpen] = useState(false);
@@ -351,8 +353,8 @@ export function StoryViewerModal({
 
   const deleteStory = useCallback(async () => {
     if (!story?.id) return;
-    if (typeof window !== 'undefined' && !window.confirm('Delete this story?')) return;
     setBusy(true);
+    setShowDeleteConfirm(false);
     try {
       await api.delete(`/stories/${story.id}`);
       if (typeof window !== 'undefined') {
@@ -466,7 +468,7 @@ export function StoryViewerModal({
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={() => void deleteStory()}
+                  onClick={() => setShowDeleteConfirm(true)}
                   className="p-2 rounded-xl border border-border bg-warning text-white hover:opacity-90 transition disabled:opacity-50"
                   aria-label="Delete"
                   title="Delete"
@@ -742,6 +744,18 @@ export function StoryViewerModal({
           </div>
         </div>
       )}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="Удалить историю?"
+        description="История будет удалена навсегда. Это действие нельзя отменить."
+        confirmLabel="Удалить"
+        destructive
+        loading={busy}
+        onClose={() => {
+          if (!busy) setShowDeleteConfirm(false);
+        }}
+        onConfirm={() => void deleteStory()}
+      />
     </div>
   );
 }

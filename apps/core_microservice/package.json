@@ -20,7 +20,11 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "load:50": "k6 run -e K6_TARGET_VUS=50 performance/load-test.js",
+    "load:100": "k6 run -e K6_TARGET_VUS=100 performance/load-test.js",
+    "load:200": "k6 run -e K6_TARGET_VUS=200 performance/load-test.js",
+    "load:500": "k6 run -e K6_TARGET_VUS=500 performance/load-test.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.958.0",

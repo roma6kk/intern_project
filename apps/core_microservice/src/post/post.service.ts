@@ -460,7 +460,11 @@ export class PostService {
 
     const cachedPost = await this.cacheManager.get<PostWithRelations>(cacheKey);
     if (cachedPost) {
-      if (cachedPost.isArchived && viewerId && cachedPost.authorId !== viewerId) {
+      if (
+        cachedPost.isArchived &&
+        viewerId &&
+        cachedPost.authorId !== viewerId
+      ) {
         throw new NotFoundException('Post not found');
       }
       await this.ensurePrivatePostVisibility(cachedPost, viewerId, viewerRole);
@@ -481,7 +485,9 @@ export class PostService {
           select: {
             id: true,
             account: { select: { username: true } },
-            profile: { select: { firstName: true, avatarUrl: true, isPrivate: true } },
+            profile: {
+              select: { firstName: true, avatarUrl: true, isPrivate: true },
+            },
           },
         },
         assets: true,
@@ -494,7 +500,9 @@ export class PostService {
               select: {
                 id: true,
                 account: { select: { username: true } },
-                profile: { select: { firstName: true, avatarUrl: true, isPrivate: true } },
+                profile: {
+                  select: { firstName: true, avatarUrl: true, isPrivate: true },
+                },
               },
             },
           },
@@ -756,7 +764,10 @@ export class PostService {
   }
 
   private async ensurePrivatePostVisibility(
-    post: { authorId: string; author: { profile?: { isPrivate?: boolean } | null } },
+    post: {
+      authorId: string;
+      author: { profile?: { isPrivate?: boolean } | null };
+    },
     viewerId?: string,
     viewerRole?: ICurrentUser['role'],
   ): Promise<void> {

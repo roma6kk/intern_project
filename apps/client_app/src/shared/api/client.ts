@@ -48,6 +48,24 @@ const api = axios.create({
   timeout: 10000,
 });
 
+let refreshInFlight: Promise<string> | null = null;
+
+function refreshAccessToken(): Promise<string> {
+  if (!refreshInFlight) {
+    refreshInFlight = api
+      .post<{ accessToken: string }>('/auth/refresh', {})
+      .then((res) => {
+        const newAccessToken = res.data.accessToken;
+        Cookies.set('accessToken', newAccessToken);
+        return newAccessToken;
+      })
+      .finally(() => {
+        refreshInFlight = null;
+      });
+  }
+  return refreshInFlight;
+}
+
 api.interceptors.request.use((config) => {
   const token = Cookies.get('accessToken');
   if (token) {
@@ -69,17 +87,10 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshResponse = await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`, 
-          {}, 
-          { withCredentials: true, timeout: 5000 }
-        );
-
-        const newAccessToken = refreshResponse.data.accessToken;
-        Cookies.set('accessToken', newAccessToken);
+        const newAccessToken = await refreshAccessToken();
         originalRequest.headers = originalRequest.headers || {};
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        
+
         return api(originalRequest);
       } catch (refreshError) {
         Cookies.remove('accessToken');

@@ -34,8 +34,10 @@ function redirectTo(request: NextRequest, pathname: string) {
 export function middleware(request: NextRequest) {
   const accessToken = request.cookies.get('accessToken')?.value;
   const hasValidAccessToken = isValidAccessToken(accessToken);
+  const hasRefreshToken = Boolean(request.cookies.get('refreshToken')?.value);
 
-  const isAuth = hasValidAccessToken;
+  // Expired access is OK when httpOnly refresh cookie exists — client refreshes via API.
+  const isAuth = hasValidAccessToken || hasRefreshToken;
 
   const isAuthPage = 
     request.nextUrl.pathname.startsWith('/login') || 

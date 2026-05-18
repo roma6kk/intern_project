@@ -22,7 +22,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   }, [user?.id]);
 
   useEffect(() => {
-    if (!user) {
+    if (!user?.id) {
       if (socketRef.current) {
         socketRef.current.removeAllListeners();
         socketRef.current.disconnect();

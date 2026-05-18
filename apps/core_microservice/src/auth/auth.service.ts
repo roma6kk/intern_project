@@ -129,11 +129,15 @@ export class AuthService {
     return data;
   }
 
-  async handleForgotPassword(payload: ForgotPasswordDto): Promise<{ message: string }> {
+  async handleForgotPassword(
+    payload: ForgotPasswordDto,
+  ): Promise<{ message: string }> {
     this.logger.log(`Proxying Forgot Password for: ${payload.email}`);
     const { data } = await firstValueFrom(
       this.httpService
-        .post<{ message: string }>(`${this.authServiceUrl}/forgot-password`, payload)
+        .post<{
+          message: string;
+        }>(`${this.authServiceUrl}/forgot-password`, payload)
         .pipe(
           catchError((error: AxiosError) => {
             this.handleAxiosError(error);
@@ -144,11 +148,15 @@ export class AuthService {
     return data;
   }
 
-  async handleResetPassword(payload: ResetPasswordDto): Promise<{ message: string }> {
+  async handleResetPassword(
+    payload: ResetPasswordDto,
+  ): Promise<{ message: string }> {
     this.logger.log(`Proxying Reset Password for: ${payload.email}`);
     const { data } = await firstValueFrom(
       this.httpService
-        .post<{ message: string }>(`${this.authServiceUrl}/reset-password`, payload)
+        .post<{
+          message: string;
+        }>(`${this.authServiceUrl}/reset-password`, payload)
         .pipe(
           catchError((error: AxiosError) => {
             this.handleAxiosError(error);

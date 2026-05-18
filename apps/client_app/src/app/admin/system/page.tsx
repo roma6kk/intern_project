@@ -35,20 +35,62 @@ type StatsSnapshot = {
   };
 };
 
+type ArchitectureCategory = 'gateway' | 'microservice' | 'messaging' | 'database';
+
+type HealthService = {
+  id: string;
+  label: string;
+  category: ArchitectureCategory;
+  ok: boolean;
+  latencyMs: number;
+  statusCode?: number;
+  error?: string;
+  detail?: string;
+  llm?: {
+    configured: boolean;
+    model?: string;
+  };
+};
+
 type HealthResponse = {
   checkedAt: string;
-  services: {
-    name: string;
-    ok: boolean;
-    latencyMs: number;
-    statusCode?: number;
-    error?: string;
-    llm?: {
-      configured: boolean;
-      model?: string;
-    };
-  }[];
+  services: HealthService[];
 };
+
+const CATEGORY_ORDER: ArchitectureCategory[] = [
+  'gateway',
+  'microservice',
+  'messaging',
+  'database',
+];
+
+const CATEGORY_LABELS: Record<ArchitectureCategory, string> = {
+  gateway: 'Шлюз',
+  microservice: 'Микросервисы',
+  messaging: 'Брокер сообщений',
+  database: 'Хранилища данных',
+};
+
+function serviceDisplayName(svc: HealthService): string {
+  if (svc.label) return svc.label;
+  return svc.id;
+}
+
+function groupServicesByCategory(
+  services: HealthService[],
+): Map<ArchitectureCategory, HealthService[]> {
+  const map = new Map<ArchitectureCategory, HealthService[]>();
+  for (const cat of CATEGORY_ORDER) {
+    map.set(cat, []);
+  }
+  for (const svc of services) {
+    const cat = CATEGORY_ORDER.includes(svc.category)
+      ? svc.category
+      : 'microservice';
+    map.get(cat)!.push(svc);
+  }
+  return map;
+}
 
 function isStatsSnapshot(x: unknown): x is StatsSnapshot {
   if (!x || typeof x !== 'object') return false;
@@ -60,10 +102,48 @@ function isStatsSnapshot(x: unknown): x is StatsSnapshot {
   );
 }
 
-function isHealthResponse(x: unknown): x is HealthResponse {
-  if (!x || typeof x !== 'object') return false;
+function normalizeHealthService(raw: unknown): HealthService | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const s = raw as Record<string, unknown>;
+  const id =
+    typeof s.id === 'string'
+      ? s.id
+      : typeof s.name === 'string'
+        ? s.name
+        : null;
+  if (!id || typeof s.ok !== 'boolean' || typeof s.latencyMs !== 'number') {
+    return null;
+  }
+  const category = CATEGORY_ORDER.includes(s.category as ArchitectureCategory)
+    ? (s.category as ArchitectureCategory)
+    : 'microservice';
+  return {
+    id,
+    label: typeof s.label === 'string' ? s.label : id,
+    category,
+    ok: s.ok,
+    latencyMs: s.latencyMs,
+    statusCode: typeof s.statusCode === 'number' ? s.statusCode : undefined,
+    error: typeof s.error === 'string' ? s.error : undefined,
+    detail: typeof s.detail === 'string' ? s.detail : undefined,
+    llm:
+      s.llm && typeof s.llm === 'object'
+        ? (s.llm as HealthService['llm'])
+        : undefined,
+  };
+}
+
+function parseHealthResponse(x: unknown): HealthResponse | null {
+  if (!x || typeof x !== 'object') return null;
   const o = x as Record<string, unknown>;
-  return Array.isArray(o.services) && typeof o.checkedAt === 'string';
+  if (!Array.isArray(o.services) || typeof o.checkedAt !== 'string') {
+    return null;
+  }
+  const services = o.services
+    .map(normalizeHealthService)
+    .filter((s): s is HealthService => s != null);
+  if (services.length === 0) return null;
+  return { checkedAt: o.checkedAt, services };
 }
 
 export default function AdminSystemPage() {
@@ -89,7 +169,7 @@ export default function AdminSystemPage() {
         ]);
         if (!cancelled) {
           setStats(isStatsSnapshot(s) ? s : null);
-          setHealth(isHealthResponse(h) ? h : null);
+          setHealth(parseHealthResponse(h));
         }
       } catch {
         if (!cancelled) {
@@ -153,7 +233,7 @@ export default function AdminSystemPage() {
               Система и статистика
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Сводные показатели и проверки здоровья сервисов (только ADMIN).
+              Сводные показатели и состояние всех компонентов архитектуры (только ADMIN).
             </p>
           </div>
           {stats && (
@@ -264,13 +344,31 @@ export default function AdminSystemPage() {
             <section>
               <div className="mb-4 flex items-center gap-2">
                 <Server className="h-5 w-5 text-muted-foreground" />
-                <h2 className="text-lg font-semibold text-foreground">Проверки сервисов</h2>
+                <h2 className="text-lg font-semibold text-foreground">
+                  Состояние архитектуры
+                </h2>
               </div>
               {health && health.services.length > 0 ? (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {health.services.map((svc) => (
+                <div className="space-y-8">
+                  {CATEGORY_ORDER.map((category) => {
+                    const grouped = groupServicesByCategory(health.services);
+                    const items = grouped.get(category) ?? [];
+                    if (items.length === 0) return null;
+                    const unhealthy = items.filter((s) => !s.ok).length;
+                    return (
+                      <div key={category}>
+                        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                            {CATEGORY_LABELS[category]}
+                          </h3>
+                          <span className="text-xs text-muted-foreground">
+                            {items.length - unhealthy}/{items.length} доступно
+                          </span>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {items.map((svc) => (
                     <div
-                      key={svc.name}
+                      key={svc.id}
                       className={cn(surface.card, animations.slideUp, 'flex items-start justify-between gap-3 rounded-xl border border-border/80 p-4 transition-shadow hover:shadow-md')}
                     >
                       <div className="flex min-w-0 items-start gap-3">
@@ -288,9 +386,17 @@ export default function AdminSystemPage() {
                           )}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-mono text-sm font-medium text-foreground">
-                            {svc.name}
+                          <p className="text-sm font-medium text-foreground">
+                            {serviceDisplayName(svc)}
                           </p>
+                          <p className="font-mono text-xs text-muted-foreground">
+                            {svc.id}
+                          </p>
+                          {svc.detail && (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {svc.detail}
+                            </p>
+                          )}
                           {svc.error && (
                             <p className="mt-1 break-words text-xs text-rose-600">{svc.error}</p>
                           )}
@@ -323,7 +429,11 @@ export default function AdminSystemPage() {
                         </p>
                       </div>
                     </div>
-                  ))}
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 !loading && (

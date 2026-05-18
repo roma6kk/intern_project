@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
+import { parseUuidArray } from './parse-uuid-array.transform';
 import {
   IsArray,
   IsBoolean,
@@ -17,23 +18,7 @@ export class UpdateChatDto {
   @IsOptional()
   @IsArray()
   @IsUUID('4', { each: true })
-  @Transform(({ value }) => {
-    if (Array.isArray(value)) return value;
-    if (typeof value === 'string') {
-      const trimmed = value.trim();
-      if (!trimmed) return [];
-      if (trimmed.startsWith('[')) {
-        try {
-          const parsed = JSON.parse(trimmed);
-          return Array.isArray(parsed) ? parsed : [trimmed];
-        } catch {
-          return [trimmed];
-        }
-      }
-      return trimmed.includes(',') ? trimmed.split(',').map((v) => v.trim()) : [trimmed];
-    }
-    return value;
-  })
+  @Transform(({ value }: { value: unknown }) => parseUuidArray(value))
   addMemberIds?: string[];
 
   @ApiPropertyOptional({
@@ -43,23 +28,7 @@ export class UpdateChatDto {
   @IsOptional()
   @IsArray()
   @IsUUID('4', { each: true })
-  @Transform(({ value }) => {
-    if (Array.isArray(value)) return value;
-    if (typeof value === 'string') {
-      const trimmed = value.trim();
-      if (!trimmed) return [];
-      if (trimmed.startsWith('[')) {
-        try {
-          const parsed = JSON.parse(trimmed);
-          return Array.isArray(parsed) ? parsed : [trimmed];
-        } catch {
-          return [trimmed];
-        }
-      }
-      return trimmed.includes(',') ? trimmed.split(',').map((v) => v.trim()) : [trimmed];
-    }
-    return value;
-  })
+  @Transform(({ value }: { value: unknown }) => parseUuidArray(value))
   removeMemberIds?: string[];
 
   @ApiPropertyOptional({

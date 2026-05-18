@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -7,6 +8,7 @@ import {
   AccountState,
   ModerationLogAction,
   NotificationType,
+  PlatformRole,
   SanctionType,
   WarningSource,
   type Prisma,
@@ -75,6 +77,28 @@ export class AdminUsersService {
       where: { userId: targetUserId },
     });
     if (!account) throw new NotFoundException('Account not found');
+
+    if (
+      targetUserId === adminUserId &&
+      account.role === PlatformRole.ADMIN &&
+      dto.role !== PlatformRole.ADMIN
+    ) {
+      throw new ForbiddenException('Cannot change your own admin role');
+    }
+
+    if (
+      account.role === PlatformRole.ADMIN &&
+      dto.role !== PlatformRole.ADMIN
+    ) {
+      const adminCount = await this.prisma.account.count({
+        where: { role: PlatformRole.ADMIN },
+      });
+      if (adminCount <= 1) {
+        throw new ForbiddenException(
+          'Cannot remove the last platform administrator',
+        );
+      }
+    }
 
     const updated = await this.prisma.account.update({
       where: { userId: targetUserId },
@@ -241,6 +265,18 @@ export class AdminUsersService {
   async getHistory(targetUserId: string) {
     await this.ensureUserExists(targetUserId);
 
+    const account = await this.prisma.account.findUnique({
+      where: { userId: targetUserId },
+      select: {
+        userId: true,
+        username: true,
+        email: true,
+        role: true,
+        state: true,
+      },
+    });
+    if (!account) throw new NotFoundException('Account not found');
+
     const [warnings, sanctions, logs] = await Promise.all([
       this.prisma.userWarning.findMany({
         where: { userId: targetUserId },
@@ -311,7 +347,7 @@ export class AdminUsersService {
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
 
-    return { warnings, sanctions, logs, timeline };
+    return { account, warnings, sanctions, logs, timeline };
   }
 
   async bulkApply(adminUserId: string, dto: BulkAdminUsersDto) {

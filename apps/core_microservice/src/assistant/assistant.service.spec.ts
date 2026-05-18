@@ -46,8 +46,9 @@ describe('AssistantService', () => {
           provide: PrismaService,
           useValue: {
             user: {
-              findUnique: jest.fn().mockImplementation(
-                ({ where }: { where: { id: string } }) => {
+              findUnique: jest
+                .fn()
+                .mockImplementation(({ where }: { where: { id: string } }) => {
                   const rows: Record<string, object> = {
                     u1: {
                       id: 'u1',
@@ -70,8 +71,7 @@ describe('AssistantService', () => {
                   };
                   const row = rows[where.id];
                   return Promise.resolve(row ?? null);
-                },
-              ),
+                }),
             },
           },
         },

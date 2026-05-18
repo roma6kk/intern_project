@@ -26,6 +26,13 @@ import { SignUpDto } from './dto/signup.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 
+const REFRESH_COOKIE_OPTIONS = {
+  httpOnly: true,
+  path: '/',
+  sameSite: 'lax' as const,
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+};
+
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
@@ -44,10 +51,7 @@ export class AuthController {
   ) {
     const result = await this.authService.handleLogin(credentials);
 
-    res.cookie('refreshToken', result.refreshToken, {
-      httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie('refreshToken', result.refreshToken, REFRESH_COOKIE_OPTIONS);
 
     return result;
   }
@@ -67,10 +71,7 @@ export class AuthController {
 
     const result = await this.authService.handleRefresh(refreshTokenId);
 
-    res.cookie('refreshToken', result.refreshToken, {
-      httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie('refreshToken', result.refreshToken, REFRESH_COOKIE_OPTIONS);
 
     return result;
   }
@@ -92,10 +93,7 @@ export class AuthController {
   ) {
     const result = await this.authService.handleOAuthCallback(provider, code);
 
-    res.cookie('refreshToken', result.refreshToken, {
-      httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie('refreshToken', result.refreshToken, REFRESH_COOKIE_OPTIONS);
 
     return res.redirect(
       `${this.frontendPublicUrl}/auth/callback?accessToken=${result.accessToken}`,
@@ -112,7 +110,7 @@ export class AuthController {
       await this.authService.handleLogout(refreshTokenId);
     }
 
-    res.clearCookie('refreshToken');
+    res.clearCookie('refreshToken', { path: '/', sameSite: 'lax' });
     return { message: 'Logged out successfully' };
   }
 

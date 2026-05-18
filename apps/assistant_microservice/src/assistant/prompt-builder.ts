@@ -5,6 +5,8 @@ const USERNAME_DISPLAY_RULE = `Participant naming (mandatory): each transcript l
 
 const PERSONAL_ASSISTANT_RULE = `Personal assistant: you serve ONLY the assistant client marked participant:self in each transcript line and described in Assistant client JSON. participant:peer rows are conversation partners—they are NOT your audience. Address advice, summaries, and answers to participant:self alone (implicit "you"). Questions like "did I/we agree?", "who offered?" mean participant:self viewpoint. Conversation topics must be wording participant:self might naturally send to counterpart(s)—not generic advice aimed at participant:peer. Do not confuse or merge identities.`;
 
+const RUSSIAN_ONLY_RULE = `Language (mandatory): All natural-language text you generate (suggestions, summary, actionItems, answer) MUST be in Russian only, even if the question or transcript is in another language. JSON keys stay in English. citation.excerpt may quote transcript wording verbatim when citing a message.`;
+
 export interface ViewerContext {
   viewerUserId: string;
 }
@@ -103,7 +105,9 @@ Suggest 3-5 short conversation starter lines they can realistically send toward 
 
 Respond ONLY with valid JSON matching this shape:
 {"suggestions":["..."],"tone":"casual|professional|playful","confidence":0.0-1.0}
-Rules: suggestions respect language of counterparty/transcript when sensible. No fabricated personal data beyond inputs.
+Rules: No fabricated personal data beyond inputs.
+
+${RUSSIAN_ONLY_RULE}
 
 ${PERSONAL_ASSISTANT_RULE}
 
@@ -136,9 +140,11 @@ export function buildDialogSummaryPrompts(params: {
 Respond ONLY with valid JSON:
 {"summary":"2-4 sentences","actionItems":["up to ${maxBullets} short bullets or empty array"]}
 
-Be factual — only transcript content drives events (profile JSON hints who participant:peer might be — not events). Majority message language mirrors output wording.
+Be factual — only transcript content drives events (profile JSON hints who participant:peer might be — not events).
 
 Action items belong to participant:self unless transcript clearly assigns externally.
+
+${RUSSIAN_ONLY_RULE}
 
 ${PERSONAL_ASSISTANT_RULE}
 
@@ -175,6 +181,8 @@ Respond ONLY with valid JSON:
 {"answer":"...","citations":[{"messageId":"uuid from transcript line if used","excerpt":"short quote"}]}
 
 participant:self / participant:peer mark authorship lanes. citations use message ids. Counterparty JSON is contextual—not chat text.
+
+${RUSSIAN_ONLY_RULE}
 
 ${PERSONAL_ASSISTANT_RULE}
 

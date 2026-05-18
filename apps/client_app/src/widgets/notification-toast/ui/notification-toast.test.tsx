@@ -6,6 +6,7 @@ import { NotificationToast } from './notification-toast';
 jest.mock('next/image', () => ({
   __esModule: true,
   default: (props: ImgHTMLAttributes<HTMLImageElement> & { fill?: boolean; sizes?: string }) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Next.js Image layout props
     const { fill, sizes, ...rest } = props;
     // eslint-disable-next-line @next/next/no-img-element
     return <img {...rest} alt={props.alt} />;

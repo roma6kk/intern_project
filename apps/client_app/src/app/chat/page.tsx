@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect, useRef, Suspense, useCallback, useMemo } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import ChatList from '@/widgets/chat/ChatList';
 import ChatWindow from '@/widgets/chat/ChatWindow';
 import { getOnlineUsers, getUserChats } from '@/entities/chat';
@@ -16,6 +16,8 @@ import { cn } from '@/shared/lib/cn';
 import surface from '@/shared/styles/surface.module.css';
 import animations from '@/shared/styles/animations.module.css';
 
+const EMPTY_ONLINE_USER_IDS = new Set<string>();
+
 function normalizeMessage(payload: unknown): Message | null {
   if (!payload || typeof payload !== 'object') return null;
   const m = payload as Record<string, unknown>;
@@ -28,12 +30,13 @@ function normalizeMessage(payload: unknown): Message | null {
 function ChatPageContent() {
   const { user } = useAuth();
   const socket = useSocket();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [chats, setChats] = useState<Chat[]>([]);
-  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(() => new Set());
+  const visibleOnlineUserIds = user ? onlineUserIds : EMPTY_ONLINE_USER_IDS;
   const setChatsRef = useRef(setChats);
   const updateChatPreview = useCallback((chatId: string, message: Message | null) => {
     setChats((prev) => {
@@ -70,10 +73,7 @@ function ChatPageContent() {
         });
     };
 
-    if (!user) {
-      setOnlineUserIds(new Set());
-      return;
-    }
+    if (!user) return;
 
     refreshOnlineUsers();
     const intervalId = window.setInterval(refreshOnlineUsers, 30000);
@@ -83,15 +83,22 @@ function ChatPageContent() {
     };
   }, [user]);
 
-  useEffect(() => {
-    const chatIdFromUrl = searchParams.get('chatId');
-    if (chatIdFromUrl && chats.length > 0) {
-      const chatExists = chats.some(c => c.id === chatIdFromUrl);
-      if (chatExists && selectedChatId !== chatIdFromUrl) {
-        queueMicrotask(() => setSelectedChatId(chatIdFromUrl));
-      }
-    }
-  }, [chats, searchParams, selectedChatId]);
+  const chatIdFromUrl = searchParams.get('chatId');
+  const selectedChatId = useMemo(() => {
+    if (!chatIdFromUrl || chats.length === 0) return null;
+    return chats.some((c) => c.id === chatIdFromUrl) ? chatIdFromUrl : null;
+  }, [chatIdFromUrl, chats]);
+
+  const selectChat = useCallback(
+    (chatId: string) => {
+      router.replace(`/chat?chatId=${encodeURIComponent(chatId)}`, { scroll: false });
+    },
+    [router]
+  );
+
+  const clearChatSelection = useCallback(() => {
+    router.replace('/chat', { scroll: false });
+  }, [router]);
 
   useEffect(() => {
     currentChatIdRef.current = selectedChatId;
@@ -167,8 +174,8 @@ function ChatPageContent() {
             <ChatList
               chats={chats}
               selectedChatId={selectedChatId}
-              onSelectChat={setSelectedChatId}
-              onlineUserIds={onlineUserIds}
+              onSelectChat={selectChat}
+              onlineUserIds={visibleOnlineUserIds}
             />
           </div>
         </div>
@@ -179,8 +186,8 @@ function ChatPageContent() {
           <div className="h-full min-h-0 flex flex-col">
             <ChatWindow
               chat={selectedChat}
-              onlineUserIds={onlineUserIds}
-              onBack={() => setSelectedChatId(null)}
+              onlineUserIds={visibleOnlineUserIds}
+              onBack={clearChatSelection}
               onLatestMessage={updateChatPreview}
               onMessagesRead={() => {
                 getUserChats().then(setChats);
@@ -190,7 +197,7 @@ function ChatPageContent() {
               }}
               onLeftChat={() => {
                 getUserChats().then(setChats);
-                setSelectedChatId(null);
+                clearChatSelection();
               }}
             />
           </div>
@@ -206,7 +213,7 @@ function ChatPageContent() {
         onClose={() => setShowCreateModal(false)}
         onCreated={(chat) => {
           setChats(prev => [chat, ...prev]);
-          setSelectedChatId(chat.id);
+          selectChat(chat.id);
         }}
       />
       </div>
