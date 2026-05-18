@@ -26,15 +26,13 @@ test('User can sign up and see feed', async ({ page }) => {
   await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30_000 });
 
   await expect(page).toHaveURL(/\/login/, { timeout: 30_000 });
-  const firstNameInput = page.getByPlaceholder(/first name/i);
+  const firstNameInput = page.getByPlaceholder('Имя', { exact: true });
 
-  await expect(
-    page.locator('button[type="button"]').filter({ hasText: /^Log In$/ }),
-  ).toBeVisible({
+  await expect(page.getByRole('button', { name: 'Вход', exact: true })).toBeVisible({
     timeout: 30_000,
   });
 
-  const signUpToggle = page.getByRole('button', { name: /^sign up$/i });
+  const signUpToggle = page.getByRole('button', { name: 'Регистрация', exact: true });
   await expect(signUpToggle).toBeVisible({ timeout: 30_000 });
 
   for (let attempt = 0; attempt < 6; attempt++) {
@@ -57,11 +55,11 @@ test('User can sign up and see feed', async ({ page }) => {
   const password = '12345678';
 
   await firstNameInput.fill(firstName);
-  await page.getByPlaceholder(/username/i).fill(username);
-  await page.getByPlaceholder(/^email$/i).fill(email);
-  await page.getByPlaceholder(/^password$/i).fill(password);
+  await page.getByPlaceholder('Имя пользователя').fill(username);
+  await page.getByPlaceholder('Email', { exact: true }).fill(email);
+  await page.getByPlaceholder('Пароль', { exact: true }).fill(password);
 
-  const signUpSubmit = page.getByRole('button', { name: 'Create account', exact: true });
+  const signUpSubmit = page.getByRole('button', { name: 'Создать аккаунт', exact: true });
   await expect(signUpSubmit).toBeVisible({ timeout: 30_000 });
   await expect(signUpSubmit).toBeEnabled({ timeout: 30_000 });
 
@@ -88,9 +86,10 @@ test('User can sign up and see feed', async ({ page }) => {
     await page.waitForURL(/\/feed/, { timeout: 60_000 });
   } catch (e) {
     if (signupAlertMessage) {
+      const failedReq = lastSignupRequestFailed;
       const extra =
-        lastSignupRequestFailed != null
-          ? ` (request failed: ${lastSignupRequestFailed.method} ${lastSignupRequestFailed.url} -> ${lastSignupRequestFailed.failureText ?? 'unknown'})`
+        failedReq != null
+          ? ` (request failed: ${failedReq.method} ${failedReq.url} -> ${failedReq.failureText ?? 'unknown'})`
           : '';
       throw new Error(`Signup failed: ${signupAlertMessage}${extra}`);
     }
