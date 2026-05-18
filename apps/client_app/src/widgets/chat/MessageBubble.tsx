@@ -313,10 +313,11 @@ export default function MessageBubble({
   const hasAssets = (message.assets?.length ?? 0) > 0;
   const sharedPostId = extractPostIdFromText(message.content);
   const messageTextWithoutPostLink = stripPostLinks(message.content);
-  const hasVisibleText =
-    Boolean(message.content) &&
-    ((!sharedPostId && (message.content?.length ?? 0) > 0) ||
-      (sharedPostId && messageTextWithoutPostLink.length > 0));
+  const hasVisibleText = Boolean(
+    message.content &&
+      ((!sharedPostId && (message.content?.length ?? 0) > 0) ||
+        Boolean(sharedPostId && messageTextWithoutPostLink.length > 0)),
+  );
   const storyMeta = parseStoryMeta(message.content);
   const replySharedPostId = extractPostIdFromText(message.replyTo?.content);
 
