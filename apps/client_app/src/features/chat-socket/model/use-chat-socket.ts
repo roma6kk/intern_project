@@ -2,6 +2,13 @@ import { useEffect, useRef } from 'react';
 import { useSocket } from '@/entities/session';
 import type { Message } from '@/entities/chat';
 
+function inboundChatId(message: unknown): string | undefined {
+  if (!message || typeof message !== 'object') return undefined;
+  const m = message as Record<string, unknown>;
+  const raw = m.chatId ?? m.chat_id;
+  return typeof raw === 'string' ? raw.trim() : undefined;
+}
+
 interface UseChatSocketProps {
   chatId: string | null;
   onNewMessage: (message: Message) => void;
@@ -36,16 +43,19 @@ export function useChatSocket({
     }
 
     const normalizedChatId = chatId.trim();
-    socket.emit('join_chat', { chatId: normalizedChatId });
+    const joinCurrentChat = () => {
+      socket.emit('join_chat', { chatId: normalizedChatId });
+    };
+    joinCurrentChat();
 
     const handleNewMessage = (message: Message) => {
-      if (message.chatId === chatId) {
+      if (inboundChatId(message) === normalizedChatId) {
         onNewMessageRef.current(message);
       }
     };
 
     const handleMessageUpdated = (message: Message) => {
-      if (message.chatId === chatId) {
+      if (inboundChatId(message) === normalizedChatId) {
         onMessageUpdatedRef.current?.(message);
       }
     };
@@ -57,12 +67,14 @@ export function useChatSocket({
     socket.on('new_message', handleNewMessage);
     socket.on('message_updated', handleMessageUpdated);
     socket.on('message_deleted', handleMessageDeleted);
+    socket.on('connect', joinCurrentChat);
 
     return () => {
       socket.emit('leave_chat', { chatId: normalizedChatId });
       socket.off('new_message', handleNewMessage);
       socket.off('message_updated', handleMessageUpdated);
       socket.off('message_deleted', handleMessageDeleted);
+      socket.off('connect', joinCurrentChat);
     };
   }, [chatId, socket]);
 

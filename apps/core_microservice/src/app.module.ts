@@ -24,6 +24,18 @@ import { ReportsModule } from './reports/reports.module';
 import { AdminUsersModule } from './admin-users/admin-users.module';
 import { AdminDashboardModule } from './admin-dashboard/admin-dashboard.module';
 import { AssistantModule } from './assistant/assistant.module';
+import { StoryModule } from './story/story.module';
+import path from 'path';
+import fs from 'fs';
+
+const rootEnvPath = path.resolve(process.cwd(), '.env');
+const localEnvPath = path.resolve(process.cwd(), 'apps/core_microservice/.env');
+
+const envFilePaths = [
+  fs.existsSync(rootEnvPath) ? rootEnvPath : undefined,
+  fs.existsSync(localEnvPath) ? localEnvPath : undefined,
+].filter(Boolean) as string[];
+
 @Module({
   imports: [
     ScheduleModule,
@@ -50,10 +62,11 @@ import { AssistantModule } from './assistant/assistant.module';
     AdminUsersModule,
     AdminDashboardModule,
     AssistantModule,
+    StoryModule,
     HealthModule,
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath: envFilePaths.length > 0 ? envFilePaths : undefined,
     }),
     CacheModule.registerAsync({
       isGlobal: true,

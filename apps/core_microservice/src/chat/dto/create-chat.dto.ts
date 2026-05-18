@@ -1,5 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ChatType } from '@prisma/client';
+import { Transform } from 'class-transformer';
+import { parseUuidArray } from './parse-uuid-array.transform';
 import {
   ArrayMinSize,
   IsArray,
@@ -18,6 +20,7 @@ export class CreateChatDto {
   @IsArray()
   @ArrayMinSize(1)
   @IsUUID('4', { each: true })
+  @Transform(({ value }: { value: unknown }) => parseUuidArray(value))
   memberIds: string[];
 
   @ApiPropertyOptional({

@@ -8,10 +8,12 @@ import {
   getUserAdminHistory,
   suspendUser,
   unsuspendUser,
+  updateUserRole,
 } from '@/entities/admin-users';
 import { useAuth } from '@/entities/session';
 import { ArrowLeft, Clock, Loader2, ShieldAlert } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
+import { ConfirmDialog } from '@/shared/ui';
 import surface from '@/shared/styles/surface.module.css';
 import animations from '@/shared/styles/animations.module.css';
 
@@ -42,7 +44,16 @@ type TimelineItem =
       actorUsername: string;
     };
 
+type TargetAccount = {
+  userId: string;
+  username: string;
+  email?: string | null;
+  role: 'USER' | 'MODERATOR' | 'ADMIN';
+  state: 'ACTIVE' | 'SUSPENDED' | 'DELETED';
+};
+
 type History = {
+  account?: TargetAccount;
   warnings: Array<{ id: string; reason: string; createdAt: string }>;
   sanctions: Array<{
     id: string;
@@ -93,8 +104,15 @@ export default function AdminUserDetailsPage() {
   const [reason, setReason] = useState('');
   const [history, setHistory] = useState<History | null>(null);
   const [loading, setLoading] = useState(true);
+  const [adminRoleConfirm, setAdminRoleConfirm] = useState<'grant' | 'revoke' | null>(
+    null,
+  );
+  const [roleWorking, setRoleWorking] = useState(false);
 
   const isAdmin = user?.role === 'ADMIN';
+  const targetAccount = history?.account;
+  const isTargetAdmin = targetAccount?.role === 'ADMIN';
+  const isSelf = userId === user?.id;
 
   const loadHistory = useCallback(async () => {
     if (!userId) return;
@@ -164,9 +182,16 @@ export default function AdminUserDetailsPage() {
             </div>
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-                User moderation
+                Модерация пользователя
               </h1>
-              <p className="font-mono text-xs text-muted-foreground">{userId}</p>
+              <p className="text-sm text-muted-foreground">
+                {targetAccount ? `@${targetAccount.username}` : userId}
+                {targetAccount?.role ? (
+                  <span className="ml-2 rounded-md bg-violet-50 px-1.5 py-0.5 text-xs font-medium text-violet-900 ring-1 ring-violet-600/20">
+                    {targetAccount.role}
+                  </span>
+                ) : null}
+              </p>
             </div>
           </div>
           <Link
@@ -178,8 +203,8 @@ export default function AdminUserDetailsPage() {
           </Link>
         </div>
 
-        <div className={cn(surface.card, animations.slideUp, 'mb-8 rounded-3xl border border-border p-5 rika-glow-edge')}>
-          <h2 className="mb-3 text-sm font-semibold text-foreground">Quick actions</h2>
+        <div className={cn(surface.card, animations.slideUp, 'mb-8 rounded-3xl border border-border p-5 innogram-glow-edge')}>
+          <h2 className="mb-3 text-sm font-semibold text-foreground">Быстрые действия</h2>
           <textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
@@ -222,8 +247,62 @@ export default function AdminUserDetailsPage() {
             >
               Unsuspend
             </button>
+            {isTargetAdmin ? (
+              <button
+                type="button"
+                disabled={isSelf}
+                onClick={() => setAdminRoleConfirm('revoke')}
+                className="rounded-lg bg-muted px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Снять права админа
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setAdminRoleConfirm('grant')}
+                className="rounded-lg bg-violet-100 px-3 py-2 text-sm font-medium text-violet-900 transition-colors hover:bg-violet-200/90"
+              >
+                Назначить админом
+              </button>
+            )}
           </div>
         </div>
+
+        <ConfirmDialog
+          open={adminRoleConfirm !== null}
+          title={
+            adminRoleConfirm === 'grant'
+              ? 'Назначить администратором?'
+              : 'Снять права администратора?'
+          }
+          description={
+            adminRoleConfirm === 'grant'
+              ? 'Пользователь получит полный доступ к админке.'
+              : 'Пользователь потеряет доступ к админке (роль станет USER).'
+          }
+          confirmLabel={adminRoleConfirm === 'grant' ? 'Назначить' : 'Снять'}
+          destructive={adminRoleConfirm === 'revoke'}
+          loading={roleWorking}
+          onClose={() => {
+            if (!roleWorking) setAdminRoleConfirm(null);
+          }}
+          onConfirm={() => {
+            if (!adminRoleConfirm) return;
+            void (async () => {
+              setRoleWorking(true);
+              try {
+                await updateUserRole(userId, {
+                  role: adminRoleConfirm === 'grant' ? 'ADMIN' : 'USER',
+                  reason: reason.trim() || undefined,
+                });
+                setAdminRoleConfirm(null);
+                await loadHistory();
+              } finally {
+                setRoleWorking(false);
+              }
+            })();
+          }}
+        />
 
         <section>
           <div className="mb-4 flex items-center gap-2">

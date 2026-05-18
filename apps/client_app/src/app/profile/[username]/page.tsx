@@ -1,26 +1,28 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Loader2, UserX } from 'lucide-react';
-import { useParams, useRouter } from 'next/navigation';
-import api from '@/shared/api';
-import { useAuth } from '@/entities/session';
-import { useToast } from '@/application/providers/toast-provider';
+import { useState, useEffect } from "react";
+import { Loader2, UserX } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import api from "@/shared/api";
+import { useAuth } from "@/entities/session";
+import { notify } from "@/shared/lib/notify";
 
-import ProfileHeader from '@/widgets/profile/ProfileHeader';
-import ProfileTabs from '@/widgets/profile/ProfileTabs';
-import PostsGrid from '@/widgets/profile/PostsGrid';
-import FollowersModal from '@/widgets/profile/FollowersModal';
-import FollowingModal from '@/widgets/profile/FollowingModal';
-import EmptyState from '@/widgets/profile/EmptyState';
-import { cn } from '@/shared/lib/cn';
-import surface from '@/shared/styles/surface.module.css';
-import animations from '@/shared/styles/animations.module.css';
+import ProfileHeader from "@/widgets/profile/ProfileHeader";
+import ProfileTabs, {
+  type ProfileTabKey,
+} from "@/widgets/profile/ProfileTabs";
+import PostsGrid from "@/widgets/profile/PostsGrid";
+import FollowersModal from "@/widgets/profile/FollowersModal";
+import FollowingModal from "@/widgets/profile/FollowingModal";
+import EmptyState from "@/widgets/profile/EmptyState";
+import { cn } from "@/shared/lib/cn";
+import surface from "@/shared/styles/surface.module.css";
+import animations from "@/shared/styles/animations.module.css";
 
 interface Asset {
   id: string;
   url: string;
-  type: 'IMAGE' | 'VIDEO';
+  type: "IMAGE" | "VIDEO";
 }
 
 interface Author {
@@ -40,7 +42,9 @@ interface Post {
   createdAt: string;
 }
 
-interface Account { username: string; }
+interface Account {
+  username: string;
+}
 
 interface User {
   id: string;
@@ -66,32 +70,33 @@ interface FollowUser {
   profile: { firstName: string; secondName: string; avatarUrl: string | null };
 }
 
-interface FollowerItem { id: string; follower: FollowUser; }
+interface FollowerItem {
+  id: string;
+  follower: FollowUser;
+}
 
 interface FollowingItem {
   id: string;
   following: FollowUser;
-  status?: 'ACCEPTED' | 'PENDING' | 'DECLINED';
+  status?: "ACCEPTED" | "PENDING" | "DECLINED";
 }
 
 export default function ProfilePage() {
-
   const { user: currentUser } = useAuth();
-  const toast = useToast();
   const params = useParams();
   const router = useRouter();
 
   const username = params.username as string;
-  const isMyProfile = username === 'me';
+  const isMyProfile = username === "me";
 
-  const [activeTab, setActiveTab] = useState<'posts'|'liked'|'commented'|'archived'>('posts');
+  const [activeTab, setActiveTab] = useState<ProfileTabKey>("posts");
   const [userProfile, setUserProfile] = useState<ProfileData | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [archivedPosts, setArchivedPosts] = useState<Post[]>([]);
   const [likedPosts, setLikedPosts] = useState<Post[]>([]);
   const [commentedPosts, setCommentedPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string|null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [avatarError, setAvatarError] = useState(false);
 
   const [followersCount, setFollowersCount] = useState(0);
@@ -110,11 +115,8 @@ export default function ProfilePage() {
   const [listLoading, setListLoading] = useState(false);
 
   useEffect(() => {
-
     const fetchProfileData = async () => {
-
       try {
-
         setLoading(true);
         setError(null);
         setFollowersCount(0);
@@ -122,57 +124,62 @@ export default function ProfilePage() {
         setIsFollowingUser(false);
         setIsPendingFollowRequest(false);
 
-        const profileEndpoint =
-          isMyProfile ? '/profiles/me' : `/profiles/by-username/${username}`;
+        const profileEndpoint = isMyProfile
+          ? "/profiles/me"
+          : `/profiles/by-username/${username}`;
 
         const profileResponse = await api.get(profileEndpoint);
         const profileData: ProfileData = profileResponse.data;
         setUserProfile(profileData);
 
         try {
-          const endpoint =
-            isMyProfile
-              ? '/follows/followers/me'
-              : `/follows/followers/${profileData.userId}`;
+          const endpoint = isMyProfile
+            ? "/follows/followers/me"
+            : `/follows/followers/${profileData.userId}`;
 
           const r = await api.get(endpoint);
           const data = Array.isArray(r.data) ? r.data : [];
           setFollowersCount(data.length || 0);
-        } catch { setFollowersCount(0); }
+        } catch {
+          setFollowersCount(0);
+        }
 
         try {
-          const endpoint =
-            isMyProfile
-              ? '/follows/following/me'
-              : `/follows/following/${profileData.userId}`;
+          const endpoint = isMyProfile
+            ? "/follows/following/me"
+            : `/follows/following/${profileData.userId}`;
 
           const r = await api.get(endpoint);
           const data = Array.isArray(r.data) ? r.data : [];
           setFollowingCount(
             isMyProfile
-              ? data.filter((f: { status?: string }) => f.status === 'ACCEPTED').length
-              : data.length
+              ? data.filter((f: { status?: string }) => f.status === "ACCEPTED")
+                  .length
+              : data.length,
           );
-        } catch { setFollowingCount(0); }
+        } catch {
+          setFollowingCount(0);
+        }
+
+        const staffCanViewPrivate =
+          currentUser?.role === "MODERATOR" ||
+          currentUser?.role === "ADMIN";
 
         let isFollowing = false;
         let isPending = false;
 
         if (!isMyProfile) {
-
           try {
-            const r = await api.get('/follows/following/me');
+            const r = await api.get("/follows/following/me");
 
             const rel = r.data.find(
-              (f: FollowingItem) =>
-                f.following.id === profileData.userId
+              (f: FollowingItem) => f.following.id === profileData.userId,
             );
 
             if (rel) {
-              if (rel.status === 'PENDING') isPending = true;
+              if (rel.status === "PENDING") isPending = true;
               else isFollowing = true;
             }
-
           } catch {}
         }
 
@@ -180,33 +187,38 @@ export default function ProfilePage() {
         setIsPendingFollowRequest(isPending);
 
         try {
-
-          const postsResponse = await api.get('/posts',{
-            params:{page:1,limit:50, authorId: profileData.userId}
+          const postsResponse = await api.get("/posts", {
+            params: { page: 1, limit: 50, authorId: profileData.userId },
           });
 
           const allPosts = postsResponse.data.data || [];
           const userPosts = allPosts.filter(
-            (p:Post)=>p.author?.id===profileData.userId && !p.isArchived
+            (p: Post) => p.author?.id === profileData.userId && !p.isArchived,
           );
 
-          if (!profileData.isPrivate || isMyProfile || isFollowing) {
+          if (
+            !profileData.isPrivate ||
+            isMyProfile ||
+            isFollowing ||
+            staffCanViewPrivate
+          ) {
             setPosts(userPosts);
           } else setPosts([]);
 
           if (isMyProfile) {
             try {
-              const archivedResponse = await api.get('/posts', {
+              const archivedResponse = await api.get("/posts", {
                 params: {
                   page: 1,
                   limit: 50,
                   authorId: profileData.userId,
-                  includeArchived: true
-                }
+                  includeArchived: true,
+                },
               });
               const allArchivedPosts = archivedResponse.data.data || [];
               const userArchivedPosts = allArchivedPosts.filter(
-                (p: Post) => p.author?.id === profileData.userId && p.isArchived
+                (p: Post) =>
+                  p.author?.id === profileData.userId && p.isArchived,
               );
               setArchivedPosts(userArchivedPosts);
             } catch {
@@ -214,8 +226,12 @@ export default function ProfilePage() {
             }
 
             try {
-              const likedResponse = await api.get('/posts', {
-                params: { page: 1, limit: 50, likedByUserId: profileData.userId }
+              const likedResponse = await api.get("/posts", {
+                params: {
+                  page: 1,
+                  limit: 50,
+                  likedByUserId: profileData.userId,
+                },
               });
               setLikedPosts(likedResponse.data.data || []);
             } catch {
@@ -223,8 +239,12 @@ export default function ProfilePage() {
             }
 
             try {
-              const commentedResponse = await api.get('/posts', {
-                params: { page: 1, limit: 50, commentedByUserId: profileData.userId }
+              const commentedResponse = await api.get("/posts", {
+                params: {
+                  page: 1,
+                  limit: 50,
+                  commentedByUserId: profileData.userId,
+                },
               });
               setCommentedPosts(commentedResponse.data.data || []);
             } catch {
@@ -234,41 +254,33 @@ export default function ProfilePage() {
             setLikedPosts([]);
             setCommentedPosts([]);
           }
-
-        } catch { setPosts([]); }
-
-      }
-      catch {
-        setError('Failed to load profile data');
-      }
-      finally {
+        } catch {
+          setPosts([]);
+        }
+      } catch {
+        setError("Не удалось загрузить данные профиля");
+      } finally {
         setLoading(false);
       }
     };
 
     fetchProfileData();
-
-  },[username,isMyProfile]);
+  }, [username, isMyProfile, currentUser?.role]);
 
   const handleFollowToggle = async () => {
-
     if (!userProfile || isFollowLoading) return;
 
     try {
-
       setIsFollowLoading(true);
 
       if (isFollowingUser || isPendingFollowRequest) {
-
         await api.delete(`/follows/${userProfile.userId}`);
         setIsFollowingUser(false);
         setIsPendingFollowRequest(false);
-
       } else {
-
         const r = await api.post(`/follows/${userProfile.userId}`);
 
-        if (r.data?.status === 'PENDING') {
+        if (r.data?.status === "PENDING") {
           setIsPendingFollowRequest(true);
           setIsFollowingUser(false);
         } else {
@@ -276,78 +288,67 @@ export default function ProfilePage() {
           setIsPendingFollowRequest(false);
         }
       }
-
     } catch {
-      setError('Failed to update follow status');
-    }
-    finally {
+      setError("Не удалось обновить статус подписки");
+    } finally {
       setIsFollowLoading(false);
     }
   };
 
   const handleSendMessage = async () => {
-
     if (!currentUser || !userProfile || isMessageLoading) return;
 
     setIsMessageLoading(true);
 
     try {
-      const response = await api.post('/chats', {
+      const response = await api.post("/chats", {
         memberIds: [userProfile.userId],
       });
       const chatId = response.data?.id;
       if (chatId) {
         router.push(`/chat?chatId=${chatId}`);
       } else {
-        router.push('/chat');
+        router.push("/chat");
       }
-    }
-    catch {
-      alert('Failed to start chat');
-    }
-    finally {
+    } catch {
+      notify.error("Не удалось начать чат");
+    } finally {
       setIsMessageLoading(false);
     }
   };
 
   const openFollowersModal = async () => {
-
     try {
       setListLoading(true);
 
-      const endpoint =
-        isMyProfile
-          ? '/follows/followers/me'
-          : `/follows/followers/${userProfile?.userId}`;
+      const endpoint = isMyProfile
+        ? "/follows/followers/me"
+        : `/follows/followers/${userProfile?.userId}`;
 
       const r = await api.get(endpoint);
       setFollowersList(r.data || []);
       setShowFollowersModal(true);
-
     } finally {
       setListLoading(false);
     }
   };
 
   const openFollowingModal = async () => {
-
     try {
       setListLoading(true);
 
-      const endpoint =
-        isMyProfile
-          ? '/follows/following/me'
-          : `/follows/following/${userProfile?.userId}`;
+      const endpoint = isMyProfile
+        ? "/follows/following/me"
+        : `/follows/following/${userProfile?.userId}`;
 
       const r = await api.get(endpoint);
       const list = r.data || [];
       setFollowingList(
         isMyProfile
-          ? list.filter((f: FollowingItem) => f.status === 'ACCEPTED')
-          : list
+          ? list.filter((f: FollowingItem) => f.status === "ACCEPTED")
+          : list,
       );
       setShowFollowingModal(true);
-
     } finally {
       setListLoading(false);
     }
@@ -356,14 +357,16 @@ export default function ProfilePage() {
   const handleRemoveFollower = async (followerId: string) => {
     const prevList = followersList;
     const prevCount = followersCount;
-    setFollowersList((prev) => prev.filter((f) => f.follower.id !== followerId));
+    setFollowersList((prev) =>
+      prev.filter((f) => f.follower.id !== followerId),
+    );
     setFollowersCount((prev) => prev - 1);
     try {
       await api.delete(`/follows/remove-follower/${followerId}`);
     } catch {
       setFollowersList(prevList);
       setFollowersCount(prevCount);
-      toast.error('Failed to remove follower');
+      notify.error("Не удалось удалить подписчика");
     }
   };
 
@@ -378,7 +381,9 @@ export default function ProfilePage() {
       <div className="min-h-screen bg-muted/50 flex items-center justify-center p-4">
         <div className="bg-card rounded-lg shadow-sm border border-border p-8 flex flex-col items-center gap-4 max-w-sm w-full">
           <Loader2 className="w-10 h-10 animate-spin text-muted-foreground" />
-          <p className="text-muted-foreground font-medium">Загрузка профиля...</p>
+          <p className="text-muted-foreground font-medium">
+            Загрузка профиля...
+          </p>
         </div>
       </div>
     );
@@ -391,7 +396,9 @@ export default function ProfilePage() {
           <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
             <UserX className="w-7 h-7 text-muted-foreground" />
           </div>
-          <p className="text-muted-foreground font-medium text-center">{error || 'Профиль не найден'}</p>
+          <p className="text-muted-foreground font-medium text-center">
+            {error || "Профиль не найден"}
+          </p>
           <button
             onClick={() => router.back()}
             className="text-sm text-blue-600 hover:text-blue-700 font-medium"
@@ -403,15 +410,18 @@ export default function ProfilePage() {
     );
   }
 
+  const staffCanViewPrivate =
+    currentUser?.role === "MODERATOR" || currentUser?.role === "ADMIN";
+
   const isPrivateAndNotFollowing =
     userProfile.isPrivate &&
     !isMyProfile &&
     !isFollowingUser &&
-    !isPendingFollowRequest;
+    !isPendingFollowRequest &&
+    !staffCanViewPrivate;
 
   return (
     <div className="min-h-screen bg-transparent">
-
       <ProfileHeader
         userProfile={userProfile}
         avatarError={avatarError}
@@ -429,6 +439,7 @@ export default function ProfilePage() {
         handleFollowToggle={handleFollowToggle}
         handleSendMessage={handleSendMessage}
         router={router}
+        isPrivateAndNotFollowing={isPrivateAndNotFollowing}
       />
 
       <ProfileTabs
@@ -439,45 +450,60 @@ export default function ProfilePage() {
       />
 
       <div className="max-w-5xl mx-auto px-4 py-8">
-        <div className={cn(surface.card, animations.slideUp, 'rounded-3xl p-5 sm:p-6 rika-glow-edge')}>
+        <div
+          className={cn(
+            surface.card,
+            animations.slideUp,
+            "rounded-3xl p-5 sm:p-6 innogram-glow-edge",
+          )}
+        >
+          {activeTab === "posts" &&
+            (isPrivateAndNotFollowing ? (
+              <EmptyState type="private" />
+            ) : posts.length === 0 ? (
+              <EmptyState type="posts" />
+            ) : (
+              <PostsGrid posts={posts} router={router} />
+            ))}
 
-        {activeTab==='posts' && (
-          isPrivateAndNotFollowing
-            ? <EmptyState type="private"/>
-            : posts.length===0
-              ? <EmptyState type="posts"/>
-              : <PostsGrid posts={posts} router={router}/>
-        )}
+          {activeTab === "liked" &&
+            (isMyProfile ? (
+              likedPosts.length === 0 ? (
+                <EmptyState type="liked" />
+              ) : (
+                <PostsGrid posts={likedPosts} router={router} />
+              )
+            ) : (
+              <EmptyState type="private" />
+            ))}
 
-        {activeTab==='liked' && (
-          isMyProfile
-            ? likedPosts.length===0
-              ? <EmptyState type="liked"/>
-              : <PostsGrid posts={likedPosts} router={router}/>
-            : <EmptyState type="private"/>
-        )}
+          {activeTab === "commented" &&
+            (isMyProfile ? (
+              commentedPosts.length === 0 ? (
+                <EmptyState type="commented" />
+              ) : (
+                <PostsGrid posts={commentedPosts} router={router} />
+              )
+            ) : (
+              <EmptyState type="private" />
+            ))}
 
-        {activeTab==='commented' && (
-          isMyProfile
-            ? commentedPosts.length===0
-              ? <EmptyState type="commented"/>
-              : <PostsGrid posts={commentedPosts} router={router}/>
-            : <EmptyState type="private"/>
-        )}
-
-        {activeTab==='archived' && (
-          isMyProfile
-            ? archivedPosts.length===0
-              ? <EmptyState type="archived"/>
-              : <PostsGrid posts={archivedPosts} router={router}/>
-            : <EmptyState type="private"/>
-        )}
+          {activeTab === "archived" &&
+            (isMyProfile ? (
+              archivedPosts.length === 0 ? (
+                <EmptyState type="archived" />
+              ) : (
+                <PostsGrid posts={archivedPosts} router={router} />
+              )
+            ) : (
+              <EmptyState type="private" />
+            ))}
         </div>
       </div>
 
       <FollowersModal
         show={showFollowersModal}
-        onClose={()=>setShowFollowersModal(false)}
+        onClose={() => setShowFollowersModal(false)}
         followersList={followersList}
         isMyProfile={isMyProfile}
         listLoading={listLoading}
@@ -486,13 +512,12 @@ export default function ProfilePage() {
 
       <FollowingModal
         show={showFollowingModal}
-        onClose={()=>setShowFollowingModal(false)}
+        onClose={() => setShowFollowingModal(false)}
         followingList={followingList}
         isMyProfile={isMyProfile}
         listLoading={listLoading}
         handleUnfollow={handleUnfollow}
       />
-
     </div>
   );
 }

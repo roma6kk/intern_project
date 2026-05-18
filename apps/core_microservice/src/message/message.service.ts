@@ -21,6 +21,29 @@ export class MessageService {
     private readonly filesService: FilesService,
   ) {}
 
+  private resolveAssetType(file: Express.Multer.File): 'IMAGE' | 'VIDEO' {
+    const resolved = file.mimetype?.startsWith('video/') ? 'VIDEO' : 'IMAGE';
+    // #region agent log
+    fetch('http://127.0.0.1:7831/ingest/bad0d17b-1179-4cce-8537-b37e235c7b74', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': 'c3b88c',
+      },
+      body: JSON.stringify({
+        sessionId: 'c3b88c',
+        runId: 'pre-fix',
+        hypothesisId: 'H2',
+        location: 'message.service.ts:resolveAssetType',
+        message: 'Resolve backend asset type',
+        data: { mimetype: file.mimetype ?? null, resolvedType: resolved },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+    return resolved;
+  }
+
   async create(
     senderId: string,
     createMessageDto: CreateMessageDto,
@@ -45,10 +68,120 @@ export class MessageService {
     try {
       const assetUrls: string[] = [];
       if (files && files.length > 0) {
-        const uploadPromises = files.map((file) =>
-          this.filesService.uploadFile(file),
+        // #region agent log
+        fetch(
+          'http://127.0.0.1:7831/ingest/bad0d17b-1179-4cce-8537-b37e235c7b74',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Debug-Session-Id': 'c3b88c',
+            },
+            body: JSON.stringify({
+              sessionId: 'c3b88c',
+              runId: 'pre-fix',
+              hypothesisId: 'H1',
+              location: 'message.service.ts:create',
+              message: 'Create message with files',
+              data: {
+                filesCount: files.length,
+                mimetypes: files.map((f) => f.mimetype ?? null),
+              },
+              timestamp: Date.now(),
+            }),
+          },
+        ).catch(() => {});
+        // #endregion
+        const uploaded = await Promise.all(
+          files.map(async (file) => ({
+            url: await this.filesService.uploadFile(file),
+            type: this.resolveAssetType(file),
+          })),
         );
-        assetUrls.push(...(await Promise.all(uploadPromises)));
+        assetUrls.push(...uploaded.map((u) => u.url));
+        const createdAssets = uploaded.map((u) => ({
+          url: u.url,
+          type: u.type,
+        }));
+        // #region agent log
+        fetch(
+          'http://127.0.0.1:7831/ingest/bad0d17b-1179-4cce-8537-b37e235c7b74',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Debug-Session-Id': 'c3b88c',
+            },
+            body: JSON.stringify({
+              sessionId: 'c3b88c',
+              runId: 'pre-fix',
+              hypothesisId: 'H3',
+              location: 'message.service.ts:create',
+              message: 'Prepared assets payload for prisma',
+              data: {
+                createdAssetTypes: createdAssets.map((a) => a.type),
+                createdAssetsCount: createdAssets.length,
+              },
+              timestamp: Date.now(),
+            }),
+          },
+        ).catch(() => {});
+        // #endregion
+        const chat = await this.prisma.chat.findUnique({
+          where: { id: createMessageDto.chatId },
+          select: { participants: { select: { userId: true } } },
+        });
+
+        const newMessage = await this.prisma.message.create({
+          data: {
+            content: createMessageDto.content,
+            chat: { connect: { id: createMessageDto.chatId } },
+            sender: { connect: { id: senderId } },
+            ...(createMessageDto.replyToId && {
+              replyTo: { connect: { id: createMessageDto.replyToId } },
+            }),
+            assets: {
+              create: createdAssets,
+            },
+          },
+          include: {
+            sender: {
+              select: {
+                id: true,
+                profile: { select: { firstName: true, avatarUrl: true } },
+                account: { select: { username: true } },
+              },
+            },
+            assets: true,
+            replyTo: {
+              select: {
+                id: true,
+                content: true,
+                deletedAt: true,
+                senderId: true,
+                sender: {
+                  select: {
+                    id: true,
+                    profile: { select: { firstName: true, avatarUrl: true } },
+                    account: { select: { username: true } },
+                  },
+                },
+                assets: true,
+              },
+            },
+          },
+        });
+
+        const memberIds: string[] = chat
+          ? (chat.participants as { userId: string }[]).map((p) => p.userId)
+          : [];
+        this.chatGateway.sendNewMessage(
+          createMessageDto.chatId,
+          newMessage,
+          memberIds,
+          senderId,
+        );
+        return newMessage;
       }
 
       const chat = await this.prisma.chat.findUnique({
@@ -64,12 +197,6 @@ export class MessageService {
           ...(createMessageDto.replyToId && {
             replyTo: { connect: { id: createMessageDto.replyToId } },
           }),
-          assets: {
-            create: assetUrls.map((url) => ({
-              url,
-              type: 'IMAGE',
-            })),
-          },
         },
         include: {
           sender: {
@@ -206,9 +333,9 @@ export class MessageService {
           files.map((file) => this.filesService.uploadFile(file)),
         );
         await this.prisma.asset.createMany({
-          data: assetUrls.map((url) => ({
-            url,
-            type: 'IMAGE' as const,
+          data: files.map((file, idx) => ({
+            url: assetUrls[idx],
+            type: this.resolveAssetType(file),
             messageId: id,
           })),
         });

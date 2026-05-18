@@ -5,8 +5,8 @@ import { X, Search, Loader2, Users, MessageSquare } from 'lucide-react';
 import Image from 'next/image';
 import api from '@/shared/api';
 import { useAuth } from '@/entities/session';
-import { toast } from 'sonner';
 import { cn } from '@/shared/lib/cn';
+import { notify } from '@/shared/lib/notify';
 import modal from '@/shared/styles/modal.module.css';
 
 interface SharePostModalProps {
@@ -24,6 +24,7 @@ interface UserResult {
 interface ChatResult {
   id: string;
   name?: string;
+  avatarUrl?: string | null;
   type: 'PRIVATE' | 'GROUP';
   members: {
     id: string;
@@ -97,11 +98,11 @@ export function SharePostModal({ postId, onClose }: SharePostModalProps) {
         senderId: currentUser?.id
       });
 
-      toast.success('Sent successfully');
+      notify.success('Отправлено');
       onClose();
     } catch (error) {
       console.error('Failed to send:', error);
-      toast.error('Failed to send');
+      notify.error('Не удалось отправить');
     }
   };
 
@@ -114,7 +115,7 @@ export function SharePostModal({ postId, onClose }: SharePostModalProps) {
       });
       await sendMessageToChat(chat.id);
     } catch {
-        toast.error('Error creating chat');
+        notify.error('Не удалось создать чат');
     } finally {
       setSendingTo(null);
     }
@@ -128,14 +129,14 @@ export function SharePostModal({ postId, onClose }: SharePostModalProps) {
 
   const getChatName = (chat: ChatResult) => {
     if (chat.type === 'GROUP') {
-      return chat.name || `Group (${chat.members.length})`;
+      return chat.name || `Группа (${chat.members.length})`;
     }
     const otherMember = chat.members.find(m => m.id !== currentUser?.id) || chat.members[0];
-    return otherMember?.account?.username || 'Unknown';
+    return otherMember?.account?.username || 'Неизвестно';
   };
 
   const getChatAvatar = (chat: ChatResult) => {
-     if (chat.type === 'GROUP') return null;
+     if (chat.type === 'GROUP') return chat.avatarUrl ?? null;
      const otherMember = chat.members.find(m => m.id !== currentUser?.id) || chat.members[0];
      return otherMember?.profile?.avatarUrl;
   };
@@ -151,7 +152,7 @@ export function SharePostModal({ postId, onClose }: SharePostModalProps) {
       <button type="button" className={modal.dim} onClick={onClose} aria-label="Закрыть" />
       <div className={cn(modal.shell, 'max-w-md flex flex-col max-h-[80vh]')}>
         <div className={modal.header}>
-          <h2 className="text-lg font-semibold text-foreground">Share</h2>
+          <h2 className="text-lg font-semibold text-foreground">Поделиться</h2>
           <button type="button" onClick={onClose} className="p-1.5 hover:bg-muted rounded-full text-muted-foreground">
             <X size={24} />
           </button>
@@ -160,11 +161,11 @@ export function SharePostModal({ postId, onClose }: SharePostModalProps) {
         <div className="flex border-b border-border">
           <button type="button" onClick={() => setActiveTab('chats')} className={tabBtn(activeTab === 'chats')}>
             <MessageSquare size={18} />
-            Recent Chats
+            Недавние чаты
           </button>
           <button type="button" onClick={() => setActiveTab('people')} className={tabBtn(activeTab === 'people')}>
             <Users size={18} />
-            Search People
+            Поиск людей
           </button>
         </div>
 
@@ -176,7 +177,7 @@ export function SharePostModal({ postId, onClose }: SharePostModalProps) {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                   <input
                     type="text"
-                    placeholder="Search users..."
+                    placeholder="Поиск пользователей..."
                     value={query}
                     onChange={e => handleSearchUsers(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 bg-muted rounded-xl outline-none focus:ring-2 focus:ring-primary/30 text-foreground placeholder:text-muted-foreground border border-transparent"
@@ -216,13 +217,13 @@ export function SharePostModal({ postId, onClose }: SharePostModalProps) {
                         disabled={!!sendingTo}
                         className="px-4 py-1.5 bg-primary text-primary-foreground text-sm font-medium rounded-xl hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
                       >
-                        {sendingTo === profile.userId ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send'}
+                        {sendingTo === profile.userId ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Отправить'}
                       </button>
                     </div>
                   ))}
                 </div>
               ) : (
-                query && <div className="text-center p-8 text-muted-foreground">No users found</div>
+                query && <div className="text-center p-8 text-muted-foreground">Пользователи не найдены</div>
               )}
             </>
           )}
@@ -257,7 +258,7 @@ export function SharePostModal({ postId, onClose }: SharePostModalProps) {
                           <div className="flex flex-col">
                             <span className="font-semibold text-sm text-foreground">{chatName}</span>
                             <span className="text-xs text-muted-foreground">
-                              {chat.type === 'GROUP' ? 'Group Chat' : 'Private Message'}
+                              {chat.type === 'GROUP' ? 'Групповой чат' : 'Личные сообщения'}
                             </span>
                           </div>
                         </div>
@@ -267,7 +268,7 @@ export function SharePostModal({ postId, onClose }: SharePostModalProps) {
                           disabled={!!sendingTo}
                           className="px-4 py-1.5 bg-primary text-primary-foreground text-sm font-medium rounded-xl hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
                         >
-                          {sendingTo === chat.id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send'}
+                          {sendingTo === chat.id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Отправить'}
                         </button>
                       </div>
                     );
@@ -275,8 +276,8 @@ export function SharePostModal({ postId, onClose }: SharePostModalProps) {
                 </div>
               ) : (
                 <div className="text-center p-8 text-muted-foreground">
-                  No existing chats. <br />
-                  Switch to &quot;Search People&quot; to start a new one.
+                  Нет чатов. <br />
+                  Перейдите во вкладку «Поиск людей», чтобы начать новый.
                 </div>
               )}
             </>

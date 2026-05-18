@@ -12,6 +12,7 @@ import { NotificationService } from '../notification/notification.service';
 import { CreateNotificationDto } from '../notification/dto/create-notification.dto';
 import { NotificationType, Prisma } from '@prisma/client';
 import { decodeCursor, encodeCursor } from '../common/utils/cursor.helper';
+import { FilesService } from '../files/files.service';
 
 @Injectable()
 export class CommentService {
@@ -20,7 +21,35 @@ export class CommentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationService: NotificationService,
+    private readonly filesService: FilesService,
   ) {}
+
+  private async makeAvatarReadable<T>(payload: T): Promise<T> {
+    if (
+      !payload ||
+      typeof payload !== 'object' ||
+      !('author' in (payload as Record<string, unknown>))
+    ) {
+      return payload;
+    }
+
+    const typed = payload as {
+      author?: {
+        profile?: {
+          avatarUrl?: string | null;
+        };
+      };
+    };
+
+    const avatarUrl = typed.author?.profile?.avatarUrl;
+    if (!avatarUrl) {
+      return payload;
+    }
+
+    const readable = await this.filesService.getReadableUrl(avatarUrl);
+    typed.author!.profile!.avatarUrl = readable;
+    return payload;
+  }
 
   async create(userId: string, createCommentDto: CreateCommentDto) {
     try {
@@ -84,7 +113,7 @@ export class CommentService {
       }
 
       this.logger.log(`Comment created. ID: ${comment.id}`);
-      return comment;
+      return this.makeAvatarReadable(comment);
     } catch (error: unknown) {
       if (error instanceof Error) {
         this.logger.error('Failed to create comment', error.stack);
@@ -153,8 +182,12 @@ export class CommentService {
           })
         : null;
 
+    const normalizedItems = await Promise.all(
+      items.map((item) => this.makeAvatarReadable(item)),
+    );
+
     return {
-      data: items,
+      data: normalizedItems,
       meta: {
         cursor: nextCursor,
         hasNextPage,
@@ -164,7 +197,7 @@ export class CommentService {
   }
 
   async findReplies(commentId: string) {
-    return this.prisma.comment.findMany({
+    const replies = await this.prisma.comment.findMany({
       where: { parentId: commentId, isHidden: false },
       orderBy: { createdAt: 'asc' },
       include: {
@@ -183,6 +216,7 @@ export class CommentService {
         },
       },
     });
+    return Promise.all(replies.map((reply) => this.makeAvatarReadable(reply)));
   }
 
   async findOne(id: string) {
@@ -202,7 +236,7 @@ export class CommentService {
     if (!comment) {
       throw new NotFoundException('Comment not found');
     }
-    return comment;
+    return this.makeAvatarReadable(comment);
   }
 
   async update(id: string, userId: string, updateCommentDto: UpdateCommentDto) {

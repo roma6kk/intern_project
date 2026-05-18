@@ -1,7 +1,6 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaClient, NotificationType } from '@prisma/client';
 import { MailerService } from './mailer.service';
-import { io, Socket } from 'socket.io-client';
 
 interface NotificationData {
   type: NotificationType;
@@ -12,44 +11,32 @@ interface NotificationData {
   message?: string;
 }
 
+interface PasswordResetData {
+  email: string;
+  code: string;
+  username?: string;
+}
+
 @Injectable()
 export class NotificationsService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(NotificationsService.name);
-  private socketClient: Socket | null = null;
-  
+
     constructor(private readonly mailerService: MailerService) {
       super();
     }
-  
+
     async onModuleInit() {
       try {
         await this.$connect();
         this.logger.log('NotificationsService connected to database successfully');
-        
-        const wsUrl = process.env.WS_URL;
-        this.socketClient = io(`${wsUrl}/chat`, {
-          transports: ['websocket'],
-          reconnection: true,
-        });
-        
-        this.socketClient.on('connect', () => {
-          this.logger.log('Socket.IO client connected to ChatGateway');
-        });
-        
-        this.socketClient.on('disconnect', () => {
-          this.logger.warn('Socket.IO client disconnected');
-        });
       } catch (error) {
         this.logger.error('Failed to connect to database', (error as Error).stack);
         throw error;
       }
     }
-  
+
     async onModuleDestroy() {
       try {
-        if (this.socketClient) {
-          this.socketClient.disconnect();
-        }
         await this.$disconnect();
         this.logger.log('NotificationsService disconnected from database');
       } catch (error) {
@@ -88,26 +75,6 @@ export class NotificationsService extends PrismaClient implements OnModuleInit, 
 
       this.logger.log(`Notification created successfully with ID: ${savedNotification.id}`);
 
-      if (this.socketClient?.connected) {
-        this.socketClient.emit('send_notification', {
-          recipientId: data.recipientId,
-          notification: {
-            id: savedNotification.id,
-            type: savedNotification.type,
-            itemId: savedNotification.itemId,
-            postId: savedNotification.postId,
-            message: savedNotification.message,
-            createdAt: savedNotification.createdAt,
-            actor: {
-              id: savedNotification.actor.id,
-              username: savedNotification.actor.account?.username,
-              avatarUrl: savedNotification.actor.profile?.avatarUrl || null,
-            }
-          }
-        });
-        this.logger.log(`Socket notification sent to user_${data.recipientId}`);
-      }
-
       const email = savedNotification.recipient?.account?.email;
       if (email) {
           await this.mailerService.sendEmail(
@@ -126,5 +93,20 @@ export class NotificationsService extends PrismaClient implements OnModuleInit, 
       );
       throw error;
     }
+  }
+
+  async sendPasswordResetCode(data: PasswordResetData) {
+    const username = data.username ? `, ${data.username}` : '';
+    const text =
+      `Здравствуйте${username}!\n\n` +
+      `Ваш код для сброса пароля: ${data.code}\n` +
+      'Код действителен 10 минут.\n' +
+      'Если вы не запрашивали смену пароля, просто проигнорируйте это письмо.';
+
+    await this.mailerService.sendEmail(
+      data.email,
+      'Восстановление пароля Innogram',
+      text,
+    );
   }
 }

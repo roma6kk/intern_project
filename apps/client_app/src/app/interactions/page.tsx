@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Check, X, User, Bell, Play, Grid, Loader2 } from 'lucide-react';
 import api from '@/shared/api';
 import { cn } from '@/shared/lib/cn';
+import { isVideoUrl } from '@/shared/lib/is-video-url';
 import surface from '@/shared/styles/surface.module.css';
 import animations from '@/shared/styles/animations.module.css';
 
@@ -222,12 +223,12 @@ function NotificationItem({
   const loadedPostIdRef = useRef<string | null>(null);
 
   const typeLabels: Record<string, string> = {
-    LIKE: 'liked',
-    COMMENT: 'commented',
-    FOLLOW: 'followed you',
-    MENTION: 'mentioned you',
-    FOLLOW_REQUEST: 'requested follow',
-    SYSTEM: 'moderation notice',
+    LIKE: 'оценил',
+    COMMENT: 'прокомментировал',
+    FOLLOW: 'подписался на вас',
+    MENTION: 'упомянул вас',
+    FOLLOW_REQUEST: 'запросил подписку',
+    SYSTEM: 'модерация',
   };
 
   const displayText = typeLabels[n.type] || 'interacted with you';
@@ -289,7 +290,7 @@ function NotificationItem({
   const isVideoAsset = (asset?: { url: string; type?: string }) => {
     if (!asset?.url) return false;
     if (asset.type === 'VIDEO') return true;
-    return /\.(mp4|webm|ogg|mov)$/i.test(asset.url);
+    return isVideoUrl(asset.url);
   };
 
   const firstAsset = postPreview?.assets?.[0];
@@ -347,17 +348,19 @@ function NotificationItem({
       )}
       
     >
-      <div className="w-12 h-12 rounded-full overflow-hidden bg-card shadow-sm flex items-center justify-center hover:opacity-80 flex-shrink-0">
+      <div className="relative w-12 h-12 rounded-full overflow-hidden bg-card shadow-sm hover:opacity-80 flex-shrink-0">
         {n.actors[0].avatarUrl ? (
           <Image
             src={n.actors[0].avatarUrl}
             alt={n.actors[0].username}
-            width={48}
-            height={48}
+            fill
             className="object-cover"
+            sizes="48px"
           />
         ) : (
-          <User className="w-6 h-6 text-muted-foreground" />
+          <div className="w-full h-full flex items-center justify-center">
+            <User className="w-6 h-6 text-muted-foreground" />
+          </div>
         )}
       </div>
       <div className="flex-1 min-w-0">
@@ -701,12 +704,12 @@ export default function InteractionsPage() {
     <div className="min-h-screen bg-transparent">
       <div className="border-b border-border/60">
         <div className="max-w-5xl mx-auto px-4 py-5">
-          <h1 className="text-xl font-semibold text-foreground">Interactions</h1>
+          <h1 className="text-xl font-semibold text-foreground">Взаимодействия</h1>
         </div>
       </div>
 
       <div className="max-w-5xl mx-auto px-4 py-6 pb-20 md:pb-2">
-        <div className={cn(surface.card, animations.slideUp, 'rounded-3xl p-2 rika-glow-edge')}>
+        <div className={cn(surface.card, animations.slideUp, 'rounded-3xl p-2 innogram-glow-edge')}>
 
 
           <div className="px-4 py-3">

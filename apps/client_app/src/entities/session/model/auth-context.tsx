@@ -71,17 +71,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('user', JSON.stringify(normalized));
       setIsLoading(false);
     } catch {
-      const token = Cookies.get('accessToken');
-      if (!token) {
-        setUser(null);
-        localStorage.removeItem('user');
-      }
+      setUser(null);
+      localStorage.removeItem('user');
       setIsLoading(false);
-      Cookies.remove('accessToken');
-      try {
-        await api.post('/auth/logout');
-      } catch {
-      }
     }
   }, []);
 
@@ -139,10 +131,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(normalized);
       localStorage.setItem('user', JSON.stringify(normalized));
     } catch {
-      Cookies.remove('accessToken');
-      setUser(null);
-      localStorage.removeItem('user');
-      router.replace('/login');
+      if (!Cookies.get('accessToken')) {
+        setUser(null);
+        localStorage.removeItem('user');
+        router.replace('/login');
+      }
     }
   }, [router]);
 

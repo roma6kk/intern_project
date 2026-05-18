@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { MessageCircle } from 'lucide-react';
 import type { Message } from '@/entities/chat';
+import { getMessagePreviewText } from '@/shared/lib/message-preview';
 
 interface ChatMessageToastProps {
   message: Message;
@@ -14,23 +15,35 @@ export function ChatMessageToast({ message }: ChatMessageToastProps) {
     || message.sender?.account?.username
     || 'Someone';
   const avatarUrl = message.sender?.profile?.avatarUrl ?? null;
+  const previewRaw = getMessagePreviewText({
+    content: message.content,
+    deletedAt: message.deletedAt,
+    assetsCount: message.assets?.length,
+  });
   const preview =
-    message.content && message.content.length > 0
-      ? `${message.content.slice(0, 60)}${message.content.length > 60 ? '…' : ''}`
-      : 'Photo';
+    previewRaw.length > 60
+      ? `${previewRaw.slice(0, 60)}${previewRaw.length > 60 ? '…' : ''}`
+      : previewRaw;
+
+  const href = `/chat?chatId=${encodeURIComponent(message.chatId)}`;
 
   return (
-    <Link href={`/chat?chatId=${message.chatId}`} className="flex items-center gap-3 p-2 min-w-0">
-      <div className="w-10 h-10 rounded-full overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
+    <Link
+      href={href}
+      className="relative z-[2] flex min-h-0 w-full flex-1 min-w-0 cursor-pointer flex-row items-center gap-3 self-stretch p-2"
+    >
+      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-muted">
         {avatarUrl ? (
-          <Image src={avatarUrl} alt={name} width={40} height={40} className="object-cover" />
+          <Image src={avatarUrl} alt={name} fill className="object-cover" sizes="40px" />
         ) : (
-          <MessageCircle className="w-5 h-5 text-muted-foreground" />
+          <div className="w-full h-full flex items-center justify-center">
+            <MessageCircle className="w-5 h-5 text-muted-foreground" />
+          </div>
         )}
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-muted-foreground truncate">{name}</p>
-        <p className="text-sm text-muted-foreground truncate">{preview}</p>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-muted-foreground">{name}</p>
+        <p className="truncate text-sm text-muted-foreground">{preview}</p>
       </div>
     </Link>
   );

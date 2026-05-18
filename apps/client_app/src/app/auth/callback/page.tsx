@@ -1,22 +1,22 @@
-'use client';
+"use client";
 
-import { Suspense, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import Cookies from 'js-cookie';
+import { Suspense, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Cookies from "js-cookie";
 
 function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const accessToken = searchParams.get('accessToken');
+    const accessToken = searchParams.get("accessToken");
 
     if (accessToken) {
-      Cookies.set('accessToken', accessToken);
-      sessionStorage.removeItem('auth_initialized');
-      router.replace('/feed');
+      Cookies.set("accessToken", accessToken, { path: "/" });
+      sessionStorage.removeItem("auth_initialized");
+      window.location.replace("/feed");
     } else {
-      router.push('/login');
+      window.location.replace("/login");
     }
   }, [searchParams, router]);
 

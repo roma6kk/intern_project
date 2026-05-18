@@ -7,13 +7,13 @@ import api from '@/shared/api';
 import { useAuth } from '@/entities/session';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
-import { cn } from '@/shared/lib/cn';
+import { notify } from '@/shared/lib/notify';
 
 const signupSchema = z.object({
-  firstName: z.string().min(1, 'First name is required'),
-  username: z.string().min(3, 'Min 3 characters'),
-  email: z.string().email('Invalid email'),
-  password: z.string().min(6, 'Min 6 characters'),
+  firstName: z.string().min(1, 'Имя обязательно'),
+  username: z.string().min(3, 'Минимум 3 символа'),
+  email: z.string().email('Некорректный email'),
+  password: z.string().min(6, 'Минимум 6 символов'),
 });
 
 type SignupForm = z.infer<typeof signupSchema>;
@@ -55,7 +55,7 @@ export default function SignUpForm({ onSwitch }: SignUpFormProps) {
         }
       }
 
-      alert(message || 'Signup failed');
+      notify.error(message || 'Не удалось зарегистрироваться');
     }
   };
 
@@ -66,23 +66,20 @@ export default function SignUpForm({ onSwitch }: SignUpFormProps) {
         window.location.href = data.url;
       }
     } catch (error) {
-      console.error('Failed to init Google Auth', error);
+      console.error('Не удалось инициализировать вход через Google', error);
     }
   };
 
   return (
-    <div className={cn('w-full mx-auto rounded-2xl border border-border/70 bg-card/65 p-5 backdrop-blur-md sm:p-6')}>
-      <div className="mb-6">
-        <h3 className="text-xl font-semibold text-foreground">Create an account</h3>
-        <p className="mt-1 text-sm text-muted-foreground">Fill in your details to start using Innogram.</p>
-      </div>
+    <div className="w-full">
+      <h3 className="mb-6 text-xl font-semibold text-foreground">Создать аккаунт</h3>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="flex gap-4">
           <div className="w-1/2">
             <Input
               {...register('firstName')}
-              placeholder="First name"
+              placeholder="Имя"
               type="text"
               className="text-sm py-2.5 bg-card/70"
             />
@@ -93,7 +90,7 @@ export default function SignUpForm({ onSwitch }: SignUpFormProps) {
           <div className="w-1/2">
             <Input
               {...register('username')}
-              placeholder="Username"
+              placeholder="Имя пользователя"
               type="text"
               className="text-sm py-2.5 bg-card/70"
             />
@@ -111,7 +108,7 @@ export default function SignUpForm({ onSwitch }: SignUpFormProps) {
         <div>
           <Input
             {...register('password')}
-            placeholder="Password"
+            placeholder="Пароль"
             type="password"
             className="text-sm py-2.5 bg-card/70"
           />
@@ -121,7 +118,7 @@ export default function SignUpForm({ onSwitch }: SignUpFormProps) {
         </div>
 
         <Button type="submit" variant="primary" className="w-full py-2.5 font-semibold" disabled={isSubmitting}>
-          {isSubmitting ? 'Creating account...' : 'Create account'}
+          {isSubmitting ? 'Создание аккаунта...' : 'Создать аккаунт'}
         </Button>
       </form>
 
@@ -131,7 +128,7 @@ export default function SignUpForm({ onSwitch }: SignUpFormProps) {
             <span className="w-full border-t border-border" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+            <span className="bg-background px-2 text-muted-foreground">или</span>
           </div>
         </div>
 
@@ -158,13 +155,13 @@ export default function SignUpForm({ onSwitch }: SignUpFormProps) {
               fill="#EA4335"
             />
           </svg>
-          Sign up with Google
+          Регистрация через Google
         </button>
 
         <p className="text-center text-sm text-muted-foreground mt-2">
-          Already have an account?{' '}
+          Уже есть аккаунт?{' '}
           <button type="button" onClick={onSwitch} className="text-primary font-semibold hover:opacity-90">
-            Log in
+            Войти
           </button>
         </p>
       </div>

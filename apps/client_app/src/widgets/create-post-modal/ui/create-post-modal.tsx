@@ -7,6 +7,7 @@ import api from '@/shared/api';
 import { useAuth } from '@/entities/session';
 import { MentionTextarea } from '@/shared/ui/mention-textarea';
 import { cn } from '@/shared/lib/cn';
+import { notify } from '@/shared/lib/notify';
 import modal from '@/shared/styles/modal.module.css';
 
 interface CreatePostModalProps {
@@ -34,7 +35,7 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
     const remainingSlots = MAX_FILES - currentFileCount;
     
     if (remainingSlots <= 0) {
-      alert(`Максимальное количество файлов: ${MAX_FILES}`);
+      notify.info(`Максимальное количество файлов: ${MAX_FILES}`);
       return;
     }
 
@@ -44,7 +45,7 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
 
     const filesToProcess = selected.slice(0, remainingSlots);
     if (selected.length > remainingSlots) {
-      alert(`Можно добавить только ${remainingSlots} файл(ов). Остальные будут проигнорированы.`);
+      notify.info(`Можно добавить только ${remainingSlots} файл(ов). Остальные будут проигнорированы.`);
     }
 
     await Promise.all(filesToProcess.map(async (f) => {
@@ -135,7 +136,7 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
             </button>
           )}
           <h2 className="text-lg font-semibold mx-auto text-foreground">
-            {step === 'upload' ? 'Create new post' : 'Add description'}
+            {step === 'upload' ? 'Создать новый пост' : 'Добавить описание'}
           </h2>
           <button type="button" onClick={handleClose} className="p-1 rounded-lg hover:bg-muted text-muted-foreground">
             <X className="w-5 h-5" />
@@ -185,7 +186,7 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
                         setPreviews(nextPreviews);
                         setFileTypes(nextTypes);
                         setCurrentIndex(i => Math.max(0, Math.min(i, nextPreviews.length - 1)));
-                      }} className="absolute top-2 right-2 text-sm text-red-600 bg-card/30 rounded px-2">Delete</button>
+                      }} className="absolute top-2 right-2 text-sm text-red-600 bg-card/30 rounded px-2">Удалить</button>
 
                       {previews.length > 1 && (
                         <div className="absolute left-1/2 -translate-x-1/2 bottom-2 flex gap-2">
@@ -201,7 +202,7 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
                 <div className="space-y-4 pt-4">
                   <Upload className="w-12 h-12 mx-auto text-muted-foreground" />
                   <div>
-                    <p className="text-lg font-medium text-foreground">Select photo or video</p>
+                    <p className="text-lg font-medium text-foreground">Выберите фото или видео</p>
                     <p className="text-sm text-muted-foreground mt-1">или перетащите файл сюда</p>
                   </div>
                   <input
@@ -222,10 +223,10 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
                         : 'bg-primary text-primary-foreground cursor-pointer hover:opacity-90'
                     )}
                   >
-                    {previews.length > 0 ? `Add more (${previews.length}/10)` : 'Select file'}
+                    {previews.length > 0 ? `Добавить ещё (${previews.length}/10)` : 'Выбрать файл'}
                   </label>
                   {previews.length >= 10 && (
-                    <p className="text-sm text-muted-foreground mt-2">Maximum number of files reached (10)</p>
+                    <p className="text-sm text-muted-foreground mt-2">Достигнут максимум файлов (10)</p>
                   )}
                 </div>
               </div>
@@ -237,14 +238,14 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
                   onClick={handleSkipUpload}
                   className="flex-1 px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors text-foreground"
                 >
-                  Skip
+                  Пропустить
                 </button>
                 <button
                   type="button"
                   onClick={handleNextStep}
                   className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-colors font-medium"
                 >
-                  Next
+                  Далее
                 </button>
               </div>
             </>
@@ -287,7 +288,7 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
                 <MentionTextarea
                   value={caption}
                   onChange={setCaption}
-                  placeholder="Write description... (use @ for mention)"
+                  placeholder="Напишите описание... (используйте @, чтобы упомянуть)"
                   className="w-full h-32 p-3 border border-border rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 bg-background text-foreground"
                 />
                 <div className="text-right text-sm text-muted-foreground mt-1">

@@ -9,15 +9,15 @@ import animations from '@/shared/styles/animations.module.css';
 const links = [
   {
     href: '/admin/users',
-    title: 'Users & sanctions',
-    description: 'Search accounts, bulk actions, warnings and suspensions.',
+    title: 'Пользователи и санкции',
+    description: 'Поиск аккаунтов, массовые действия, предупреждения и блокировки.',
     icon: Users,
     accent: 'from-indigo-500 to-violet-600',
   },
   {
     href: '/admin/system',
-    title: 'System & statistics',
-    description: 'Aggregated metrics, report queue health, service checks.',
+    title: 'Система и статистика',
+    description: 'Сводные метрики, очередь жалоб, состояние архитектуры.',
     icon: BarChart3,
     accent: 'from-sky-500 to-cyan-600',
   },
@@ -33,10 +33,10 @@ export default function AdminPage() {
           </div>
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              Admin
+              Админка
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Manage users and review platform health. Access is restricted to administrators.
+              Управление пользователями и состоянием платформы. Доступ только для администраторов.
             </p>
           </div>
         </div>
@@ -46,7 +46,7 @@ export default function AdminPage() {
             <li key={href}>
               <Link
                 href={href}
-                className={cn(surface.card, animations.slideUp, 'group flex items-center gap-4 rounded-3xl border border-border/80 p-5 transition-all duration-200 hover:border-indigo-200 hover:shadow-md rika-glow-edge')}
+                className={cn(surface.card, animations.slideUp, 'group flex items-center gap-4 rounded-3xl border border-border/80 p-5 transition-all duration-200 hover:border-indigo-200 hover:shadow-md innogram-glow-edge')}
               >
                 <div
                   className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${accent} text-white shadow-md`}

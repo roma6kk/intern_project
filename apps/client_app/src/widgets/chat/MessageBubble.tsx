@@ -5,9 +5,14 @@ import type { Message } from '@/entities/chat';
 import { useAuth } from '@/entities/session';
 import { format } from 'date-fns';
 import Image from 'next/image';
-import { User, FileText, X, ChevronLeft, ChevronRight, Reply, Pencil, Trash2 } from 'lucide-react';
+import { User, FileText, X, ChevronLeft, ChevronRight, Reply, Pencil, Trash2, Play } from 'lucide-react';
 import { updateMessage, deleteMessage } from '@/entities/chat';
 import PostSharePreview from './PostSharePreview';
+import StoryMessagePreview, { parseStoryMeta } from './StoryMessagePreview';
+import { extractPostIdFromText, stripPostLinks } from '@/shared/lib/post-link';
+import { isVideoUrl } from '@/shared/lib/is-video-url';
+import { StoryVideoThumb } from '@/features/stories/ui/story-video-thumb';
+import { getMessagePreviewText } from '@/shared/lib/message-preview';
 
 const ASSET_GRID_CLASS: Record<number, string> = {
   1: 'grid grid-cols-1',
@@ -23,6 +28,19 @@ const ASSET_GRID_CLASS: Record<number, string> = {
 };
 
 type ImageAsset = { id: string; url: string; type?: string };
+
+function assetIsVideo(asset: ImageAsset): boolean {
+  const t = (asset.type ?? '').toUpperCase();
+  const result = t === 'VIDEO' || isVideoUrl(asset.url);
+  // #region agent log
+  fetch('http://127.0.0.1:7831/ingest/bad0d17b-1179-4cce-8537-b37e235c7b74',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c3b88c'},body:JSON.stringify({sessionId:'c3b88c',runId:'pre-fix',hypothesisId:'H2',location:'MessageBubble.tsx:assetIsVideo',message:'Classify asset as video',data:{assetType:asset.type ?? null,urlHasVideoExt:isVideoUrl(asset.url),result},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
+  return result;
+}
+
+function assetIsImage(asset: ImageAsset): boolean {
+  return !assetIsVideo(asset);
+}
 
 function ImageGalleryModal({
   images,
@@ -120,42 +138,136 @@ function ImageGalleryModal({
   );
 }
 
+function VideoPlayerModal({
+  src,
+  onClose,
+}: {
+  src: string;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Просмотр видео"
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute top-4 right-4 z-10 p-2 rounded-full text-white/80 hover:text-white hover:bg-card/10 transition-colors"
+        aria-label="Закрыть"
+      >
+        <X size={28} />
+      </button>
+      <div
+        className="relative w-full max-w-4xl mx-4 rounded-2xl border border-border/70 bg-card/70 p-3 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="relative overflow-hidden rounded-xl bg-black">
+          <video
+            src={src}
+            controls
+            autoPlay
+            playsInline
+            className="w-full max-h-[75vh] bg-black"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MessageAssets({
   assets,
   isOwn,
+  hasTextAbove,
   onImageClick,
+  onVideoClick,
 }: {
   assets: ImageAsset[];
   isOwn: boolean;
+  hasTextAbove?: boolean;
   onImageClick?: (index: number) => void;
+  onVideoClick?: (url: string) => void;
 }) {
-  const images = assets.filter((a) => a.type === 'IMAGE' || !a.type);
-  const files = assets.filter((a) => a.type && a.type !== 'IMAGE');
-  const n = images.length;
+  const images = assets.filter((a) => assetIsImage(a));
+  const videos = assets.filter((a) => assetIsVideo(a));
+  const files = assets.filter((a) => {
+    const t = (a.type ?? '').toUpperCase();
+    if (t === 'IMAGE' || t === 'VIDEO') return false;
+    // Unknown/legacy assets are treated as image/video tiles, not as "file chips".
+    if (!a.type) return false;
+    return !assetIsImage(a) && !assetIsVideo(a);
+  });
+  const media = [...images, ...videos];
+  const n = media.length;
   const gridClass = n > 0 ? ASSET_GRID_CLASS[n as keyof typeof ASSET_GRID_CLASS] ?? 'grid grid-cols-2 gap-0.5' : '';
-  const maxWidthClass = n >= 6 ? 'max-w-[320px]' : 'max-w-[280px]';
+
+  const edgeToEdgeMedia = !hasTextAbove && n > 0;
 
   return (
-    <div className="mt-2 space-y-2">
+    <div className={`${edgeToEdgeMedia ? '-mt-3' : 'mt-2'} space-y-2`}>
       {n > 0 && (
         <div
-          className={`overflow-hidden rounded-xl border ${maxWidthClass} ${isOwn ? 'border-blue-500/30' : 'border-border'} ${gridClass}`}
+          className={`overflow-hidden ${
+            edgeToEdgeMedia
+              ? `w-full rounded-t-2xl ${isOwn ? 'rounded-tr-2xl' : 'rounded-tl-2xl'}`
+              : 'w-full rounded-xl'
+          } ${gridClass}`}
         >
-          {images.map((asset, i) => (
-            <button
-              key={asset.id}
-              type="button"
-              onClick={() => onImageClick?.(i)}
-              className="block aspect-square min-h-[80px] bg-muted w-full h-full cursor-pointer border-0 p-0 text-left"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={asset.url}
-                alt=""
-                className="w-full h-full object-cover pointer-events-none"
-              />
-            </button>
-          ))}
+          {media.map((asset) => {
+            const isVideo = assetIsVideo(asset);
+            if (isVideo) {
+              return (
+                <button
+                  key={asset.id}
+                  type="button"
+                  onClick={() => onVideoClick?.(asset.url)}
+                  className="relative block aspect-square min-h-[80px] bg-muted w-full h-full cursor-pointer border-0 p-0 text-left"
+                >
+                  <StoryVideoThumb src={asset.url} />
+                  <span className="absolute bottom-2 right-2 inline-flex size-7 items-center justify-center rounded-full bg-black/55 text-white">
+                    <Play size={14} className="ml-0.5" />
+                  </span>
+                </button>
+              );
+            }
+            const imageIndex = images.findIndex((img) => img.id === asset.id);
+            return (
+              <button
+                key={asset.id}
+                type="button"
+                onClick={() => {
+                  if (imageIndex >= 0) onImageClick?.(imageIndex);
+                }}
+                className="block aspect-square min-h-[80px] bg-muted w-full h-full cursor-pointer border-0 p-0 text-left"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={asset.url}
+                  alt=""
+                  className="w-full h-full object-cover pointer-events-none"
+                />
+              </button>
+            );
+          })}
         </div>
       )}
       {files.length > 0 && (
@@ -180,16 +292,6 @@ function MessageAssets({
 
 const MAX_ATTACHMENTS = 10;
 
-function extractSharedPostId(content: string | null | undefined): string | null {
-  const raw = (content ?? '').trim();
-  if (!raw) return null;
-
-  // Accept either "/post/<id>" or "<origin>/post/<id>" (no spaces).
-  const match = raw.match(/(?:^|https?:\/\/[^/\s]+)(\/post\/([^\s?#/]+))(?:[?#].*)?$/i);
-  if (!match) return null;
-  return match[2] ?? null;
-}
-
 export default function MessageBubble({
   message,
   onReply,
@@ -205,8 +307,19 @@ export default function MessageBubble({
   const [editFiles, setEditFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const messageImages = (message.assets ?? []).filter((a) => a.type === 'IMAGE' || !a.type);
-  const sharedPostId = extractSharedPostId(message.content);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
+  const messageImages = (message.assets ?? []).filter((a) => assetIsImage(a));
+  const hasAssets = (message.assets?.length ?? 0) > 0;
+  const sharedPostId = extractPostIdFromText(message.content);
+  const messageTextWithoutPostLink = stripPostLinks(message.content);
+  const hasVisibleText = Boolean(
+    message.content &&
+      ((!sharedPostId && (message.content?.length ?? 0) > 0) ||
+        Boolean(sharedPostId && messageTextWithoutPostLink.length > 0)),
+  );
+  const storyMeta = parseStoryMeta(message.content);
+  const replySharedPostId = extractPostIdFromText(message.replyTo?.content);
 
   const handleSaveEdit = async () => {
     if (saving) return;
@@ -228,8 +341,8 @@ export default function MessageBubble({
   };
 
   const handleDelete = async () => {
-    if (typeof window !== 'undefined' && !window.confirm('Удалить сообщение?')) return;
     if (deleting) return;
+    setConfirmingDelete(false);
     setDeleting(true);
     try {
       await deleteMessage(message.id);
@@ -264,7 +377,7 @@ export default function MessageBubble({
 
         {/* Bubble */}
         <div 
-          className={`p-3 rounded-2xl text-sm shadow-[0_8px_24px_-16px_var(--overlay)] ${
+          className={`overflow-hidden p-3 rounded-2xl text-sm shadow-[0_8px_24px_-16px_var(--overlay)] ${
             isOwn 
               ? 'bg-primary text-white rounded-br-none border border-primary/55' 
               : 'bg-card border border-border/70 text-foreground rounded-bl-none'
@@ -287,12 +400,22 @@ export default function MessageBubble({
               <span className="ml-1">
                 {message.replyTo.deletedAt
                   ? 'Message deleted'
-                  : message.replyTo.content != null && message.replyTo.content !== ''
-                    ? message.replyTo.content.slice(0, 80) + (message.replyTo.content.length > 80 ? '…' : '')
-                    : (message.replyTo.assets?.length ?? 0) > 0
-                      ? `Фото (${message.replyTo.assets?.length})`
-                      : '[без текста]'}
+                  : replySharedPostId
+                    ? ''
+                  : (() => {
+                      const preview = getMessagePreviewText({
+                        content: message.replyTo?.content,
+                        deletedAt: message.replyTo?.deletedAt,
+                        assetsCount: message.replyTo?.assets?.length,
+                      });
+                      return preview.length > 80 ? `${preview.slice(0, 80)}…` : preview;
+                    })()}
               </span>
+              {replySharedPostId && (
+                <div className="mt-1 max-w-[220px]">
+                  <PostSharePreview postId={replySharedPostId} />
+                </div>
+              )}
             </div>
           )}
           {message.deletedAt ? (
@@ -314,11 +437,11 @@ export default function MessageBubble({
               />
               <div className="flex flex-wrap items-center gap-2">
                 <label className={`cursor-pointer rounded-lg border px-2 py-1 text-xs ${isOwn ? 'border-blue-400/50 text-blue-100' : 'border-border text-muted-foreground'}`}>
-                  Заменить картинки ({editFiles.length}/{MAX_ATTACHMENTS})
+                  Заменить медиа ({editFiles.length}/{MAX_ATTACHMENTS})
                   <input
                     type="file"
                     multiple
-                    accept="image/*"
+                    accept="image/*,video/*"
                     className="hidden"
                     onChange={(e) => {
                       const chosen = Array.from(e.target.files ?? []);
@@ -361,16 +484,35 @@ export default function MessageBubble({
             </div>
           ) : (
             <>
-              {!message.deletedAt && !isEditing && sharedPostId ? (
-                <PostSharePreview postId={sharedPostId} />
-              ) : message.content ? (
-                <p className="whitespace-pre-wrap">{message.content}</p>
-              ) : null}
+              {!message.deletedAt && !isEditing && storyMeta ? (
+                <StoryMessagePreview meta={storyMeta} isOwn={isOwn} />
+              ) : (
+                <>
+                  {message.content &&
+                    ((!sharedPostId && message.content.length > 0) ||
+                      (sharedPostId && messageTextWithoutPostLink.length > 0)) && (
+                      <p
+                        className={`whitespace-pre-wrap ${
+                          hasAssets
+                            ? `mb-2 pb-2 border-b ${isOwn ? 'border-white/25' : 'border-border/70'}`
+                            : ''
+                        }`}
+                      >
+                        {sharedPostId ? messageTextWithoutPostLink : message.content}
+                      </p>
+                    )}
+                  {!message.deletedAt && !isEditing && sharedPostId && (
+                    <PostSharePreview postId={sharedPostId} />
+                  )}
+                </>
+              )}
               {message.assets && message.assets.length > 0 && (
                 <MessageAssets
                   assets={message.assets}
                   isOwn={isOwn}
+                  hasTextAbove={hasVisibleText}
                   onImageClick={messageImages.length > 0 ? (i) => setGalleryIndex(i) : undefined}
+                  onVideoClick={(url) => setActiveVideoUrl(url)}
                 />
               )}
               {message.isEdited && (
@@ -386,6 +528,9 @@ export default function MessageBubble({
               initialIndex={galleryIndex}
               onClose={() => setGalleryIndex(null)}
             />
+          )}
+          {activeVideoUrl && !message.deletedAt && (
+            <VideoPlayerModal src={activeVideoUrl} onClose={() => setActiveVideoUrl(null)} />
           )}
           <div className="mt-1 flex items-center justify-end gap-1">
             {onReply && !message.deletedAt && (
@@ -414,7 +559,7 @@ export default function MessageBubble({
                 </button>
                 <button
                   type="button"
-                  onClick={handleDelete}
+                  onClick={() => setConfirmingDelete(true)}
                   disabled={deleting}
                   className={`rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity ${
                     isOwn ? 'text-blue-100 hover:bg-white/20' : 'text-muted-foreground hover:bg-muted'
@@ -431,6 +576,43 @@ export default function MessageBubble({
           </div>
         </div>
       </div>
+      {confirmingDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-sm p-4"
+          onClick={() => {
+            if (!deleting) setConfirmingDelete(false);
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Подтверждение удаления сообщения"
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-border bg-card p-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-sm font-semibold text-foreground">Удалить сообщение?</h3>
+            <p className="mt-1 text-xs text-muted-foreground">Это действие нельзя отменить.</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(false)}
+                disabled={deleting}
+                className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="rounded-lg bg-destructive px-3 py-1.5 text-xs text-destructive-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                {deleting ? 'Удаляем…' : 'Удалить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { Home, Search, PlusSquare, User, ShieldAlert, ShieldCheck, MessageSquare
 import { usePathname } from 'next/navigation';
 import CreatePostModal from '@/widgets/create-post-modal';
 import { useAuth, useSocket } from '@/entities/session';
-import { getUserChats } from '@/entities/chat';
+import { getUserChats, lastMessageIsUnreadIncomingForUser } from '@/entities/chat';
 import { currentChatIdRef } from '@/shared/lib/current-chat-id';
 import type { Chat, Message } from '@/entities/chat';
 import { cn } from '@/shared/lib/cn';
@@ -20,19 +20,6 @@ function normalizeMessage(payload: unknown): Message | null {
   if (!chatId) return null;
   const senderId = (m.senderId as string) ?? (m.sender_id as string);
   return { ...m, chatId, senderId } as Message;
-}
-
-function lastMessageIsUnreadIncomingForUser(
-  lastMessage: Message & { sender_id?: string; sender?: { id?: string } | null },
-  myUserId: string
-): boolean {
-  if (lastMessage.isRead) return false;
-  const senderId =
-    lastMessage.senderId ??
-    lastMessage.sender_id ??
-    lastMessage.sender?.id;
-  if (!senderId) return false;
-  return senderId !== myUserId;
 }
 
 export function BottomNav() {

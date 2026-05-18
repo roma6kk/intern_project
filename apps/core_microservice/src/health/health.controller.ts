@@ -26,7 +26,7 @@ export class HealthController {
   check() {
     const authUrl =
       this.configService.get<string>('AUTH_MICROSERVICE_URL') ||
-      'http://localhost:3001/internal/auth';
+      'http://auth-api:3001/internal/auth';
 
     return this.health.check([
       () => this.db.isHealthy('database'),

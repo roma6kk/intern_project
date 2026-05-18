@@ -16,7 +16,7 @@ async function bootstrap() {
   const logger = new Logger('NotificationsConsumer');
   
   try {
-    const rabbitmqUrl = process.env.RABBITMQ_URL || 'amqp://guest:guest@localhost:5672';
+    const rabbitmqUrl = process.env.RABBITMQ_URL || 'amqp://guest:guest@rabbitmq:5672';
     logger.log(`Connecting to RabbitMQ at ${rabbitmqUrl}`);
     logger.log(`Listening to queue: notifications_queue`);
     

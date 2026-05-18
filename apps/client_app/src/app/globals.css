@@ -115,7 +115,7 @@
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
-@keyframes rika-fade-in {
+@keyframes innogram-fade-in {
   from {
     opacity: 0;
   }
@@ -124,7 +124,7 @@
   }
 }
 
-@keyframes rika-slide-up {
+@keyframes innogram-slide-up {
   from {
     opacity: 0;
     transform: translateY(0.5rem);
@@ -135,7 +135,7 @@
   }
 }
 
-@keyframes rika-scale-in {
+@keyframes innogram-scale-in {
   from {
     opacity: 0;
     transform: scale(0.96);
@@ -146,13 +146,13 @@
   }
 }
 
-@keyframes rika-shimmer {
+@keyframes innogram-shimmer {
   100% {
     transform: translateX(100%);
   }
 }
 
-@keyframes rika-float {
+@keyframes innogram-float {
   0%,
   100% {
     transform: translate3d(0, 0, 0) scale(1);
@@ -162,7 +162,7 @@
   }
 }
 
-@keyframes rika-aurora {
+@keyframes innogram-aurora {
   0% {
     transform: translate3d(-3%, -2%, 0) rotate(0deg);
   }
@@ -197,13 +197,13 @@ body {
   background-attachment: fixed;
 }
 
-.rika-shell {
+.innogram-shell {
   position: relative;
   isolation: isolate;
 }
 
-.rika-shell::before,
-.rika-shell::after {
+.innogram-shell::before,
+.innogram-shell::after {
   content: '';
   position: fixed;
   z-index: -1;
@@ -212,49 +212,49 @@ body {
   border-radius: 999px;
 }
 
-.rika-shell::before {
+.innogram-shell::before {
   width: min(42vw, 560px);
   height: min(42vw, 560px);
   top: -10rem;
   left: -8rem;
   background: radial-gradient(circle at 30% 30%, var(--hero-from), transparent 65%);
   opacity: 0.26;
-  animation: rika-float 14s ease-in-out infinite;
+  animation: innogram-float 14s ease-in-out infinite;
 }
 
-.rika-shell::after {
+.innogram-shell::after {
   width: min(38vw, 520px);
   height: min(38vw, 520px);
   right: -6rem;
   bottom: -10rem;
   background: radial-gradient(circle at 40% 35%, var(--hero-to), transparent 65%);
   opacity: 0.22;
-  animation: rika-aurora 18s ease-in-out infinite;
+  animation: innogram-aurora 18s ease-in-out infinite;
 }
 
 @media (max-width: 480px) {
   /* Mobile: prevent fixed background glows from increasing document width */
-  .rika-shell::before,
-  .rika-shell::after {
+  .innogram-shell::before,
+  .innogram-shell::after {
     filter: blur(40px);
   }
 
-  .rika-shell::before {
+  .innogram-shell::before {
     left: 2.5rem;
     top: -8rem;
   }
 
-  .rika-shell::after {
+  .innogram-shell::after {
     right: 2.5rem;
     bottom: -8rem;
   }
 }
 
-.rika-glow-edge {
+.innogram-glow-edge {
   position: relative;
 }
 
-.rika-glow-edge::after {
+.innogram-glow-edge::after {
   content: '';
   position: absolute;
   inset: -1px;
@@ -300,6 +300,13 @@ body {
 
 .Toastify__progress-bar {
   background: var(--primary) !important;
+}
+
+/* Let clicks reach links/content in the toast body; strip is visual only */
+.Toastify__progress-bar--wrp,
+.Toastify__progress-bar--bg,
+.Toastify__progress-bar {
+  pointer-events: none !important;
 }
 
 .Toastify__toast--success .Toastify__toast-icon {

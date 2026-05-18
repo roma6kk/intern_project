@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { Heart, MessageCircle, Grid, Play } from 'lucide-react';
+import { isVideoUrl } from '@/shared/lib/is-video-url';
 
 interface Asset {
   id: string;
@@ -29,7 +30,7 @@ interface PostsGridProps {
 const isVideoAsset = (asset?: Asset) => {
   if (!asset?.url) return false;
   if (asset.type === 'VIDEO') return true;
-  return /\.(mp4|webm|ogg|mov)$/i.test(asset.url);
+  return isVideoUrl(asset.url);
 };
 
 export default function PostsGrid({ posts, router }: PostsGridProps) {

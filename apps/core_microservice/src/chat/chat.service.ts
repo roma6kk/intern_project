@@ -9,6 +9,7 @@ import { CreateChatDto } from './dto/create-chat.dto';
 import { UpdateChatDto } from './dto/update-chat.dto';
 import { PrismaService } from '../database/prisma.service';
 import { ChatType, Prisma } from '@prisma/client';
+import { FilesService } from '../files/files.service';
 
 interface ChatParticipantDelegate {
   updateMany(args: {
@@ -90,7 +91,38 @@ function toMembersWithRole(participants: Array<ParticipantWithUser>): Array<{
 export class ChatService {
   private readonly logger = new Logger(ChatService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly filesService: FilesService,
+  ) {}
+
+  private async resolveChatAvatarUrl(
+    avatarUrl: string | null | undefined,
+  ): Promise<string | null | undefined> {
+    if (!avatarUrl) return avatarUrl;
+    return this.filesService.getReadableUrl(avatarUrl);
+  }
+
+  private async resolveChatPayload<T extends { avatarUrl?: string | null }>(
+    chat: T,
+  ): Promise<T> {
+    return {
+      ...chat,
+      avatarUrl: await this.resolveChatAvatarUrl(chat.avatarUrl),
+    };
+  }
+
+  private validateAvatarFile(file: Express.Multer.File) {
+    const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedMimes.includes(file.mimetype)) {
+      throw new BadRequestException(
+        'Invalid file type. Only images are allowed',
+      );
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      throw new BadRequestException('File size too large. Maximum 5MB allowed');
+    }
+  }
 
   async findPrivateChatBetween(userId1: string, userId2: string) {
     const chats = await this.prisma.chat.findMany({
@@ -111,7 +143,11 @@ export class ChatService {
     return withExactlyTwo ?? null;
   }
 
-  async create(currentUserId: string, createChatDto: CreateChatDto) {
+  async create(
+    currentUserId: string,
+    createChatDto: CreateChatDto,
+    file?: Express.Multer.File,
+  ) {
     const uniqueMemberIds = new Set([
       ...createChatDto.memberIds,
       currentUserId,
@@ -126,6 +162,14 @@ export class ChatService {
       if (!createChatDto.name?.trim()) {
         throw new BadRequestException('Group chat must have a name');
       }
+    } else if (file) {
+      throw new BadRequestException(
+        'Group chat avatar is supported only for group chats',
+      );
+    }
+
+    if (type === ChatType.PRIVATE && uniqueMemberIds.size === 1) {
+      throw new BadRequestException('Cannot create a chat with yourself');
     }
 
     if (type === ChatType.PRIVATE && uniqueMemberIds.size === 2) {
@@ -148,11 +192,18 @@ export class ChatService {
       role: userId === currentUserId ? ('ADMIN' as const) : ('MEMBER' as const),
     }));
 
+    let avatarUrl: string | null | undefined = undefined;
+    if (file) {
+      this.validateAvatarFile(file);
+      avatarUrl = await this.filesService.uploadFile(file);
+    }
+
     const chat = await this.prisma.chat.create({
       data: {
         type,
         name: createChatDto.name?.trim() || null,
         description: createChatDto.description?.trim() || null,
+        avatarUrl,
         creatorId: currentUserId,
         participants: {
           create: participantsData,
@@ -173,10 +224,10 @@ export class ChatService {
     });
 
     this.logger.log(`Chat "${chat.id}" created by ${currentUserId}`);
-    return {
+    return this.resolveChatPayload({
       ...chat,
       members: toMembersWithRole(chat.participants as ParticipantWithUser[]),
-    };
+    });
   }
 
   async findAllByUser(userId: string) {
@@ -198,9 +249,18 @@ export class ChatService {
           take: 1,
           orderBy: { createdAt: 'desc' },
           select: {
+            id: true,
             content: true,
             createdAt: true,
             isRead: true,
+            deletedAt: true,
+            assets: {
+              select: {
+                id: true,
+                url: true,
+                type: true,
+              },
+            },
             sender: {
               select: {
                 id: true,
@@ -211,10 +271,14 @@ export class ChatService {
         },
       },
     });
-    return chats.map((c) => ({
-      ...c,
-      members: toMembersWithRole(c.participants as ParticipantWithUser[]),
-    }));
+    return Promise.all(
+      chats.map((c) =>
+        this.resolveChatPayload({
+          ...c,
+          members: toMembersWithRole(c.participants as ParticipantWithUser[]),
+        }),
+      ),
+    );
   }
 
   async findOne(id: string) {
@@ -232,7 +296,7 @@ export class ChatService {
         },
         participants: participantInclude,
         messages: {
-          orderBy: { createdAt: 'asc' },
+          orderBy: { createdAt: 'desc' },
           take: 50,
           include: {
             sender: {
@@ -277,32 +341,36 @@ export class ChatService {
         replyTo: { deletedAt: Date | null } | null;
         [k: string]: unknown;
       }>
-    ).map((msg) => {
-      const replyTo = msg.replyTo;
-      if (replyTo && replyTo.deletedAt != null) {
-        return {
-          ...msg,
-          replyTo: {
-            ...replyTo,
-            content: null,
-            assets: [],
-          },
-        };
-      }
-      return msg;
-    });
+    )
+      .slice()
+      .reverse()
+      .map((msg) => {
+        const replyTo = msg.replyTo;
+        if (replyTo && replyTo.deletedAt != null) {
+          return {
+            ...msg,
+            replyTo: {
+              ...replyTo,
+              content: null,
+              assets: [],
+            },
+          };
+        }
+        return msg;
+      });
 
-    return {
+    return this.resolveChatPayload({
       ...chat,
       messages,
       members: toMembersWithRole(chat.participants as ParticipantWithUser[]),
-    };
+    });
   }
 
   async update(
     id: string,
     currentUserId: string,
     updateChatDto: UpdateChatDto,
+    file?: Express.Multer.File,
   ) {
     const chat = await this.prisma.chat.findUnique({
       where: { id },
@@ -333,6 +401,12 @@ export class ChatService {
 
     const chatParticipant = this.prisma
       .chatParticipant as unknown as ChatParticipantDelegate;
+
+    if ((file || updateChatDto.removeAvatar) && chat.type !== ChatType.GROUP) {
+      throw new BadRequestException(
+        'Group chat avatar can only be changed in group chats',
+      );
+    }
 
     if (updateChatDto.leaveChat) {
       const otherAdmins = participants.filter(
@@ -380,11 +454,13 @@ export class ChatService {
 
     if (
       updateChatDto.name !== undefined ||
-      updateChatDto.description !== undefined
+      updateChatDto.description !== undefined ||
+      file ||
+      updateChatDto.removeAvatar
     ) {
       if (!isAdmin) {
         throw new ForbiddenException(
-          'Only admins can edit chat title and description',
+          'Only admins can edit chat settings and avatar',
         );
       }
       if (
@@ -394,6 +470,15 @@ export class ChatService {
       ) {
         throw new BadRequestException('Group chat name cannot be empty');
       }
+
+      let nextAvatarUrl: string | null | undefined = undefined;
+      if (file) {
+        this.validateAvatarFile(file);
+        nextAvatarUrl = await this.filesService.uploadFile(file);
+      } else if (updateChatDto.removeAvatar) {
+        nextAvatarUrl = null;
+      }
+
       await this.prisma.chat.update({
         where: { id },
         data: {
@@ -402,6 +487,9 @@ export class ChatService {
           }),
           ...(updateChatDto.description !== undefined && {
             description: updateChatDto.description?.trim() || null,
+          }),
+          ...(nextAvatarUrl !== undefined && {
+            avatarUrl: nextAvatarUrl,
           }),
         },
       });

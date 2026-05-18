@@ -1,6 +1,8 @@
 export type { Chat, Message, ChatMember, ChatRole } from './model/types';
+export { lastMessageIsUnreadIncomingForUser } from './model/unread';
 export {
   getUserChats,
+  getOnlineUsers,
   getChatMessages,
   sendMessage,
   updateMessage,

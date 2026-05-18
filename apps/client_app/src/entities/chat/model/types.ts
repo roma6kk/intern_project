@@ -41,6 +41,7 @@ export interface Chat {
   id: string;
   name?: string;
   description?: string;
+  avatarUrl?: string | null;
   type: 'PRIVATE' | 'GROUP';
   members: ChatMember[];
   creator?: ChatMember;

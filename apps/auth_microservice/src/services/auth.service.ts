@@ -1,19 +1,27 @@
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import bcrypt from 'bcrypt';
-import prisma from '../config/prisma';
-import { redisRepository } from '../repositories/redis.auth.repository';
-import { 
-  generateTokens, 
-  verifyRefreshToken, 
-  verifyAccessToken, 
-  decodeToken 
-} from './token.service';
 import axios from 'axios';
-import {IGoogleUserResult} from './interfaces/IGoogleUserResult'
+import { PrismaService } from '../database/prisma.service';
+import { RedisAuthRepository } from '../repositories/redis-auth.repository';
+import { PasswordResetEventService } from './password-reset-event.service';
+import { TokenService } from './token.service';
+import { IGoogleUserResult } from './interfaces/IGoogleUserResult';
 import { IRegisterUserDto } from './interfaces/IRegisterUserDto';
 
-
-
+@Injectable()
 export class AuthService {
+  private readonly resetCodeTTLSeconds = 10 * 60;
+  private readonly resetCodeCooldownSeconds = 60;
+  private readonly maxResetAttempts = 5;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly redisRepository: RedisAuthRepository,
+    private readonly passwordResetEventService: PasswordResetEventService,
+    private readonly tokenService: TokenService,
+    private readonly configService: ConfigService,
+  ) {}
 
   private async generateNewTokens(params: {
     userId: string;
@@ -23,13 +31,14 @@ export class AuthService {
     accountState: 'ACTIVE' | 'SUSPENDED' | 'DELETED';
     suspendedUntil?: string | null;
     escalationLevel?: number;
+    deletedAt?: string | null;
   }) {
-    const tokens = generateTokens(params);
+    const tokens = this.tokenService.generateTokens(params);
 
-    await redisRepository.storeRefreshTokenId(
-      params.userId, 
-      tokens.refreshJti, 
-      604800
+    await this.redisRepository.storeRefreshTokenId(
+      params.userId,
+      tokens.refreshJti,
+      604800,
     );
 
     return {
@@ -42,20 +51,23 @@ export class AuthService {
         accountState: params.accountState,
         suspendedUntil: params.suspendedUntil,
         escalationLevel: params.escalationLevel,
-      }
+        deletedAt: params.deletedAt,
+      },
     };
   }
 
   async registerUser(signUpDto: IRegisterUserDto) {
-    const existing = await prisma.account.findFirst({
-      where: { OR: [{ email: signUpDto.email }, { username: signUpDto.username }] }
+    const existing = await this.prisma.account.findFirst({
+      where: {
+        OR: [{ email: signUpDto.email }, { username: signUpDto.username }],
+      },
     });
     if (existing) throw new Error('User already exists');
 
     const hashedPassword = await bcrypt.hash(signUpDto.password, 10);
 
     try {
-      const user = await prisma.user.create({
+      const user = await this.prisma.user.create({
         data: {
           account: {
             create: {
@@ -72,7 +84,7 @@ export class AuthService {
             },
           },
         },
-        include: { account: true }
+        include: { account: true },
       });
 
       if (!user.account) throw new Error('Account creation failed');
@@ -84,8 +96,8 @@ export class AuthService {
         accountState: user.account.state,
         suspendedUntil: user.account.suspendedUntil?.toISOString() ?? null,
         escalationLevel: user.account.escalationLevel,
+        deletedAt: user.deletedAt?.toISOString() ?? null,
       });
-
     } catch (e) {
       console.error(e);
       throw new Error('Registration failed');
@@ -93,18 +105,19 @@ export class AuthService {
   }
 
   async authenticateUser(credentials: { email: string; pass: string }) {
-    const account = await prisma.account.findUnique({ 
-      where: { email: credentials.email } 
+    const account = await this.prisma.account.findUnique({
+      where: { email: credentials.email },
+      include: { user: true },
     });
-    
+
     if (!account || !account.passwordHash) {
       throw new Error('Invalid credentials');
     }
-    if (account.state === 'DELETED') {
-      throw new Error('Account is not active');
-    }
 
-    const isValid = await bcrypt.compare(credentials.pass, account.passwordHash);
+    const isValid = await bcrypt.compare(
+      credentials.pass,
+      account.passwordHash,
+    );
     if (!isValid) throw new Error('Invalid credentials');
 
     return this.generateNewTokens({
@@ -115,23 +128,26 @@ export class AuthService {
       accountState: account.state,
       suspendedUntil: account.suspendedUntil?.toISOString() ?? null,
       escalationLevel: account.escalationLevel,
+      deletedAt: account.user?.deletedAt?.toISOString() ?? null,
     });
   }
 
   async processRefreshToken(oldRefreshToken: string) {
-    const payload = verifyRefreshToken(oldRefreshToken);
+    const payload = this.tokenService.verifyRefreshToken(oldRefreshToken);
     const tokenId = payload.jti;
 
     if (!tokenId) throw new Error('Invalid token structure');
 
-    const storedUserId = await redisRepository.findSessionByTokenId(tokenId);
+    const storedUserId =
+      await this.redisRepository.findSessionByTokenId(tokenId);
 
     if (!storedUserId || storedUserId !== payload.userId) {
       throw new Error('Invalid or expired refresh token');
     }
 
-    const account = await prisma.account.findUnique({
+    const account = await this.prisma.account.findUnique({
       where: { userId: payload.userId },
+      include: { user: true },
     });
     if (!account) {
       throw new Error('Account not found');
@@ -144,19 +160,22 @@ export class AuthService {
       accountState: account.state,
       suspendedUntil: account.suspendedUntil?.toISOString() ?? null,
       escalationLevel: account.escalationLevel,
+      deletedAt: account.user?.deletedAt?.toISOString() ?? null,
     });
   }
 
   async validateToken(accessToken: string) {
-    const payload = verifyAccessToken(accessToken);
-    
+    const payload = this.tokenService.verifyAccessToken(accessToken);
+
     if (payload.jti) {
-      const isBlacklisted = await redisRepository.isTokenBlacklisted(payload.jti);
+      const isBlacklisted = await this.redisRepository.isTokenBlacklisted(
+        payload.jti,
+      );
       if (isBlacklisted) {
         throw new Error('Token is blacklisted');
       }
     }
-    
+
     return {
       userId: payload.userId,
       username: payload.username,
@@ -168,21 +187,31 @@ export class AuthService {
     };
   }
 
-  async handleOAuthLogin(profile: { email: string; username: string; photo?: string; firstName?: string; secondName?: string }) {
-    
-    let account = await prisma.account.findUnique({
+  async handleOAuthLogin(profile: {
+    email: string;
+    username: string;
+    photo?: string;
+    firstName?: string;
+    secondName?: string;
+  }) {
+    let account = await this.prisma.account.findUnique({
       where: { email: profile.email },
+      include: { user: true },
     });
 
     if (!account) {
       let finalUsername = profile.username;
       let counter = 1;
-      while (await prisma.account.findUnique({ where: { username: finalUsername } })) {
+      while (
+        await this.prisma.account.findUnique({
+          where: { username: finalUsername },
+        })
+      ) {
         finalUsername = `${profile.username}${counter}`;
         counter++;
       }
 
-      const newUser = await prisma.user.create({
+      const newUser = await this.prisma.user.create({
         data: {
           account: {
             create: {
@@ -199,15 +228,11 @@ export class AuthService {
             },
           },
         },
-        include: { account: true },
+        include: { account: { include: { user: true } } },
       });
 
       if (!newUser.account) throw new Error('Account creation failed');
       account = newUser.account;
-    }
-
-    if (account.state === 'DELETED') {
-      throw new Error('Account is not active');
     }
 
     return this.generateNewTokens({
@@ -218,21 +243,103 @@ export class AuthService {
       accountState: account.state,
       suspendedUntil: account.suspendedUntil?.toISOString() ?? null,
       escalationLevel: account.escalationLevel,
+      deletedAt: account.user?.deletedAt?.toISOString() ?? null,
     });
   }
 
   async logout(refreshToken: string) {
-    const payload = decodeToken(refreshToken);
+    const payload = this.tokenService.decodeToken(refreshToken);
     if (payload && payload.userId) {
-      await redisRepository.deleteSession(payload.userId);
+      await this.redisRepository.deleteSession(payload.userId);
     }
   }
 
-   getGoogleOAuthURL() {
+  async forgotPassword(email: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const account = await this.prisma.account.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (!account) {
+      throw new Error('Email not found');
+    }
+
+    const cooldownTTL =
+      await this.redisRepository.getPasswordResetCooldown(normalizedEmail);
+    if (cooldownTTL > 0) {
+      throw new Error(`Try again in ${cooldownTTL} seconds`);
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    await this.redisRepository.storePasswordResetCode(
+      normalizedEmail,
+      code,
+      this.resetCodeTTLSeconds,
+    );
+    await this.redisRepository.setPasswordResetCooldown(
+      normalizedEmail,
+      this.resetCodeCooldownSeconds,
+    );
+    await this.passwordResetEventService.publishPasswordResetEmail({
+      email: normalizedEmail,
+      code,
+      username: account.username,
+    });
+
+    return { message: 'Reset code sent' };
+  }
+
+  async resetPassword(params: {
+    email: string;
+    code: string;
+    newPassword: string;
+  }) {
+    const normalizedEmail = params.email.trim().toLowerCase();
+    const account = await this.prisma.account.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (!account) {
+      throw new Error('Email not found');
+    }
+
+    const savedCode =
+      await this.redisRepository.getPasswordResetCode(normalizedEmail);
+    if (!savedCode) {
+      throw new Error('Reset code expired');
+    }
+
+    const attempts = await this.redisRepository.incrementPasswordResetAttempts(
+      normalizedEmail,
+      this.resetCodeTTLSeconds,
+    );
+    if (attempts > this.maxResetAttempts) {
+      await this.redisRepository.deletePasswordResetCode(normalizedEmail);
+      throw new Error('Too many attempts');
+    }
+
+    if (savedCode !== params.code) {
+      throw new Error('Invalid reset code');
+    }
+
+    const newPasswordHash = await bcrypt.hash(params.newPassword, 10);
+    await this.prisma.account.update({
+      where: { email: normalizedEmail },
+      data: { passwordHash: newPasswordHash },
+    });
+
+    await this.redisRepository.deletePasswordResetCode(normalizedEmail);
+    await this.redisRepository.deleteSession(account.userId);
+
+    return { message: 'Password updated successfully' };
+  }
+
+  getGoogleOAuthURL() {
     const rootUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
     const options = {
-      redirect_uri: process.env.GOOGLE_CALLBACK_URL!,
-      client_id: process.env.GOOGLE_CLIENT_ID!,
+      redirect_uri: this.configService.get<string>('GOOGLE_CALLBACK_URL')!,
+      client_id: this.configService.get<string>('GOOGLE_CLIENT_ID')!,
       access_type: 'offline',
       response_type: 'code',
       prompt: 'consent',
@@ -263,41 +370,53 @@ export class AuthService {
     });
   }
 
-  private async getGoogleTokens(code: string): Promise<{ access_token: string; id_token: string }> {
+  private async getGoogleTokens(
+    code: string,
+  ): Promise<{ access_token: string; id_token: string }> {
     const url = 'https://oauth2.googleapis.com/token';
     const values = {
       code,
-      client_id: process.env.GOOGLE_CLIENT_ID || '',
-      client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
-      redirect_uri: process.env.GOOGLE_CALLBACK_URL || '',
+      client_id: this.configService.get<string>('GOOGLE_CLIENT_ID') || '',
+      client_secret:
+        this.configService.get<string>('GOOGLE_CLIENT_SECRET') || '',
+      redirect_uri: this.configService.get<string>('GOOGLE_CALLBACK_URL') || '',
       grant_type: 'authorization_code',
     };
 
     try {
-      const res = await axios.post(url, new URLSearchParams(values as Record<string, string>).toString(), {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      });
+      const res = await axios.post(
+        url,
+        new URLSearchParams(values as Record<string, string>).toString(),
+        {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        },
+      );
       return res.data;
     } catch (error) {
-      const err = error as {message?: string};
-      throw new Error(`Google Token Exchange Failed: ${err.message || 'Unknown error'}`);
+      const err = error as { message?: string };
+      throw new Error(
+        `Google Token Exchange Failed: ${err.message || 'Unknown error'}`,
+      );
     }
   }
 
-  private async getGoogleUser(id_token: string, access_token: string): Promise<IGoogleUserResult> {
+  private async getGoogleUser(
+    id_token: string,
+    access_token: string,
+  ): Promise<IGoogleUserResult> {
     try {
       const res = await axios.get<IGoogleUserResult>(
         `https://www.googleapis.com/oauth2/v1/userinfo?alt=json&access_token=${access_token}`,
         {
           headers: { Authorization: `Bearer ${id_token}` },
-        }
+        },
       );
       return res.data;
     } catch (error) {
-      const err = error as {message? : string};
-      throw new Error(`Google User Info Failed: ${err.message || 'Unknown error'}`);
+      const err = error as { message?: string };
+      throw new Error(
+        `Google User Info Failed: ${err.message || 'Unknown error'}`,
+      );
     }
   }
 }
-
-export const authService = new AuthService();

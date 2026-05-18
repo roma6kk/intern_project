@@ -206,7 +206,7 @@ function SearchPageContent() {
   return (
     <div className="min-h-screen bg-transparent">
       <div className="max-w-4xl mx-auto px-4 py-6">
-        <div className={cn(surface.card, animations.slideUp, 'rounded-3xl p-4 sm:p-5 mb-6 rika-glow-edge')}>
+        <div className={cn(surface.card, animations.slideUp, 'rounded-3xl p-4 sm:p-5 mb-6 innogram-glow-edge')}>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
             <input

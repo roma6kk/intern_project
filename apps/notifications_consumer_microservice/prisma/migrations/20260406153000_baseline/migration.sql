@@ -1,0 +1,2 @@
+-- Baseline migration for notifications_consumer_microservice.
+-- Intentionally empty: schema changes are managed by shared migrations.

@@ -19,13 +19,14 @@ import type {
 
 interface ChatWithMembers {
   type: string;
-  members?: Array<{ id: string }>;
+  members?: Array<{ id: string; account?: { username?: string } }>;
   messages?: Array<{
     id: string;
     senderId: string;
     content: string | null;
     createdAt: Date;
     deletedAt?: Date | null;
+    sender?: { account?: { username?: string | null } };
   }>;
 }
 
@@ -152,11 +153,12 @@ export class AssistantService {
     }
   }
 
-  private resolveTargetUserId(
+  /** Returns null when a group has multiple other members and no targetUserId. */
+  private tryResolveTargetUserId(
     chat: ChatWithMembers,
     requesterId: string,
     targetUserId?: string,
-  ): string {
+  ): string | null {
     if (chat.type === 'PRIVATE') {
       const other = chat.members?.find((m) => m.id !== requesterId);
       if (!other) {
@@ -178,27 +180,52 @@ export class AssistantService {
     if (others.length === 1) {
       return others[0].id;
     }
-    throw new BadRequestException(
-      'targetUserId is required for group chats with more than one other member',
-    );
+    return null;
+  }
+
+  private resolveTargetUserId(
+    chat: ChatWithMembers,
+    requesterId: string,
+    targetUserId?: string,
+  ): string {
+    const id = this.tryResolveTargetUserId(chat, requesterId, targetUserId);
+    if (id === null) {
+      throw new BadRequestException(
+        'targetUserId is required for group chats with more than one other member',
+      );
+    }
+    return id;
   }
 
   private mapRecentMessages(chat: ChatWithMembers) {
     const list = chat.messages ?? [];
-    return list.map((m) => ({
-      id: m.id,
-      senderId: m.senderId,
-      content: m.deletedAt != null ? null : m.content,
-      createdAt:
-        m.createdAt instanceof Date
-          ? m.createdAt.toISOString()
-          : String(m.createdAt),
-    }));
+    const usernameByUserId = new Map<string, string>();
+    for (const mem of chat.members ?? []) {
+      const name = mem.account?.username?.trim();
+      if (name) {
+        usernameByUserId.set(mem.id, name);
+      }
+    }
+    return list.map((m) => {
+      const fromMessage = m.sender?.account?.username?.trim();
+      const fromMembership = usernameByUserId.get(m.senderId);
+      const senderUsername = fromMessage ?? fromMembership;
+      return {
+        id: m.id,
+        senderId: m.senderId,
+        ...(senderUsername ? { senderUsername } : {}),
+        content: m.deletedAt != null ? null : m.content,
+        createdAt:
+          m.createdAt instanceof Date
+            ? m.createdAt.toISOString()
+            : String(m.createdAt),
+      };
+    });
   }
 
-  private async loadTargetProfile(targetUserId: string) {
+  private async loadUserProfileSnippet(userId: string) {
     const user = await this.prisma.user.findUnique({
-      where: { id: targetUserId },
+      where: { id: userId },
       select: {
         id: true,
         account: { select: { username: true, role: true } },
@@ -208,7 +235,7 @@ export class AssistantService {
       },
     });
     if (!user) {
-      throw new BadRequestException('Target user not found');
+      throw new BadRequestException('User not found');
     }
     return {
       userId: user.id,
@@ -247,7 +274,10 @@ export class AssistantService {
         `members=${chat.members?.length ?? 0}`,
       ].join(' '),
     );
-    const targetUserProfile = await this.loadTargetProfile(resolvedTarget);
+    const [requesterUserProfile, targetUserProfile] = await Promise.all([
+      this.loadUserProfileSnippet(requesterId),
+      this.loadUserProfileSnippet(resolvedTarget),
+    ]);
     const recentMessages = this.mapRecentMessages(chat);
     return this.postAssistant<AssistantEnvelope<TopicSuggestionsData>>({
       op: 'topicSuggestions',
@@ -259,6 +289,7 @@ export class AssistantService {
       body: {
         chatId,
         requesterId,
+        requesterUserProfile,
         targetUserProfile,
         recentMessages,
         targetUserId: resolvedTarget,
@@ -270,6 +301,7 @@ export class AssistantService {
     requesterId: string,
     chatId: string,
     maxBullets?: number,
+    targetUserId?: string,
   ): Promise<AssistantEnvelope<DialogSummaryData>> {
     this.logger.log(
       `assistant.dialogSummary requesterId=${requesterId} chatId=${chatId}`,
@@ -279,17 +311,33 @@ export class AssistantService {
     )) as unknown as ChatWithMembers;
     this.assertMember(chat, requesterId);
     const recentMessages = this.mapRecentMessages(chat);
+    const resolvedTarget = this.tryResolveTargetUserId(
+      chat,
+      requesterId,
+      targetUserId,
+    );
+    const [requesterUserProfile, targetUserSnippet] = await Promise.all([
+      this.loadUserProfileSnippet(requesterId),
+      resolvedTarget != null
+        ? this.loadUserProfileSnippet(resolvedTarget)
+        : Promise.resolve(null),
+    ]);
+    const targetUserProfile =
+      targetUserSnippet != null ? targetUserSnippet : undefined;
     return this.postAssistant<AssistantEnvelope<DialogSummaryData>>({
       op: 'dialogSummary',
       path: '/assistant/dialog-summary',
       chatId,
       requesterId,
+      targetUserId: resolvedTarget ?? undefined,
       contextMessages: recentMessages.length,
       body: {
         chatId,
         requesterId,
+        requesterUserProfile,
         recentMessages,
         maxBullets,
+        ...(targetUserProfile ? { targetUserProfile } : {}),
       },
     });
   }
@@ -298,6 +346,7 @@ export class AssistantService {
     requesterId: string,
     chatId: string,
     question: string,
+    targetUserId?: string,
   ): Promise<AssistantEnvelope<ChatQaData>> {
     this.logger.log(
       `assistant.chatQa requesterId=${requesterId} chatId=${chatId}`,
@@ -307,17 +356,33 @@ export class AssistantService {
     )) as unknown as ChatWithMembers;
     this.assertMember(chat, requesterId);
     const recentMessages = this.mapRecentMessages(chat);
+    const resolvedTarget = this.tryResolveTargetUserId(
+      chat,
+      requesterId,
+      targetUserId,
+    );
+    const [requesterUserProfile, targetUserSnippet] = await Promise.all([
+      this.loadUserProfileSnippet(requesterId),
+      resolvedTarget != null
+        ? this.loadUserProfileSnippet(resolvedTarget)
+        : Promise.resolve(null),
+    ]);
+    const targetUserProfile =
+      targetUserSnippet != null ? targetUserSnippet : undefined;
     return this.postAssistant<AssistantEnvelope<ChatQaData>>({
       op: 'chatQa',
       path: '/assistant/chat-qa',
       chatId,
       requesterId,
+      targetUserId: resolvedTarget ?? undefined,
       contextMessages: recentMessages.length,
       body: {
         chatId,
         requesterId,
         question,
+        requesterUserProfile,
         recentMessages,
+        ...(targetUserProfile ? { targetUserProfile } : {}),
       },
     });
   }

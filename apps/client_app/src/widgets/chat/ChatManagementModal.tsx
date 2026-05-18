@@ -10,8 +10,8 @@ import {
   promoteToAdmin,
 } from '@/entities/chat';
 import { useAuth } from '@/entities/session';
-import { useToast } from '@/application/providers/toast-provider';
 import api from '@/shared/api';
+import { notify } from '@/shared/lib/notify';
 
 interface Profile {
   id: string;
@@ -43,7 +43,6 @@ export default function ChatManagementModal({
   onLeftChat,
 }: Props) {
   const { user } = useAuth();
-  const toast = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ChatMember[]>([]);
   const [loading, setLoading] = useState(false);
@@ -52,6 +51,9 @@ export default function ChatManagementModal({
   const [editName, setEditName] = useState(chat.name ?? '');
   const [editDescription, setEditDescription] = useState(chat.description ?? '');
   const [savingInfo, setSavingInfo] = useState(false);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [removeAvatar, setRemoveAvatar] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [selectedNewAdminId, setSelectedNewAdminId] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
@@ -75,8 +77,19 @@ export default function ChatManagementModal({
       setSearchResults([]);
       setShowLeaveConfirm(false);
       setSelectedNewAdminId(null);
+      setAvatarFile(null);
+      setAvatarPreview(chat.avatarUrl ?? null);
+      setRemoveAvatar(false);
     }
   }, [open, chat]);
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreview?.startsWith('blob:')) {
+        URL.revokeObjectURL(avatarPreview);
+      }
+    };
+  }, [avatarPreview]);
 
   const searchUsers = async (query: string) => {
     setSearchQuery(query);
@@ -115,26 +128,50 @@ export default function ChatManagementModal({
   const handleSaveInfo = async () => {
     if (!isAdmin || !isGroupChat) return;
     if (!editName.trim()) {
-      toast.error('Chat name is required');
+      notify.error('Название чата обязательно');
       return;
     }
     setSavingInfo(true);
     try {
+      const shouldRemoveAvatar = removeAvatar && !avatarFile;
       const updatedChat = await updateChatInfo(chat.id, {
         name: editName.trim(),
         description: editDescription.trim() || undefined,
+        ...(avatarFile ? { avatarFile } : {}),
+        ...(shouldRemoveAvatar ? { removeAvatar: true } : {}),
       });
       setMembers(updatedChat.members || []);
-      toast.success('Chat info updated');
+      setAvatarFile(null);
+      setAvatarPreview(updatedChat.avatarUrl ?? null);
+      setRemoveAvatar(false);
+      notify.success('Информация о чате обновлена');
       onChatUpdated?.(updatedChat);
     } catch (error: unknown) {
       const msg =
         (error as { response?: { data?: { message?: string } } })?.response
           ?.data?.message || 'Failed to update';
-      toast.error(msg);
+      notify.error(msg);
     } finally {
       setSavingInfo(false);
     }
+  };
+
+  const handleAvatarChange = (file?: File) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      notify.error('Можно загрузить только изображение');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      notify.error('Максимальный размер аватара 5MB');
+      return;
+    }
+    if (avatarPreview?.startsWith('blob:')) {
+      URL.revokeObjectURL(avatarPreview);
+    }
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
+    setRemoveAvatar(false);
   };
 
   const handleAddMember = async (memberId: string) => {
@@ -146,7 +183,7 @@ export default function ChatManagementModal({
       setMembers(updatedChat.members || []);
       setSearchQuery('');
       setSearchResults([]);
-      toast.success('Member added successfully');
+      notify.success('Участник добавлен');
       onChatUpdated?.(updatedChat);
     } catch (error: unknown) {
       const message =
@@ -154,7 +191,7 @@ export default function ChatManagementModal({
           typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message === 'string')
           ? (error as { response: { data: { message: string } } }).response.data.message
           : 'Failed to add member';
-      toast.error(message);
+      notify.error(message);
     } finally {
       setUpdating(false);
     }
@@ -168,13 +205,13 @@ export default function ChatManagementModal({
     try {
       const updatedChat = await updateChatMembers(chat.id, undefined, [memberId]);
       setMembers(updatedChat.members || []);
-      toast.success('Member removed successfully');
+      notify.success('Участник удалён');
       onChatUpdated?.(updatedChat);
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data
           ?.message || 'Failed to remove member';
-      toast.error(message);
+      notify.error(message);
     } finally {
       setUpdating(false);
     }
@@ -194,13 +231,13 @@ export default function ChatManagementModal({
     try {
       const updatedChat = await promoteToAdmin(chat.id, memberId);
       setMembers(updatedChat.members || []);
-      toast.success('Member promoted to admin');
+      notify.success('Права администратора выданы');
       onChatUpdated?.(updatedChat);
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data
           ?.message || 'Failed to promote';
-      toast.error(message);
+      notify.error(message);
     } finally {
       setPromotingId(null);
     }
@@ -210,14 +247,14 @@ export default function ChatManagementModal({
     setLeaving(true);
     try {
       await leaveChat(chat.id, newAdminId);
-      toast.success('You left the chat');
+      notify.success('Вы вышли из чата');
       onClose();
       onLeftChat?.();
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data
           ?.message || 'Failed to leave chat';
-      toast.error(message);
+      notify.error(message);
     } finally {
       setLeaving(false);
       setShowLeaveConfirm(false);
@@ -271,6 +308,44 @@ export default function ChatManagementModal({
                   placeholder="Group name"
                   maxLength={100}
                 />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Chat avatar</label>
+                <div className="mt-2 flex items-center gap-3">
+                  {avatarPreview ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- local/external avatar preview
+                    <img src={avatarPreview} alt="" className="h-14 w-14 rounded-full object-cover" />
+                  ) : (
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+                      <User className="text-muted-foreground" size={20} />
+                    </div>
+                  )}
+                  <label className="inline-flex cursor-pointer items-center rounded-lg border px-3 py-2 text-sm text-foreground hover:bg-muted/50">
+                    Upload
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleAvatarChange(e.target.files?.[0])}
+                    />
+                  </label>
+                  {avatarPreview && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (avatarPreview?.startsWith('blob:')) {
+                          URL.revokeObjectURL(avatarPreview);
+                        }
+                        setAvatarFile(null);
+                        setAvatarPreview(null);
+                        setRemoveAvatar(true);
+                      }}
+                      className="text-sm text-red-600 hover:underline"
+                    >
+                      Remove avatar
+                    </button>
+                  )}
+                </div>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Description (optional)</label>

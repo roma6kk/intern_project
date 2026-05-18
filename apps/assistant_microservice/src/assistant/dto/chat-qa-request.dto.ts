@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsOptional,
   IsString,
   IsUUID,
   MaxLength,
@@ -9,6 +10,7 @@ import {
   ArrayMaxSize,
 } from 'class-validator';
 import { RecentMessageDto } from './recent-message.dto';
+import { TargetUserProfileDto } from './target-user-profile.dto';
 
 export class ChatQaRequestDto {
   @IsUUID()
@@ -16,6 +18,15 @@ export class ChatQaRequestDto {
 
   @IsUUID()
   requesterId!: string;
+
+  @ValidateNested()
+  @Type(() => TargetUserProfileDto)
+  requesterUserProfile!: TargetUserProfileDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => TargetUserProfileDto)
+  targetUserProfile?: TargetUserProfileDto;
 
   @IsString()
   @MinLength(1)

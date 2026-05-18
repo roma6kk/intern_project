@@ -8,12 +8,17 @@ export const createComment = async (payload: CreateCommentPayload): Promise<Comm
 
 export const getPostComments = async (
   postId: string,
-  page: number = 1,
+  cursor: string | null = null,
   limit: number = 10
 ): Promise<CommentResponse> => {
   const res = await api.get(`/comments/post/${postId}`, {
-    params: { page, limit },
+    params: cursor ? { cursor, limit } : { limit },
   });
+  return res.data;
+};
+
+export const getCommentById = async (commentId: string): Promise<Comment> => {
+  const res = await api.get(`/comments/${commentId}`);
   return res.data;
 };
 

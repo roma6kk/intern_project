@@ -14,6 +14,7 @@ import {
   type ReportStatus,
 } from '@/entities/report';
 import {
+  ChevronDown,
   ExternalLink,
   Filter,
   Flag,
@@ -21,8 +22,10 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
+import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
 import surface from '@/shared/styles/surface.module.css';
 import animations from '@/shared/styles/animations.module.css';
+import moderationStyles from './moderation.module.css';
 
 type AccountRef = { username: string } | null;
 type ReportItem = {
@@ -68,14 +71,14 @@ function profileHref(account: AccountRef): string | null {
 function targetFromReport(report: ReportItem) {
   if (report.comment) {
     return {
-      label: 'Author (reported)',
+      label: 'Автор (на него жалоба)',
       href: profileHref(report.comment.author.account),
       username: report.comment.author.account?.username ?? report.comment.authorId.slice(0, 8),
     };
   }
   if (report.post) {
     return {
-      label: 'Author (reported)',
+      label: 'Автор (на него жалоба)',
       href: profileHref(report.post.author.account),
       username: report.post.author.account?.username ?? report.post.authorId.slice(0, 8),
     };
@@ -84,7 +87,9 @@ function targetFromReport(report: ReportItem) {
 }
 
 function postViewHref(report: ReportItem): string | null {
-  if (report.comment?.postId) return `/post/${report.comment.postId}`;
+  if (report.comment?.postId && report.comment?.id) {
+    return `/post/${report.comment.postId}?c=${encodeURIComponent(report.comment.id)}`;
+  }
   if (report.post?.id) return `/post/${report.post.id}`;
   return null;
 }
@@ -98,7 +103,7 @@ function contentPreview(report: ReportItem): string {
     const t = report.post.description.trim();
     return t.length > 200 ? `${t.slice(0, 200)}…` : t;
   }
-  return '(no text)';
+  return '(удален)';
 }
 
 function isOverdue(report: ReportItem): boolean {
@@ -125,6 +130,7 @@ export default function ModerationPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [warnReportId, setWarnReportId] = useState<string | null>(null);
   const [warnReason, setWarnReason] = useState('');
+  const [deleteConfirmReport, setDeleteConfirmReport] = useState<ReportItem | null>(null);
   const [filterStatus, setFilterStatus] = useState<ReportStatus | ''>('');
   const [filterPriority, setFilterPriority] = useState<ReportPriority | ''>('');
   const [filterOverdue, setFilterOverdue] = useState(false);
@@ -185,19 +191,13 @@ export default function ModerationPage() {
   };
 
   const onDeletePost = async (report: ReportItem) => {
-    if (
-      !confirm(
-        'Delete this post or comment permanently? This cannot be undone.',
-      )
-    ) {
-      return;
-    }
     await runUpdate(report.id, 'RESOLVED', 'DELETE');
+    setDeleteConfirmReport(null);
   };
 
   const submitWarn = async () => {
     if (!warnReportId) return;
-    const reason = warnReason.trim() || 'Violation warning';
+    const reason = warnReason.trim() || 'Предупреждение о нарушении';
     await runUpdate(warnReportId, 'IN_REVIEW', 'WARN', { warningReason: reason });
     setWarnReportId(null);
     setWarnReason('');
@@ -237,25 +237,30 @@ export default function ModerationPage() {
   if (!canModerate) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center text-muted-foreground">
-        Access denied.
+        Доступ запрещён.
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-transparent">
-      <div className="border-b border-amber-200/40 bg-gradient-to-r from-amber-50/90 to-orange-50/50">
+      <div className={moderationStyles.hero}>
         <div className="mx-auto max-w-4xl px-4 py-8">
-          <div className="flex flex-wrap items-start gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/20">
+          <div className="flex flex-wrap items-center gap-4">
+            <div
+              className={cn(
+                'flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl',
+                moderationStyles.heroIcon,
+              )}
+            >
               <Flag className="h-7 w-7" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
               <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-                Moderation queue
+                Очередь модерации
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Review reports, set priority and SLA, assign work, take action.
+                Просматривайте жалобы, задавайте приоритет и SLA, назначайте исполнителя и выполняйте действия.
               </p>
             </div>
           </div>
@@ -263,58 +268,87 @@ export default function ModerationPage() {
       </div>
 
       <div className="mx-auto max-w-5xl px-4 py-6 pb-24">
-        <div className={cn(surface.card, animations.slideUp, 'mb-6 flex flex-wrap items-center gap-2 rounded-3xl border border-border/80 p-4 rika-glow-edge')}>
-          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            Filters
+        <div
+          className={cn(
+            surface.card,
+            animations.slideUp,
+            'mb-6 flex min-h-[3.25rem] flex-wrap items-center gap-x-4 gap-y-3 rounded-3xl border border-border/80 p-4 innogram-glow-edge',
+          )}
+        >
+          <div className="flex shrink-0 items-center gap-2 text-sm font-medium text-foreground">
+            <Filter className="h-4 w-4 text-primary" aria-hidden />
+            Фильтры
           </div>
-          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-            <span>Status</span>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus((e.target.value || '') as ReportStatus | '')}
-              className="rounded-lg border border-border bg-muted/50/80 px-2.5 py-1.5 text-sm text-foreground focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-            >
-              <option value="">All</option>
-              <option value="OPEN">OPEN</option>
-              <option value="IN_REVIEW">IN_REVIEW</option>
-              <option value="RESOLVED">RESOLVED</option>
-              <option value="REJECTED">REJECTED</option>
-            </select>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span className="shrink-0 text-xs font-medium">Статус</span>
+            <span className={moderationStyles.selectWrap}>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus((e.target.value || '') as ReportStatus | '')}
+                className={moderationStyles.select}
+                aria-label="Фильтр по статусу"
+              >
+                <option value="">Все</option>
+                <option value="OPEN">OPEN</option>
+                <option value="IN_REVIEW">IN_REVIEW</option>
+                <option value="RESOLVED">RESOLVED</option>
+                <option value="REJECTED">REJECTED</option>
+              </select>
+              <ChevronDown className={moderationStyles.selectChevron} aria-hidden />
+            </span>
           </label>
-          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-            <span>Priority</span>
-            <select
-              value={filterPriority}
-              onChange={(e) => setFilterPriority((e.target.value || '') as ReportPriority | '')}
-              className="rounded-lg border border-border bg-muted/50/80 px-2.5 py-1.5 text-sm text-foreground focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-            >
-              <option value="">All</option>
-              <option value="HIGH">HIGH</option>
-              <option value="NORMAL">NORMAL</option>
-              <option value="LOW">LOW</option>
-            </select>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span className="shrink-0 text-xs font-medium">Приоритет</span>
+            <span className={moderationStyles.selectWrap}>
+              <select
+                value={filterPriority}
+                onChange={(e) => setFilterPriority((e.target.value || '') as ReportPriority | '')}
+                className={moderationStyles.select}
+                aria-label="Фильтр по приоритету"
+              >
+                <option value="">Все</option>
+                <option value="HIGH">HIGH</option>
+                <option value="NORMAL">NORMAL</option>
+                <option value="LOW">LOW</option>
+              </select>
+              <ChevronDown className={moderationStyles.selectChevron} aria-hidden />
+            </span>
           </label>
-          <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-muted/50/50 px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted">
+          <label className={moderationStyles.filterChip}>
             <input
               type="checkbox"
               checked={filterOverdue}
               onChange={(e) => setFilterOverdue(e.target.checked)}
-              className="rounded border-border text-amber-600 focus:ring-amber-500"
+              className={moderationStyles.filterCheckbox}
             />
-            Overdue SLA
+            Просрочен SLA
           </label>
-          <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-muted/50/50 px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted">
+          <label className={moderationStyles.filterChip}>
             <input
               type="checkbox"
               checked={filterMine}
               onChange={(e) => setFilterMine(e.target.checked)}
-              className="rounded border-border text-amber-600 focus:ring-amber-500"
+              className={moderationStyles.filterCheckbox}
             />
-            <UserCheck className="h-4 w-4 text-muted-foreground" />
-            Assigned to me
+            <UserCheck className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            Назначено мне
           </label>
         </div>
+
+        <ConfirmDialog
+          open={!!deleteConfirmReport}
+          title="Удалить пост/комментарий?"
+          description="Контент будет удалён навсегда. Это действие нельзя отменить."
+          confirmLabel="Удалить"
+          destructive
+          loading={busyId === deleteConfirmReport?.id}
+          onClose={() => {
+            if (busyId !== deleteConfirmReport?.id) setDeleteConfirmReport(null);
+          }}
+          onConfirm={() => {
+            if (deleteConfirmReport) void onDeletePost(deleteConfirmReport);
+          }}
+        />
 
         {warnReportId && (
           <div
@@ -323,16 +357,16 @@ export default function ModerationPage() {
             aria-modal="true"
           >
             <div className="max-h-[90vh] w-full max-w-md overflow-auto rounded-2xl border border-border bg-card p-6 shadow-2xl">
-              <h2 className="text-lg font-semibold text-foreground">Issue warning</h2>
+              <h2 className="text-lg font-semibold text-foreground">Выдать предупреждение</h2>
               <p className="mt-2 text-sm text-muted-foreground">
-                The user gets a notification with this text and a formal warning in the log.
+                Пользователь получит уведомление с этим текстом, а предупреждение сохранится в журнале.
               </p>
               <textarea
                 value={warnReason}
                 onChange={(e) => setWarnReason(e.target.value)}
-                placeholder="Reason for warning"
+                placeholder="Причина предупреждения"
                 rows={4}
-                className="mt-4 w-full rounded-xl border border-border px-3 py-2 text-sm text-foreground focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500/25"
+                className="mt-4 w-full rounded-xl border border-border px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25"
               />
               <div className="mt-4 flex justify-end gap-2">
                 <button
@@ -343,15 +377,15 @@ export default function ModerationPage() {
                   }}
                   className="rounded-lg bg-muted px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
                 >
-                  Cancel
+                  Отмена
                 </button>
                 <button
                   type="button"
                   onClick={() => void submitWarn()}
                   disabled={busyId === warnReportId}
-                  className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+                  className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
                 >
-                  {busyId === warnReportId ? 'Saving…' : 'Issue warning'}
+                  {busyId === warnReportId ? 'Сохранение…' : 'Выдать предупреждение'}
                 </button>
               </div>
             </div>
@@ -360,12 +394,12 @@ export default function ModerationPage() {
 
         {loading ? (
           <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-10 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin text-amber-600" />
-            Loading reports…
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            Загрузка жалоб…
           </div>
         ) : reports.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card/60 px-6 py-14 text-center text-muted-foreground">
-            No reports match these filters.
+            Нет жалоб, подходящих под фильтры.
           </div>
         ) : (
           <ul className="space-y-5">
@@ -410,7 +444,7 @@ export default function ModerationPage() {
                       </span>
                       {overdue && (
                         <span className="rounded-md bg-rose-100 px-2 py-0.5 font-semibold text-rose-800">
-                          SLA overdue
+                          Просрочен SLA
                         </span>
                       )}
                       <span className="text-muted-foreground">
@@ -418,30 +452,34 @@ export default function ModerationPage() {
                       </span>
                       {report.dueAt && (
                         <span className="text-muted-foreground">
-                          Due {new Date(report.dueAt).toLocaleString()}
+                          До {new Date(report.dueAt).toLocaleString()}
                         </span>
                       )}
                     </div>
 
                     <div className="text-sm">
-                      <span className="font-medium text-muted-foreground">Assigned </span>
+                      <span className="font-medium text-muted-foreground">Назначено </span>
                       <span className="text-foreground">@{assigneeName}</span>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 text-sm">
-                      <span className="text-muted-foreground">Priority</span>
-                      <select
-                        value={pri}
-                        disabled={working || !isOpen}
-                        onChange={(e) =>
-                          void onPriorityChange(report.id, e.target.value as ReportPriority)
-                        }
-                        className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-medium focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:opacity-50"
-                      >
-                        <option value="LOW">LOW</option>
-                        <option value="NORMAL">NORMAL</option>
-                        <option value="HIGH">HIGH</option>
-                      </select>
+                      <span className="text-muted-foreground">Приоритет</span>
+                      <span className={moderationStyles.selectWrap}>
+                        <select
+                          value={pri}
+                          disabled={working || !isOpen}
+                          onChange={(e) =>
+                            void onPriorityChange(report.id, e.target.value as ReportPriority)
+                          }
+                          className={moderationStyles.selectSm}
+                          aria-label="Приоритет жалобы"
+                        >
+                          <option value="LOW">LOW</option>
+                          <option value="NORMAL">NORMAL</option>
+                          <option value="HIGH">HIGH</option>
+                        </select>
+                        <ChevronDown className={moderationStyles.selectChevron} aria-hidden />
+                      </span>
                       {isOpen && (
                         <>
                           <button
@@ -450,7 +488,7 @@ export default function ModerationPage() {
                             onClick={() => void onAssignSelf(report.id)}
                             className="rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-800 hover:bg-indigo-100 disabled:opacity-50"
                           >
-                            Assign to me
+                            Назначить мне
                           </button>
                           <button
                             type="button"
@@ -458,14 +496,14 @@ export default function ModerationPage() {
                             onClick={() => void onUnassign(report.id)}
                             className="rounded-lg bg-muted px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50"
                           >
-                            Unassign
+                            Снять назначение
                           </button>
                         </>
                       )}
                     </div>
 
                     <div className="text-sm text-foreground">
-                      <span className="font-medium text-muted-foreground">Reporter </span>
+                      <span className="font-medium text-muted-foreground">Заявитель </span>
                       {reporterHref ? (
                         <Link
                           href={reporterHref}
@@ -496,7 +534,7 @@ export default function ModerationPage() {
 
                     <div className="rounded-xl border border-slate-100 bg-muted/50/80 p-4">
                       <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        {report.commentId ? 'Comment' : 'Post'}
+                        {report.commentId ? 'Комментарий' : 'Пост'}
                       </div>
                       <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">
                         {contentPreview(report)}
@@ -506,14 +544,14 @@ export default function ModerationPage() {
                           href={postHref}
                           className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-amber-800 hover:underline"
                         >
-                          Open post
+                          Открыть {report.commentId ? 'комментарий' : 'пост'}
                           <ExternalLink className="h-3.5 w-3.5" />
                         </Link>
                       )}
                     </div>
 
                     <div>
-                      <div className="text-xs font-semibold text-muted-foreground">Report reason</div>
+                      <div className="text-xs font-semibold text-muted-foreground">Причина жалобы</div>
                       <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">
                         {report.reason}
                       </p>
@@ -527,7 +565,7 @@ export default function ModerationPage() {
                           onClick={() => onResolve(report.id, 'IN_REVIEW', 'NONE')}
                           className="rounded-lg bg-blue-100 px-2.5 py-1.5 text-xs font-medium text-blue-900 hover:bg-blue-200 disabled:opacity-50"
                         >
-                          In review
+                          В работе
                         </button>
                         <button
                           type="button"
@@ -535,7 +573,7 @@ export default function ModerationPage() {
                           onClick={() => onResolve(report.id, 'RESOLVED', 'HIDE')}
                           className="rounded-lg bg-orange-100 px-2.5 py-1.5 text-xs font-medium text-orange-900 hover:bg-orange-200 disabled:opacity-50"
                         >
-                          Resolve + hide
+                          Решить и скрыть
                         </button>
                         <button
                           type="button"
@@ -543,15 +581,15 @@ export default function ModerationPage() {
                           onClick={() => setWarnReportId(report.id)}
                           className="rounded-lg bg-amber-100 px-2.5 py-1.5 text-xs font-medium text-amber-950 hover:bg-amber-200 disabled:opacity-50"
                         >
-                          Warn user
+                          Предупредить
                         </button>
                         <button
                           type="button"
                           disabled={working}
-                          onClick={() => void onDeletePost(report)}
+                          onClick={() => setDeleteConfirmReport(report)}
                           className="rounded-lg bg-rose-50 px-2.5 py-1.5 text-xs font-medium text-rose-800 hover:bg-rose-100 disabled:opacity-50"
                         >
-                          Delete content
+                          Удалить контент
                         </button>
                         <button
                           type="button"
@@ -559,7 +597,7 @@ export default function ModerationPage() {
                           onClick={() => onResolve(report.id, 'REJECTED', 'NONE')}
                           className="rounded-lg bg-muted px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50"
                         >
-                          Reject
+                          Отклонить
                         </button>
                       </div>
                     )}

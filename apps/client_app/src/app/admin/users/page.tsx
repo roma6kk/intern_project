@@ -10,6 +10,7 @@ import {
 import { useAuth } from '@/entities/session';
 import { ArrowLeft, Loader2, Shield } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
+import { ConfirmDialog } from '@/shared/ui';
 import surface from '@/shared/styles/surface.module.css';
 import animations from '@/shared/styles/animations.module.css';
 
@@ -44,6 +45,21 @@ function stateBadgeClass(state: AdminUserRow['state']) {
   }
 }
 
+function roleBadgeClass(role: AdminUserRow['role']) {
+  switch (role) {
+    case 'ADMIN':
+      return 'bg-violet-50 text-violet-900 ring-violet-600/20';
+    case 'MODERATOR':
+      return 'bg-sky-50 text-sky-900 ring-sky-600/15';
+    default:
+      return 'bg-muted/50 text-muted-foreground ring-slate-500/10';
+  }
+}
+
+type AdminRoleConfirm =
+  | { kind: 'grant'; userId: string; username: string }
+  | { kind: 'revoke'; userId: string; username: string };
+
 export default function AdminUsersPage() {
   const { user } = useAuth();
   const [rows, setRows] = useState<AdminUserRow[]>([]);
@@ -52,6 +68,9 @@ export default function AdminUsersPage() {
   const [bulkReason, setBulkReason] = useState('');
   const [bulkWorking, setBulkWorking] = useState(false);
   const [bulkMessage, setBulkMessage] = useState<string | null>(null);
+  const [roleConfirm, setRoleConfirm] = useState<AdminRoleConfirm | null>(null);
+  const [roleWorking, setRoleWorking] = useState(false);
+  const [roleError, setRoleError] = useState<string | null>(null);
 
   const isAdmin = user?.role === 'ADMIN';
 
@@ -96,13 +115,56 @@ export default function AdminUsersPage() {
     }
   };
 
-  const runBulk = async (action: 'WARN' | 'SUSPEND' | 'UNSUSPEND' | 'ROLE') => {
+  const applyAdminRole = async (
+    target: AdminRoleConfirm,
+    nextRole: 'ADMIN' | 'USER',
+  ) => {
+    setRoleWorking(true);
+    setRoleError(null);
+    try {
+      const reason =
+        bulkReason.trim() ||
+        (nextRole === 'ADMIN'
+          ? 'Назначение администратором'
+          : 'Снятие прав администратора');
+      await updateUserRole(target.userId, { role: nextRole, reason });
+      setRoleConfirm(null);
+      await load();
+    } catch (err: unknown) {
+      const msg =
+        err &&
+        typeof err === 'object' &&
+        'response' in err &&
+        err.response &&
+        typeof err.response === 'object' &&
+        'data' in err.response &&
+        err.response.data &&
+        typeof err.response.data === 'object' &&
+        'message' in err.response.data
+          ? String((err.response.data as { message: unknown }).message)
+          : 'Не удалось изменить роль';
+      setRoleError(msg);
+    } finally {
+      setRoleWorking(false);
+    }
+  };
+
+  const runBulk = async (
+    action: 'WARN' | 'SUSPEND' | 'UNSUSPEND' | 'ROLE' | 'GRANT_ADMIN' | 'REVOKE_ADMIN',
+  ) => {
     const ids = [...selected];
     if (ids.length === 0) {
-      setBulkMessage('Select at least one user');
+      setBulkMessage('Выберите хотя бы одного пользователя');
       return;
     }
-    const reason = bulkReason.trim() || 'Bulk admin action';
+    const reason = bulkReason.trim() || 'Массовое действие администратора';
+    if (action === 'REVOKE_ADMIN') {
+      const eligible = ids.filter((id) => id !== user?.id);
+      if (eligible.length === 0) {
+        setBulkMessage('Нельзя снять права админа у себя');
+        return;
+      }
+    }
     setBulkWorking(true);
     setBulkMessage(null);
     try {
@@ -114,19 +176,31 @@ export default function AdminUsersPage() {
             ? { userIds: ids, action: 'SUSPEND', suspend: { until, reason } }
             : action === 'UNSUSPEND'
               ? { userIds: ids, action: 'UNSUSPEND', unsuspend: { reason } }
-              : {
-                  userIds: ids,
-                  action: 'ROLE',
-                  rolePayload: { role: 'USER', reason },
-                };
+              : action === 'GRANT_ADMIN'
+                ? {
+                    userIds: ids,
+                    action: 'ROLE',
+                    rolePayload: { role: 'ADMIN', reason },
+                  }
+                : action === 'REVOKE_ADMIN'
+                  ? {
+                      userIds: ids.filter((id) => id !== user?.id),
+                      action: 'ROLE',
+                      rolePayload: { role: 'USER', reason },
+                    }
+                  : {
+                      userIds: ids,
+                      action: 'ROLE',
+                      rolePayload: { role: 'USER', reason },
+                    };
       const res = await bulkAdminUsers(payload);
       setBulkMessage(
-        `Done: ${res.succeeded.length} ok, ${res.failed.length} failed`,
+        `Готово: успешно ${res.succeeded.length}, с ошибками ${res.failed.length}`,
       );
       setSelected(new Set());
       await load();
     } catch {
-      setBulkMessage('Bulk request failed');
+      setBulkMessage('Массовый запрос не выполнен');
     } finally {
       setBulkWorking(false);
     }
@@ -135,7 +209,7 @@ export default function AdminUsersPage() {
   if (!isAdmin) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center text-muted-foreground">
-        Access denied.
+        Доступ запрещён.
       </div>
     );
   }
@@ -150,9 +224,9 @@ export default function AdminUsersPage() {
             </div>
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-                Users
+                Пользователи
               </h1>
-              <p className="text-sm text-muted-foreground">Accounts, roles, bulk moderation</p>
+              <p className="text-sm text-muted-foreground">Аккаунты, роли, массовые действия</p>
             </div>
           </div>
           <Link
@@ -160,16 +234,16 @@ export default function AdminUsersPage() {
             className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 transition-colors hover:text-indigo-800"
           >
             <ArrowLeft className="h-4 w-4" />
-            Admin home
+            Главная админки
           </Link>
         </div>
 
-        <div className={cn(surface.card, animations.slideUp, 'mb-6 rounded-3xl border border-indigo-100 p-4 ring-1 ring-indigo-500/5 rika-glow-edge')}>
+        <div className={cn(surface.card, animations.slideUp, 'mb-6 rounded-3xl border border-indigo-100 p-4 ring-1 ring-indigo-500/5 innogram-glow-edge')}>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <span className="text-sm font-medium text-foreground">
-              Bulk actions
+              Массовые действия
               <span className="ml-2 rounded-full bg-card/80 px-2 py-0.5 text-xs font-mono text-muted-foreground ring-1 ring-border">
-                {selected.size} selected
+                выбрано: {selected.size}
               </span>
             </span>
             <button
@@ -177,23 +251,25 @@ export default function AdminUsersPage() {
               onClick={toggleAll}
               className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
             >
-              {selected.size === rows.length ? 'Clear all' : 'Select all'}
+              {selected.size === rows.length ? 'Снять выделение' : 'Выбрать всех'}
             </button>
           </div>
           <textarea
             value={bulkReason}
             onChange={(e) => setBulkReason(e.target.value)}
-            placeholder="Reason for bulk warn / suspend / unsuspend / role reset"
+            placeholder="Причина для массового предупреждения / блокировки / разблокировки / сброса роли"
             className="mb-3 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground shadow-inner placeholder:text-muted-foreground focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
             rows={2}
           />
           <div className="flex flex-wrap gap-2">
             {(
               [
-                ['WARN', 'Bulk warn', 'bg-amber-100 text-amber-950 hover:bg-amber-200/90'],
-                ['SUSPEND', 'Suspend 7d', 'bg-rose-100 text-rose-900 hover:bg-rose-200/90'],
-                ['UNSUSPEND', 'Unsuspend', 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200/90'],
-                ['ROLE', 'Set role USER', 'bg-muted text-foreground hover:bg-muted/90'],
+                ['WARN', 'Предупредить', 'bg-amber-100 text-amber-950 hover:bg-amber-200/90'],
+                ['SUSPEND', 'Заблокировать на 7 дней', 'bg-rose-100 text-rose-900 hover:bg-rose-200/90'],
+                ['UNSUSPEND', 'Разблокировать', 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200/90'],
+                ['GRANT_ADMIN', 'Назначить админом', 'bg-violet-100 text-violet-950 hover:bg-violet-200/90'],
+                ['REVOKE_ADMIN', 'Снять права админа', 'bg-muted text-foreground hover:bg-muted/90'],
+                ['ROLE', 'Установить роль USER', 'bg-muted text-foreground hover:bg-muted/90'],
               ] as const
             ).map(([action, label, cls]) => (
               <button
@@ -210,7 +286,7 @@ export default function AdminUsersPage() {
           {bulkWorking && (
             <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Working…
+              Выполняется…
             </p>
           )}
           {bulkMessage && !bulkWorking && (
@@ -221,7 +297,7 @@ export default function AdminUsersPage() {
         {loading ? (
           <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-8 text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin text-indigo-500" />
-            Loading users…
+            Загрузка пользователей…
           </div>
         ) : (
           <ul className="space-y-3">
@@ -245,30 +321,66 @@ export default function AdminUsersPage() {
                     >
                       {row.state}
                     </span>
-                    <span className="text-xs text-muted-foreground">{row.role}</span>
+                    <span
+                      className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ring-1 ${roleBadgeClass(row.role)}`}
+                    >
+                      {row.role}
+                    </span>
                   </div>
                   <p className="mt-0.5 truncate text-sm text-muted-foreground">
-                    {row.email || 'No email'}
+                    {row.email || 'Нет email'}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        await updateUserRole(row.userId, {
-                          role: row.role === 'USER' ? 'MODERATOR' : 'USER',
-                          reason: 'ADMIN_UI_CHANGE',
-                        });
-                        await load();
-                      }}
-                      className="rounded-lg bg-indigo-50 px-2.5 py-1.5 text-xs font-medium text-indigo-800 transition-colors hover:bg-indigo-100"
-                    >
-                      Toggle USER / MODERATOR
-                    </button>
+                    {row.role === 'ADMIN' ? (
+                      <button
+                        type="button"
+                        disabled={row.userId === user?.id}
+                        onClick={() =>
+                          setRoleConfirm({
+                            kind: 'revoke',
+                            userId: row.userId,
+                            username: row.username,
+                          })
+                        }
+                        className="rounded-lg bg-muted px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Снять права админа
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setRoleConfirm({
+                            kind: 'grant',
+                            userId: row.userId,
+                            username: row.username,
+                          })
+                        }
+                        className="rounded-lg bg-violet-50 px-2.5 py-1.5 text-xs font-medium text-violet-900 transition-colors hover:bg-violet-100"
+                      >
+                        Назначить админом
+                      </button>
+                    )}
+                    {row.role !== 'ADMIN' && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await updateUserRole(row.userId, {
+                            role: row.role === 'USER' ? 'MODERATOR' : 'USER',
+                            reason: 'ADMIN_UI_CHANGE',
+                          });
+                          await load();
+                        }}
+                        className="rounded-lg bg-indigo-50 px-2.5 py-1.5 text-xs font-medium text-indigo-800 transition-colors hover:bg-indigo-100"
+                      >
+                        Переключить USER / MODERATOR
+                      </button>
+                    )}
                     <Link
                       href={`/admin/users/${row.userId}`}
                       className="rounded-lg bg-muted px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
                     >
-                      Details &amp; timeline
+                      Детали и история
                     </Link>
                   </div>
                 </div>
@@ -277,6 +389,43 @@ export default function AdminUsersPage() {
           </ul>
         )}
       </div>
+
+      <ConfirmDialog
+        open={roleConfirm !== null}
+        title={
+          roleConfirm?.kind === 'grant'
+            ? 'Назначить администратором?'
+            : 'Снять права администратора?'
+        }
+        description={
+          roleConfirm
+            ? roleConfirm.kind === 'grant'
+              ? `Пользователь @${roleConfirm.username} получит полный доступ к админке.`
+              : `Пользователь @${roleConfirm.username} потеряет доступ к админке (роль станет USER).`
+            : undefined
+        }
+        confirmLabel={roleConfirm?.kind === 'grant' ? 'Назначить' : 'Снять'}
+        destructive={roleConfirm?.kind === 'revoke'}
+        loading={roleWorking}
+        onClose={() => {
+          if (!roleWorking) {
+            setRoleConfirm(null);
+            setRoleError(null);
+          }
+        }}
+        onConfirm={() => {
+          if (!roleConfirm) return;
+          void applyAdminRole(
+            roleConfirm,
+            roleConfirm.kind === 'grant' ? 'ADMIN' : 'USER',
+          );
+        }}
+      />
+      {roleError && (
+        <p className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-rose-100 px-4 py-2 text-sm text-rose-900 shadow-lg">
+          {roleError}
+        </p>
+      )}
     </div>
   );
 }

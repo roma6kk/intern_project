@@ -6,6 +6,10 @@ export class DialogSummaryBodyDto {
   chatId!: string;
 
   @IsOptional()
+  @IsUUID()
+  targetUserId?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)

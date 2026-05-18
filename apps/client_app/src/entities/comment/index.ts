@@ -2,6 +2,7 @@ export type { Comment, CommentResponse, CreateCommentPayload } from './model/typ
 export {
   createComment,
   getPostComments,
+  getCommentById,
   getCommentReplies,
   updateComment,
   deleteComment,

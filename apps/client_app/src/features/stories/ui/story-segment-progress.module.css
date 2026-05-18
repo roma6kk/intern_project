@@ -1,0 +1,22 @@
+@keyframes segmentFill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.fillLinear {
+  transform-origin: left center;
+  animation-name: segmentFill;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fillLinear {
+    animation: none;
+    transform: scaleX(1);
+  }
+}

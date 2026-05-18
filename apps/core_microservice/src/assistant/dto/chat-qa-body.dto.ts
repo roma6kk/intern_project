@@ -1,8 +1,18 @@
-import { IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class ChatQaBodyDto {
   @IsUUID()
   chatId!: string;
+
+  @IsOptional()
+  @IsUUID()
+  targetUserId?: string;
 
   @IsString()
   @MinLength(1)

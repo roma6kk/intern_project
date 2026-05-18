@@ -1,4 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
+import { parseUuidArray } from './parse-uuid-array.transform';
 import {
   IsArray,
   IsBoolean,
@@ -16,6 +18,7 @@ export class UpdateChatDto {
   @IsOptional()
   @IsArray()
   @IsUUID('4', { each: true })
+  @Transform(({ value }: { value: unknown }) => parseUuidArray(value))
   addMemberIds?: string[];
 
   @ApiPropertyOptional({
@@ -25,6 +28,7 @@ export class UpdateChatDto {
   @IsOptional()
   @IsArray()
   @IsUUID('4', { each: true })
+  @Transform(({ value }: { value: unknown }) => parseUuidArray(value))
   removeMemberIds?: string[];
 
   @ApiPropertyOptional({
@@ -62,4 +66,19 @@ export class UpdateChatDto {
   @IsString()
   @MaxLength(500)
   description?: string;
+
+  @ApiPropertyOptional({
+    description: 'Remove current group chat avatar',
+  })
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      return normalized === 'true' || normalized === '1';
+    }
+    return false;
+  })
+  @IsBoolean()
+  removeAvatar?: boolean;
 }

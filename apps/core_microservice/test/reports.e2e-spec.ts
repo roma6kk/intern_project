@@ -127,6 +127,29 @@ describe('Reports Controller (e2e)', () => {
       });
   });
 
+  it('/reports (POST) - user can create comment report', () => {
+    const commentId = '660e8400-e29b-41d4-a716-446655440001';
+    mockPrismaService.comment.findUnique.mockResolvedValueOnce({ id: commentId });
+    mockPrismaService.report.create.mockResolvedValueOnce({
+      id: 'report-comment-1',
+      commentId,
+      postId: null,
+      reason: 'Abusive reply text',
+      status: 'OPEN',
+    });
+    return request(app.getHttpServer())
+      .post('/reports')
+      .set('Authorization', 'Bearer user_token')
+      .send({
+        commentId,
+        reason: 'Abusive reply text',
+      })
+      .expect(201)
+      .expect((res) => {
+        expect(res.body.id).toEqual('report-comment-1');
+      });
+  });
+
   it('/reports (GET) - user cannot list reports', () => {
     return request(app.getHttpServer())
       .get('/reports')

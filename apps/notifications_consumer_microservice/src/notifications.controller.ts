@@ -12,6 +12,12 @@ interface NotificationData {
   message?: string;
 }
 
+interface PasswordResetData {
+  email: string;
+  code: string;
+  username?: string;
+}
+
 @Controller()
 export class NotificationsController {
   private readonly logger = new Logger(NotificationsController.name);
@@ -26,6 +32,21 @@ export class NotificationsController {
       this.logger.log(`Successfully processed notification: type=${data.type}`);
     } catch (error) {
       this.logger.error(`Failed to process notification: type=${data.type}`, (error as Error).stack);
+      throw error;
+    }
+  }
+
+  @EventPattern('password_reset_requested')
+  async handlePasswordResetRequested(@Payload() data: PasswordResetData): Promise<void> {
+    this.logger.log(`Received password_reset_requested event: email=${data.email}`);
+    try {
+      await this.notificationsService.sendPasswordResetCode(data);
+      this.logger.log(`Password reset email sent: email=${data.email}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to send password reset email: email=${data.email}`,
+        (error as Error).stack,
+      );
       throw error;
     }
   }

@@ -7,6 +7,8 @@ import type { Post } from '@/entities/post';
 import { updatePost } from '@/entities/post';
 import { MentionTextarea } from '@/shared/ui/mention-textarea';
 import { cn } from '@/shared/lib/cn';
+import { isVideoUrl } from '@/shared/lib/is-video-url';
+import { notify } from '@/shared/lib/notify';
 import modal from '@/shared/styles/modal.module.css';
 
 interface EditPostModalProps {
@@ -61,7 +63,7 @@ export function EditPostModal({ post, open, onClose }: EditPostModalProps) {
     const remainingSlots = MAX_FILES - currentFileCount;
 
     if (remainingSlots <= 0) {
-      alert(`Maximum number of files: ${MAX_FILES}`);
+      notify.info(`Максимальное количество файлов: ${MAX_FILES}`);
       return;
     }
 
@@ -71,7 +73,7 @@ export function EditPostModal({ post, open, onClose }: EditPostModalProps) {
 
     const filesToProcess = selected.slice(0, remainingSlots);
     if (selected.length > remainingSlots) {
-      alert(`You can only add ${remainingSlots} file(s). The rest will be ignored.`);
+      notify.info(`Можно добавить только ${remainingSlots} файл(ов). Остальные будут проигнорированы.`);
     }
 
     await Promise.all(
@@ -139,7 +141,7 @@ export function EditPostModal({ post, open, onClose }: EditPostModalProps) {
       window.location.reload();
     } catch (error) {
       console.error('Failed to update post:', error);
-      alert('Failed to update post');
+      notify.error('Не удалось обновить пост');
     } finally {
       setIsEditing(false);
     }
@@ -152,7 +154,7 @@ export function EditPostModal({ post, open, onClose }: EditPostModalProps) {
       <button type="button" className={modal.dim} onClick={handleClose} aria-label="Закрыть" />
       <div className={cn(modal.shell, 'max-w-2xl max-h-[90vh]')} onClick={(e) => e.stopPropagation()}>
         <div className={modal.header}>
-          <h2 className="text-lg font-semibold text-foreground">Edit Post</h2>
+          <h2 className="text-lg font-semibold text-foreground">Редактирование поста</h2>
           <button onClick={handleClose} className="p-1 rounded-full hover:bg-muted transition">
             <X size={20} className="text-muted-foreground" />
           </button>
@@ -161,11 +163,11 @@ export function EditPostModal({ post, open, onClose }: EditPostModalProps) {
         <div className="p-4 overflow-y-auto max-h-[calc(90vh-200px)]">
           {editExistingAssets.length > 0 && (
             <div className="mb-4">
-              <h3 className="text-sm font-medium text-foreground mb-2">Existing Media</h3>
+              <h3 className="text-sm font-medium text-foreground mb-2">Текущие медиа</h3>
               <div className="grid grid-cols-3 gap-2">
                 {editExistingAssets.map((asset) => {
                   const isMarkedForDelete = editAssetsToDelete.includes(asset.id);
-                  const isVideo = asset.type === 'VIDEO' || !!asset.url.match(/\.(mp4|webm|ogg|mov)$/i);
+                  const isVideo = asset.type === 'VIDEO' || isVideoUrl(asset.url);
                   return (
                     <div
                       key={asset.id}
@@ -191,7 +193,7 @@ export function EditPostModal({ post, open, onClose }: EditPostModalProps) {
                           isMarkedForDelete ? 'bg-green-500' : 'bg-red-500'
                         }`}
                       >
-                        {isMarkedForDelete ? 'Restore' : 'Delete'}
+                        {isMarkedForDelete ? 'Вернуть' : 'Удалить'}
                       </button>
                     </div>
                   );
@@ -202,7 +204,7 @@ export function EditPostModal({ post, open, onClose }: EditPostModalProps) {
 
           {(editPreviews.length > 0 || editExistingAssets.length - editAssetsToDelete.length + editFiles.length < 10) && (
             <div className="mb-4">
-              <h3 className="text-sm font-medium text-foreground mb-2">New Media</h3>
+              <h3 className="text-sm font-medium text-foreground mb-2">Новые медиа</h3>
               {editPreviews.length > 0 && (
                 <div className="border rounded-lg overflow-hidden relative mb-2">
                   {editFileTypes[editCurrentIndex] === 'image' ? (
@@ -290,11 +292,11 @@ export function EditPostModal({ post, open, onClose }: EditPostModalProps) {
                   )}
                 >
                   {editPreviews.length > 0
-                    ? `Add More (${editExistingAssets.length - editAssetsToDelete.length + editFiles.length}/10)`
-                    : 'Add Files'}
+                    ? `Добавить ещё (${editExistingAssets.length - editAssetsToDelete.length + editFiles.length}/10)`
+                    : 'Добавить файлы'}
                 </label>
                 {editExistingAssets.length - editAssetsToDelete.length + editFiles.length >= 10 && (
-                  <p className="text-xs text-muted-foreground mt-2">Maximum 10 files</p>
+                  <p className="text-xs text-muted-foreground mt-2">Максимум 10 файлов</p>
                 )}
               </div>
             </div>
@@ -304,7 +306,7 @@ export function EditPostModal({ post, open, onClose }: EditPostModalProps) {
             <MentionTextarea
               value={editDescription}
               onChange={setEditDescription}
-              placeholder="Edit post description... (use @ to mention)"
+              placeholder="Отредактируйте описание... (используйте @, чтобы упомянуть)"
               className="w-full text-sm bg-muted/50 text-foreground placeholder:text-muted-foreground px-3 py-2 rounded-lg border border-border resize-none min-h-[100px] box-border"
             />
           </div>
@@ -317,7 +319,7 @@ export function EditPostModal({ post, open, onClose }: EditPostModalProps) {
             className="px-4 py-2 text-sm text-foreground bg-muted hover:bg-muted/80 rounded-xl transition"
             disabled={isEditing}
           >
-            Cancel
+            Отмена
           </button>
           <button
             type="button"
@@ -325,7 +327,7 @@ export function EditPostModal({ post, open, onClose }: EditPostModalProps) {
             disabled={isEditing}
             className="px-4 py-2 text-sm text-primary-foreground bg-primary hover:opacity-90 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isEditing ? 'Saving...' : 'Save'}
+            {isEditing ? 'Сохранение...' : 'Сохранить'}
           </button>
         </div>
       </div>

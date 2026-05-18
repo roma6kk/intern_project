@@ -17,6 +17,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
   redis:
     image: redis:latest
     container_name: redis_container
@@ -26,20 +27,34 @@ services:
       - redis_data:/data
     networks:
       - innogram-network
+
+  rabbitmq:
+    image: rabbitmq:3
+    container_name: rabbitmq-container
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - innogram-network
+
   minio:
-      image: minio/minio
-      container_name: minio_container
-      ports:
-        - "9000:9000"
-        - "9001:9001"
-      environment:
-        MINIO_ROOT_USER: minioadmin
-        MINIO_ROOT_PASSWORD: minioadmin
-      volumes:
-        - minio_data:/data
-      command: server /data --console-address ":9001"
-      networks:
-        - innogram-network
+    image: minio/minio
+    container_name: minio_container
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - innogram-network
+
   createbuckets:
     image: minio/mc
     depends_on:
@@ -54,24 +69,14 @@ services:
         until /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin; do
           sleep 1
         done
-        
+
         echo "MinIO is UP!"
-        /usr/bin/mc mb myminio/rika-bucket
-        /usr/bin/mc anonymous set public myminio/rika-bucket
-        
+        /usr/bin/mc mb myminio/innogram-bucket
+        /usr/bin/mc anonymous set public myminio/innogram-bucket
+
         echo "Bucket created."
         exit 0
-  rabbitmq:
-    image: rabbitmq:3
-    container_name: rabbitmq-container
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
-    networks:
-      - innogram-network
+
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus-container
@@ -82,7 +87,8 @@ services:
     networks:
       - innogram-network
     extra_hosts:
-        - "host.docker.internal:host-gateway"
+      - "host.docker.internal:host-gateway"
+
   grafana:
     image: grafana/grafana:latest
     container_name: grafana-container
@@ -94,6 +100,7 @@ services:
       - prometheus
     networks:
       - innogram-network
+
 volumes:
   postgres_data:
   redis_data:

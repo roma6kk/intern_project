@@ -6,11 +6,11 @@ The auth microservice is responsible for user authentication and authorization f
 
 ### Architecture
 
-- **Framework**: Express (TypeScript)
-- **Entry point**: `src/app.ts`
-- **Routing**: `src/routes/auth.routes.ts` mounted under `/internal/auth`
-- **Database**: Prisma via `connectDB` (`src/config/prisma.ts`)
-- **Cache**: Redis (`src/config/redis.ts`)
+- **Framework**: NestJS 11 (TypeScript)
+- **Entry point**: `src/main.ts`
+- **Routing**: `src/auth/auth.controller.ts` under `/internal/auth`
+- **Database**: Prisma via `PrismaService` (`src/database/`)
+- **Cache**: Redis (`src/redis/`)
 - **Metrics**: Prometheus metrics exposed on `/metrics`
 - **Health**: Lightweight health check on `/health`
 
@@ -22,6 +22,13 @@ From the repository root:
 cd apps/auth_microservice
 npm install
 npm run dev
+```
+
+Production build:
+
+```bash
+npm run build
+npm run start:prod
 ```
 
 The service listens on `PORT` from the environment (for example `3001`).

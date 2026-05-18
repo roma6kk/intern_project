@@ -25,7 +25,10 @@ describe('AssistantService', () => {
           useValue: {
             findOne: jest.fn().mockResolvedValue({
               type: 'PRIVATE',
-              members: [{ id: 'u1' }, { id: 'u2' }],
+              members: [
+                { id: 'u1', account: { username: 'alice' } },
+                { id: 'u2', account: { username: 'bob' } },
+              ],
               messages: [
                 {
                   id: 'm1',
@@ -33,6 +36,7 @@ describe('AssistantService', () => {
                   content: 'hello',
                   createdAt: new Date('2025-01-01T00:00:00.000Z'),
                   deletedAt: null,
+                  sender: { account: { username: 'bob' } },
                 },
               ],
             }),
@@ -42,15 +46,32 @@ describe('AssistantService', () => {
           provide: PrismaService,
           useValue: {
             user: {
-              findUnique: jest.fn().mockResolvedValue({
-                id: 'u2',
-                account: { username: 'bob', role: 'USER' },
-                profile: {
-                  firstName: 'Bob',
-                  secondName: null,
-                  bio: 'loves music',
-                },
-              }),
+              findUnique: jest
+                .fn()
+                .mockImplementation(({ where }: { where: { id: string } }) => {
+                  const rows: Record<string, object> = {
+                    u1: {
+                      id: 'u1',
+                      account: { username: 'alice', role: 'USER' },
+                      profile: {
+                        firstName: 'Alice',
+                        secondName: null,
+                        bio: null,
+                      },
+                    },
+                    u2: {
+                      id: 'u2',
+                      account: { username: 'bob', role: 'USER' },
+                      profile: {
+                        firstName: 'Bob',
+                        secondName: null,
+                        bio: 'loves music',
+                      },
+                    },
+                  };
+                  const row = rows[where.id];
+                  return Promise.resolve(row ?? null);
+                }),
             },
           },
         },
@@ -99,11 +120,13 @@ describe('AssistantService', () => {
       chatId: string;
       requesterId: string;
       targetUserId: string;
+      requesterUserProfile: { userId: string };
       targetUserProfile: { userId: string };
     };
     expect(requestBody.chatId).toBe('chat-1');
     expect(requestBody.requesterId).toBe('u1');
     expect(requestBody.targetUserId).toBe('u2');
+    expect(requestBody.requesterUserProfile.userId).toBe('u1');
     expect(requestBody.targetUserProfile.userId).toBe('u2');
 
     const requestConfig = config as {

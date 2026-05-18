@@ -3,15 +3,16 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useRouter } from 'next/navigation';
 import api from '@/shared/api';
 import { useAuth } from '@/entities/session';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
-import { cn } from '@/shared/lib/cn';
+import { notify } from '@/shared/lib/notify';
 
 const loginSchema = z.object({
-  email: z.string().email('Invalid email'),
-  password: z.string().min(6, 'Minimum 6 characters'),
+  email: z.string().email('Некорректный email'),
+  password: z.string().min(6, 'Минимум 6 символов'),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
@@ -22,6 +23,7 @@ interface SignInFormProps {
 
 export default function SignInForm({ onSwitch }: SignInFormProps) {
   const { login } = useAuth();
+  const router = useRouter();
   const {
     register,
     handleSubmit,
@@ -36,7 +38,7 @@ export default function SignInForm({ onSwitch }: SignInFormProps) {
       login(res.data.accessToken, res.data.user);
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
-      alert(err.response?.data?.message || 'Login failed');
+      notify.error(err.response?.data?.message || 'Не удалось войти');
     }
   };
 
@@ -47,16 +49,13 @@ export default function SignInForm({ onSwitch }: SignInFormProps) {
         window.location.href = data.url;
       }
     } catch (error) {
-      console.error('Failed to init Google Auth', error);
+      console.error('Не удалось инициализировать вход через Google', error);
     }
   };
 
   return (
-    <div className={cn('w-full mx-auto rounded-2xl border border-border/70 bg-card/65 p-5 backdrop-blur-md sm:p-6')}>
-      <div className="mb-6">
-        <h3 className="text-xl font-semibold text-foreground">Welcome back</h3>
-        <p className="mt-1 text-sm text-muted-foreground">Log in to continue working with your account.</p>
-      </div>
+    <div className="w-full">
+      <h3 className="mb-6 text-xl font-semibold text-foreground">С возвращением</h3>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5">
         <div>
@@ -72,7 +71,7 @@ export default function SignInForm({ onSwitch }: SignInFormProps) {
         <div>
           <Input
             {...register('password')}
-            placeholder="Password"
+            placeholder="Пароль"
             type="password"
             className="py-3 text-sm bg-card/70"
           />
@@ -87,7 +86,7 @@ export default function SignInForm({ onSwitch }: SignInFormProps) {
           disabled={isSubmitting}
           className="w-full font-semibold py-2.5 mt-1"
         >
-          {isSubmitting ? 'Signing you in...' : 'Log In'}
+          {isSubmitting ? 'Вход...' : 'Войти'}
         </Button>
       </form>
 
@@ -97,7 +96,7 @@ export default function SignInForm({ onSwitch }: SignInFormProps) {
             <span className="w-full border-t border-border" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-4 text-muted-foreground font-semibold">or</span>
+            <span className="bg-background px-4 text-muted-foreground font-semibold">или</span>
           </div>
         </div>
 
@@ -124,21 +123,25 @@ export default function SignInForm({ onSwitch }: SignInFormProps) {
               fill="#EA4335"
             />
           </svg>
-          Continue with Google
+          Продолжить с Google
         </button>
 
         <div className="text-center mt-6">
-          <button type="button" className="text-primary text-sm font-medium hover:opacity-90">
-            Forgot password?
+          <button 
+            type="button" 
+            onClick={() => router.push('/login/forgot')}
+            className="text-primary text-sm font-medium hover:opacity-90"
+          >
+            Забыли пароль?
           </button>
         </div>
       </div>
 
       <div className="mt-8 text-center">
         <p className="text-sm text-muted-foreground">
-          Don&apos;t have an account yet?{' '}
+          Нет аккаунта?{' '}
           <button type="button" onClick={onSwitch} className="text-primary font-semibold hover:opacity-90">
-            Create one
+            Создать
           </button>
         </p>
       </div>

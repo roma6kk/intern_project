@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import api from '@/shared/api'
 import { createChat } from '@/entities/chat'
 import type { Chat } from '@/entities/chat'
+import { useAuth } from '@/entities/session/model/auth-context'
+import { notify } from '@/shared/lib/notify'
 
 interface User {
   id: string
@@ -35,12 +37,21 @@ interface Props {
 }
 
 export default function CreateChatModal({ open, onClose, onCreated }: Props) {
+  const { user: currentUser } = useAuth()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<User[]>([])
   const [selected, setSelected] = useState<User[]>([])
   const [groupName, setGroupName] = useState('')
   const [groupDescription, setGroupDescription] = useState('')
+  const [groupAvatarFile, setGroupAvatarFile] = useState<File | null>(null)
+  const [groupAvatarPreview, setGroupAvatarPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    return () => {
+      if (groupAvatarPreview) URL.revokeObjectURL(groupAvatarPreview)
+    }
+  }, [groupAvatarPreview])
 
   if (!open) return null
 
@@ -59,13 +70,18 @@ export default function CreateChatModal({ open, onClose, onCreated }: Props) {
         display: profile.user?.account?.username
       }))
 
-      setResults(users as User[])
+      setResults(
+        (users as User[]).filter(
+          (u) => !!u?.id && (!currentUser?.id || u.id !== currentUser.id),
+        ),
+      )
     } catch {
       setResults([])
     }
   }
 
   const toggleUser = (user: User) => {
+    if (currentUser?.id && user.id === currentUser.id) return
     if (selected.some(u => u.id === user.id)) {
       setSelected(selected.filter(u => u.id !== user.id))
     } else {
@@ -87,6 +103,7 @@ export default function CreateChatModal({ open, onClose, onCreated }: Props) {
         ...(isGroup && {
           name: groupName.trim(),
           ...(groupDescription.trim() ? { description: groupDescription.trim() } : {}),
+          ...(groupAvatarFile ? { avatarFile: groupAvatarFile } : {}),
         }),
       })
 
@@ -95,12 +112,35 @@ export default function CreateChatModal({ open, onClose, onCreated }: Props) {
       setSelected([])
       setGroupName('')
       setGroupDescription('')
+      setGroupAvatarFile(null)
+      if (groupAvatarPreview) URL.revokeObjectURL(groupAvatarPreview)
+      setGroupAvatarPreview(null)
       setQuery('')
       setResults([])
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Не удалось создать чат';
+      notify.error(message);
     } finally {
       setLoading(false)
     }
   }
+
+  const handleGroupAvatarChange = (file?: File) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      notify.error('Можно загрузить только изображение');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      notify.error('Максимальный размер аватара 5MB');
+      return;
+    }
+    if (groupAvatarPreview) URL.revokeObjectURL(groupAvatarPreview);
+    setGroupAvatarFile(file);
+    setGroupAvatarPreview(URL.createObjectURL(file));
+  };
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -157,6 +197,39 @@ export default function CreateChatModal({ open, onClose, onCreated }: Props) {
         {/* group name and description (only when 2+ participants) */}
         {selected.length > 1 && (
           <div className="mt-3 space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">
+                Group avatar (optional)
+              </label>
+              <div className="flex items-center gap-3">
+                <label className="inline-flex cursor-pointer items-center rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-muted/50">
+                  Upload
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleGroupAvatarChange(e.target.files?.[0])}
+                  />
+                </label>
+                {groupAvatarPreview && (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- local object URL preview */}
+                    <img src={groupAvatarPreview} alt="" className="h-10 w-10 rounded-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (groupAvatarPreview) URL.revokeObjectURL(groupAvatarPreview);
+                        setGroupAvatarFile(null);
+                        setGroupAvatarPreview(null);
+                      }}
+                      className="text-sm text-red-600 hover:underline"
+                    >
+                      Remove
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1">
                 Group chat name <span className="text-red-500">*</span>
