@@ -8,12 +8,8 @@ import type {
 
 export async function assistantTopicSuggestions(
   chatId: string,
-  targetUserId?: string,
 ): Promise<AssistantEnvelope<TopicSuggestionsData>> {
-  const { data } = await api.post('/assistant/topic-suggestions', {
-    chatId,
-    ...(targetUserId ? { targetUserId } : {}),
-  });
+  const { data } = await api.post('/assistant/topic-suggestions', { chatId });
   return data;
 }
 

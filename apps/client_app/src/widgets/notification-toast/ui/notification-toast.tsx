@@ -3,6 +3,10 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { User } from 'lucide-react';
+import {
+  isReportQueueNotification,
+  systemNotificationHref,
+} from '@/shared/lib/moderation-notification';
 
 interface NotificationToastProps {
   type: 'LIKE' | 'COMMENT' | 'FOLLOW' | 'MENTION' | 'SYSTEM';
@@ -31,10 +35,14 @@ export function NotificationToast({
   message,
 }: NotificationToastProps) {
   if (type === 'SYSTEM') {
-    const link =
-      postId
-        ? `/post/${postId}`
-        : `/profile/${actor.username}`;
+    const link = systemNotificationHref({
+      type,
+      message,
+      itemId,
+      postId,
+      actorUsername: actor.username,
+    });
+    const isReportQueue = isReportQueueNotification({ type, message });
     return (
       <Link href={link} className="flex items-start gap-3 p-2">
         <div className="relative w-10 h-10 rounded-full overflow-hidden bg-amber-100 flex-shrink-0">
@@ -55,7 +63,9 @@ export function NotificationToast({
         <div className="flex-1 min-w-0">
           <p className="text-xs font-semibold text-amber-800 uppercase">Moderation</p>
           <p className="text-sm text-foreground line-clamp-3">{message || 'New notice'}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">@{actor.username}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {isReportQueue ? `От @${actor.username}` : `@${actor.username}`}
+          </p>
         </div>
       </Link>
     );

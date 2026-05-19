@@ -183,20 +183,6 @@ export class AssistantService {
     return null;
   }
 
-  private resolveTargetUserId(
-    chat: ChatWithMembers,
-    requesterId: string,
-    targetUserId?: string,
-  ): string {
-    const id = this.tryResolveTargetUserId(chat, requesterId, targetUserId);
-    if (id === null) {
-      throw new BadRequestException(
-        'targetUserId is required for group chats with more than one other member',
-      );
-    }
-    return id;
-  }
-
   private mapRecentMessages(chat: ChatWithMembers) {
     const list = chat.messages ?? [];
     const usernameByUserId = new Map<string, string>();
@@ -250,7 +236,6 @@ export class AssistantService {
   async topicSuggestions(
     requesterId: string,
     chatId: string,
-    targetUserId?: string,
   ): Promise<AssistantEnvelope<TopicSuggestionsData>> {
     this.logger.log(
       `assistant.topicSuggestions requesterId=${requesterId} chatId=${chatId}`,
@@ -259,40 +244,20 @@ export class AssistantService {
       chatId,
     )) as unknown as ChatWithMembers;
     this.assertMember(chat, requesterId);
-    const resolvedTarget = this.resolveTargetUserId(
-      chat,
-      requesterId,
-      targetUserId,
-    );
-    this.logger.debug(
-      [
-        'assistant.topicSuggestions.target',
-        `chatId=${chatId}`,
-        `requesterId=${requesterId}`,
-        `resolvedTarget=${resolvedTarget}`,
-        `chatType=${chat.type}`,
-        `members=${chat.members?.length ?? 0}`,
-      ].join(' '),
-    );
-    const [requesterUserProfile, targetUserProfile] = await Promise.all([
-      this.loadUserProfileSnippet(requesterId),
-      this.loadUserProfileSnippet(resolvedTarget),
-    ]);
+    const requesterUserProfile =
+      await this.loadUserProfileSnippet(requesterId);
     const recentMessages = this.mapRecentMessages(chat);
     return this.postAssistant<AssistantEnvelope<TopicSuggestionsData>>({
       op: 'topicSuggestions',
       path: '/assistant/topic-suggestions',
       chatId,
       requesterId,
-      targetUserId: resolvedTarget,
       contextMessages: recentMessages.length,
       body: {
         chatId,
         requesterId,
         requesterUserProfile,
-        targetUserProfile,
         recentMessages,
-        targetUserId: resolvedTarget,
       },
     });
   }

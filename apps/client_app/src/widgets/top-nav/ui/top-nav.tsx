@@ -22,6 +22,7 @@ import SearchModal from '@/widgets/search-modal';
 import api from '@/shared/api';
 import type { Notification } from '@/entities/notification';
 import { useSocketNotifications } from '@/shared/lib/use-socket-notifications';
+import { useUnresolvedReportsBadge } from '@/shared/lib/use-unresolved-reports-badge';
 import { useSocket } from '@/entities/session';
 import { getUserChats, lastMessageIsUnreadIncomingForUser } from '@/entities/chat';
 import { currentChatIdRef } from '@/shared/lib/current-chat-id';
@@ -105,12 +106,19 @@ export function TopNav() {
     };
   }, [user?.id, pathname, syncInteractionsBadge]);
 
+  const canModerate = user?.role === 'MODERATOR' || user?.role === 'ADMIN';
+  const {
+    showBadge: showModerationQueueBadge,
+    onSocketNotification: onModerationQueueNotification,
+  } = useUnresolvedReportsBadge(Boolean(canModerate && user?.id));
+
   useSocketNotifications(
     socket,
-    () => {
+    (notification) => {
       void syncInteractionsBadge();
+      onModerationQueueNotification(notification);
     },
-    Boolean(user?.id)
+    Boolean(user?.id),
   );
 
   useEffect(() => {
@@ -170,7 +178,6 @@ export function TopNav() {
 
   const showUnread = hasUnread && !pathname?.startsWith('/interactions');
   const showUnreadMessages = hasUnreadMessages && !pathname?.startsWith('/chat');
-  const canModerate = user?.role === 'MODERATOR' || user?.role === 'ADMIN';
   const isAdmin = user?.role === 'ADMIN';
   const isModerator = user?.role === 'MODERATOR';
   const showProfileOnMobileTop = !isAdmin && !isModerator;
@@ -270,6 +277,12 @@ export function TopNav() {
             {canModerate && (
               <Link href="/moderation" className={navBtn} aria-label="Модерация">
                 <ShieldAlert className="w-5 h-5" />
+                {showModerationQueueBadge && (
+                  <span
+                    className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-destructive rounded-full ring-2 ring-background"
+                    aria-hidden
+                  />
+                )}
               </Link>
             )}
             {isAdmin && (

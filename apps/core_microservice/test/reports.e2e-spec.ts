@@ -60,6 +60,7 @@ describe('Reports Controller (e2e)', () => {
       findUnique: jest.fn().mockResolvedValue({
         state: 'ACTIVE',
       }),
+      findMany: jest.fn().mockResolvedValue([]),
     },
     post: {
       findUnique: jest.fn().mockResolvedValue({

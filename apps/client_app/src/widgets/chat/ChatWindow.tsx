@@ -111,7 +111,6 @@ export default function ChatWindow({ chat, onlineUserIds, onMessagesRead, onLate
     | { kind: 'qa'; data: ChatQaData; meta?: AssistantMeta };
   const [assistantPanel, setAssistantPanel] = useState<AssistantPanel>({ kind: 'idle' });
   const [assistantAnswerExpanded, setAssistantAnswerExpanded] = useState(true);
-  const [topicTargetUserId, setTopicTargetUserId] = useState<string | undefined>(undefined);
   const [qaInput, setQaInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -141,13 +140,6 @@ export default function ChatWindow({ chat, onlineUserIds, onMessagesRead, onLate
     setQaInput('');
   }, [chat.id]);
 
-  useEffect(() => {
-    if (otherMembers.length >= 1) {
-      setTopicTargetUserId(otherMembers[0].id);
-    } else {
-      setTopicTargetUserId(undefined);
-    }
-  }, [chat.id, otherMembers]);
   const otherMember = otherMembers[0] ?? currentChat.members?.[0];
   const displayName =
     currentChat.type === 'GROUP'
@@ -328,11 +320,7 @@ export default function ChatWindow({ chat, onlineUserIds, onMessagesRead, onLate
     setAssistantBusy('topic');
     setAssistantError(null);
     try {
-      const targetUserId =
-        currentChat.type === 'GROUP' && otherMembers.length > 1
-          ? topicTargetUserId
-          : undefined;
-      const res = await assistantTopicSuggestions(chat.id, targetUserId);
+      const res = await assistantTopicSuggestions(chat.id);
       if (res.success) {
         setAssistantAnswerExpanded(true);
         setAssistantPanel({ kind: 'topic', data: res.data, meta: res.meta });
@@ -442,20 +430,6 @@ export default function ChatWindow({ chat, onlineUserIds, onMessagesRead, onLate
       {/* AI assistant */}
       <div className="border-b border-border/50 bg-muted/20 px-3 py-2 space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          {currentChat.type === 'GROUP' && otherMembers.length > 1 && (
-            <select
-              value={topicTargetUserId ?? ''}
-              onChange={(e) => setTopicTargetUserId(e.target.value || undefined)}
-              className="text-xs rounded-lg border border-border/70 bg-card px-2 py-1.5 max-w-[160px]"
-              aria-label="Собеседник для подсказки темы"
-            >
-              {otherMembers.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.account?.username ?? m.profile?.firstName ?? m.id.slice(0, 8)}
-                </option>
-              ))}
-            </select>
-          )}
           <button
             type="button"
             onClick={handleTopicSuggestions}

@@ -21,6 +21,16 @@ export async function listReports(params?: ListReportsParams) {
   return data;
 }
 
+export async function hasUnresolvedReports(): Promise<boolean> {
+  const [open, inReview] = await Promise.all([
+    listReports({ status: 'OPEN' }),
+    listReports({ status: 'IN_REVIEW' }),
+  ]);
+  const openCount = Array.isArray(open) ? open.length : 0;
+  const inReviewCount = Array.isArray(inReview) ? inReview.length : 0;
+  return openCount + inReviewCount > 0;
+}
+
 export async function updateReport(
   id: string,
   payload: {

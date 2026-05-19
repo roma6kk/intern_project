@@ -35,6 +35,17 @@ async function bootstrap() {
     'https://localhost',
   ]);
 
+  const devHostIp = process.env.DEV_HOST_IP?.trim();
+  if (devHostIp) {
+    allowedOrigins.add(`http://${devHostIp}:3002`);
+  }
+
+  const devPublicHost = process.env.DEV_PUBLIC_HOST?.trim();
+  if (devPublicHost) {
+    allowedOrigins.add(`https://${devPublicHost}`);
+    allowedOrigins.add(`http://${devPublicHost}`);
+  }
+
   app.enableCors({
     credentials: true,
     origin: (

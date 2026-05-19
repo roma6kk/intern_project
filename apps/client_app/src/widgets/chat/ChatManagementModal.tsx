@@ -60,8 +60,7 @@ export default function ChatManagementModal({
   const [promotingId, setPromotingId] = useState<string | null>(null);
 
   const currentUserMember = members.find((m) => m.id === user?.id);
-  const isAdmin =
-    currentUserMember?.role === 'ADMIN' || chat.creatorId === user?.id;
+  const isAdmin = currentUserMember?.role === 'ADMIN';
   const isGroupChat = chat.type === 'GROUP';
   const otherAdminsCount = members.filter(
     (m) => m.id !== user?.id && m.role === 'ADMIN',
@@ -200,6 +199,10 @@ export default function ChatManagementModal({
   const handleRemoveMember = async (memberId: string) => {
     if (!isAdmin || !isGroupChat) return;
     if (memberId === user?.id) return;
+    if (chat.creatorId && memberId === chat.creatorId) {
+      notify.error('Нельзя удалить создателя чата');
+      return;
+    }
 
     setUpdating(true);
     try {
@@ -410,8 +413,11 @@ export default function ChatManagementModal({
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {members.map((member) => {
               const isCurrentUser = member.id === user?.id;
+              const isChatCreator = Boolean(
+                chat.creatorId && member.id === chat.creatorId,
+              );
               const canRemove =
-                isAdmin && isGroupChat && !isCurrentUser;
+                isAdmin && isGroupChat && !isCurrentUser && !isChatCreator;
               const canPromote =
                 isAdmin &&
                 isGroupChat &&

@@ -45,6 +45,7 @@ npm run dev:lan
 
 - Binds client to `0.0.0.0` and auto-detects host IPv4.
 - Sets `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` to `http://<host-ip>:3000`.
+- Sets `AWS_ENDPOINT` and `AWS_PUBLIC_ENDPOINT` to `http://<host-ip>:9000` (MinIO file URLs for LAN devices).
 - Open app from mobile/other devices: `http://<host-ip>:3002`.
 
 Optional: force specific host IP if auto-detection is wrong.
@@ -61,8 +62,38 @@ $env:DEV_HOST_IP="192.168.1.50"; npm run dev:lan
 
 LAN checklist:
 - Host and mobile device are on the same Wi-Fi/LAN.
-- Firewall allows inbound TCP for `3002` (client), `3000` (core), `3001` (auth).
+- MinIO is running (`docker compose up -d minio` from repo root).
+- Firewall allows inbound TCP for `3002` (client), `3000` (core), `3001` (auth), `9000` (MinIO).
 - Core and auth health endpoints are reachable from another device.
+
+### Dev mode: External (nginx reverse proxy, HTTP :80)
+
+Expose the stack via **one HTTP entry point** on port **80**. Nginx listens on `0.0.0.0:80` and proxies to local services (`127.0.0.1:3002`, `:3000`, `:3001`, `:9000`). Router port-forward: **WAN → this PC:80**.
+
+1. Start nginx proxy:
+
+```bash
+npm run nginx:external
+```
+
+2. Start apps (dev servers bind to localhost; only nginx is public):
+
+```bash
+# PowerShell
+$env:DEV_PUBLIC_HOST="203.0.113.10"; npm run dev:external
+```
+
+`DEV_PUBLIC_HOST` must be the address clients use in the browser (WAN IP or DNS name). Open `http://<host>/`. Files: `http://<host>/innogram-bucket/...`.
+
+Optional HTTPS later: set `DEV_PUBLIC_SCHEME=https`, use `local-dev.conf` or regenerate certs via `npm run certs:dev`.
+
+External checklist:
+- Router forwards **80** to your machine's LAN IP.
+- Windows Firewall allows inbound **80**.
+- MinIO + postgres/redis/rabbitmq running locally or in Docker.
+- Google OAuth: add `http://<DEV_PUBLIC_HOST>/internal/auth/google/callback` in Google Console.
+
+Stop nginx: `npm run nginx:external:stop`
 
 ### Local CI/CD verification
 

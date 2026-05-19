@@ -164,4 +164,30 @@ describe('ChatService', () => {
       );
     });
   });
+
+  describe('update', () => {
+    it('should reject removing the chat creator', async () => {
+      const chatId = 'chat1';
+      const creatorId = 'creator-user';
+      const adminId = 'admin-user';
+
+      mockPrismaService.chat.findUnique.mockResolvedValue({
+        id: chatId,
+        type: ChatType.GROUP,
+        creatorId,
+        participants: [
+          { userId: adminId, role: 'ADMIN' },
+          { userId: creatorId, role: 'ADMIN' },
+        ],
+      });
+
+      await expect(
+        service.update(chatId, adminId, {
+          removeMemberIds: [creatorId],
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockPrismaService.chatParticipant.deleteMany).not.toHaveBeenCalled();
+    });
+  });
 });

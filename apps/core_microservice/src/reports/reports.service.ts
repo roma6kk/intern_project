@@ -4,8 +4,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  AccountState,
   ModerationAction,
   NotificationType,
+  PlatformRole,
   Prisma,
   ReportStatus,
 } from '@prisma/client';
@@ -38,26 +40,30 @@ export class ReportsService {
       );
     }
 
+    let postIdForNotification: string | undefined;
+
     if (dto.postId) {
       const post = await this.prisma.post.findUnique({
         where: { id: dto.postId },
         select: { id: true },
       });
       if (!post) throw new NotFoundException('Post not found');
+      postIdForNotification = dto.postId;
     }
 
     if (dto.commentId) {
       const comment = await this.prisma.comment.findUnique({
         where: { id: dto.commentId },
-        select: { id: true },
+        select: { id: true, postId: true },
       });
       if (!comment) throw new NotFoundException('Comment not found');
+      postIdForNotification = comment.postId;
     }
 
     const dueAt = new Date();
     dueAt.setHours(dueAt.getHours() + defaultSlaHours());
 
-    return this.prisma.report.create({
+    const report = await this.prisma.report.create({
       data: {
         reporterId,
         postId: dto.postId,
@@ -66,6 +72,51 @@ export class ReportsService {
         dueAt,
       },
     });
+
+    await this.notifyModerationStaffOfNewReport({
+      report,
+      reporterId,
+      postId: postIdForNotification,
+    });
+
+    return report;
+  }
+
+  private async notifyModerationStaffOfNewReport(params: {
+    report: { id: string; reason: string };
+    reporterId: string;
+    postId?: string;
+  }) {
+    const staff = await this.prisma.account.findMany({
+      where: {
+        role: { in: [PlatformRole.MODERATOR, PlatformRole.ADMIN] },
+        state: AccountState.ACTIVE,
+        user: { deletedAt: null },
+      },
+      select: { userId: true },
+    });
+
+    if (staff.length === 0) return;
+
+    const preview =
+      params.report.reason.length > 120
+        ? `${params.report.reason.slice(0, 120)}…`
+        : params.report.reason;
+
+    const message = `Новая жалоба на пост. ${preview}`;
+
+    await Promise.all(
+      staff.map((account) =>
+        this.notificationService.create({
+          type: NotificationType.SYSTEM,
+          recipientId: account.userId,
+          actorId: params.reporterId,
+          itemId: params.report.id,
+          postId: params.postId,
+          message,
+        }),
+      ),
+    );
   }
 
   async findAll(query?: ListReportsQueryDto) {

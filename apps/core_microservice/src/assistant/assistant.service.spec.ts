@@ -119,15 +119,14 @@ describe('AssistantService', () => {
     const requestBody = body as {
       chatId: string;
       requesterId: string;
-      targetUserId: string;
       requesterUserProfile: { userId: string };
-      targetUserProfile: { userId: string };
+      recentMessages: Array<{ senderId: string }>;
     };
     expect(requestBody.chatId).toBe('chat-1');
     expect(requestBody.requesterId).toBe('u1');
-    expect(requestBody.targetUserId).toBe('u2');
     expect(requestBody.requesterUserProfile.userId).toBe('u1');
-    expect(requestBody.targetUserProfile.userId).toBe('u2');
+    expect(requestBody.recentMessages).toHaveLength(1);
+    expect(requestBody.recentMessages[0].senderId).toBe('u2');
 
     const requestConfig = config as {
       timeout: number;

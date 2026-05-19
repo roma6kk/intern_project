@@ -1,9 +1,12 @@
 import {
+  Inject,
   Injectable,
   NotFoundException,
   Logger,
   BadRequestException,
 } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { AccountState } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import { FilesService } from '../files/files.service';
@@ -17,6 +20,7 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly filesService: FilesService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   async isDeleted(userId: string): Promise<boolean> {
@@ -39,14 +43,25 @@ export class UsersService {
     state: AccountState | null;
     suspendedUntil: Date | null;
   }> {
+    const cacheKey = `account-access:${userId}`;
+    const cached = await this.cacheManager.get<{
+      state: AccountState | null;
+      suspendedUntil: Date | null;
+    }>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const account = await this.prisma.account.findUnique({
       where: { userId },
       select: { state: true, suspendedUntil: true },
     });
-    return {
+    const meta = {
       state: account?.state ?? null,
       suspendedUntil: account?.suspendedUntil ?? null,
     };
+    await this.cacheManager.set(cacheKey, meta, 30_000);
+    return meta;
   }
 
   async softDeleteProfile(userId: string) {

@@ -1,10 +1,9 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 
-// --- настройки в скрипте ---
 // Через nginx (как в браузере): https://localhost/api
 // Напрямую в core, без nginx: http://127.0.0.1:3000
-const BASE_URL = 'https://localhost/api';
+const BASE_URL = 'http://127.0.0.1:3000';
 const EMAIL = 'romaananyev8@gmail.com';
 const PASSWORD = '12345678';
 const FEED_LIMIT = 10;

@@ -8,6 +8,7 @@ export type {
 export {
   createReport,
   listReports,
+  hasUnresolvedReports,
   updateReport,
   assignReport,
   updateReportPriority,

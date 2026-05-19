@@ -10,6 +10,8 @@ import { getUserChats, lastMessageIsUnreadIncomingForUser } from '@/entities/cha
 import { currentChatIdRef } from '@/shared/lib/current-chat-id';
 import type { Chat, Message } from '@/entities/chat';
 import { cn } from '@/shared/lib/cn';
+import { useUnresolvedReportsBadge } from '@/shared/lib/use-unresolved-reports-badge';
+import { useSocketNotifications } from '@/shared/lib/use-socket-notifications';
 import surface from '@/shared/styles/surface.module.css';
 import animations from '@/shared/styles/animations.module.css';
 
@@ -30,6 +32,16 @@ export function BottomNav() {
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const isAdmin = user?.role === 'ADMIN';
   const isModerator = user?.role === 'MODERATOR';
+  const {
+    showBadge: showModerationQueueBadge,
+    onSocketNotification: onModerationQueueNotification,
+  } = useUnresolvedReportsBadge(Boolean(isModerator && user?.id));
+
+  useSocketNotifications(
+    socket,
+    onModerationQueueNotification,
+    Boolean(isModerator && user?.id),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -136,8 +148,20 @@ export function BottomNav() {
               <ShieldCheck className="w-6 h-6" />
             </Link>
           ) : isModerator ? (
-            <Link href="/moderation" className={item('/moderation', pathname.startsWith('/moderation'))}>
+            <Link
+              href="/moderation"
+              className={cn(
+                item('/moderation', pathname.startsWith('/moderation')),
+                'relative',
+              )}
+            >
               <ShieldAlert className="w-6 h-6" />
+              {showModerationQueueBadge && (
+                <span
+                  className="absolute top-2.5 right-3.5 w-2.5 h-2.5 bg-destructive rounded-full ring-2 ring-background"
+                  aria-hidden
+                />
+              )}
             </Link>
           ) : (
             <Link

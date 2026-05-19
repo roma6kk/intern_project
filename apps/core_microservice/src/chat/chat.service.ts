@@ -529,6 +529,12 @@ export class ChatService {
       if (updateChatDto.removeMemberIds.includes(currentUserId)) {
         throw new BadRequestException('Use leaveChat to leave the chat');
       }
+      if (
+        chat.creatorId &&
+        updateChatDto.removeMemberIds.includes(chat.creatorId)
+      ) {
+        throw new BadRequestException('Cannot remove the chat creator');
+      }
       await chatParticipant.deleteMany({
         where: {
           chatId: id,

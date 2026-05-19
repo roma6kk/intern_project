@@ -2,6 +2,8 @@ import { Module, Global } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
+import { TokenBlacklistService } from './token-blacklist.service';
+import { TokenValidationService } from './token-validation.service';
 
 @Global()
 @Module({
@@ -12,7 +14,7 @@ import { AuthController } from './auth.controller';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, TokenBlacklistService, TokenValidationService],
   exports: [AuthService],
 })
 export class AuthModule {}

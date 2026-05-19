@@ -68,7 +68,7 @@ export class AssistantService {
     this.logger.log(
       `topicSuggestions chatId=${dto.chatId} messages=${dto.recentMessages.length}`,
     );
-    const fb = fallbackTopicSuggestions(dto.targetUserProfile);
+    const fb = fallbackTopicSuggestions(dto.recentMessages);
     if (!this.llm.isConfigured()) {
       this.logger.warn(
         `topicSuggestions fallback: LLM is not configured (LLM_API_KEY missing)`,
@@ -77,7 +77,6 @@ export class AssistantService {
     }
     const { system, user } = buildTopicSuggestionPrompts({
       requesterProfile: dto.requesterUserProfile,
-      counterpartyProfile: dto.targetUserProfile,
       recentMessages: dto.recentMessages,
       viewer: { viewerUserId: dto.requesterUserProfile.userId },
     });

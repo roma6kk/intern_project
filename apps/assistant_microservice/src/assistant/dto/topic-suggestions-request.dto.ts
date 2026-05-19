@@ -21,17 +21,9 @@ export class TopicSuggestionsRequestDto {
   @Type(() => TargetUserProfileDto)
   requesterUserProfile!: TargetUserProfileDto;
 
-  @ValidateNested()
-  @Type(() => TargetUserProfileDto)
-  targetUserProfile!: TargetUserProfileDto;
-
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => RecentMessageDto)
   @ArrayMaxSize(100)
   recentMessages!: RecentMessageDto[];
-
-  @IsOptional()
-  @IsUUID()
-  targetUserId?: string;
 }

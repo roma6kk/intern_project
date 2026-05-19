@@ -11,7 +11,6 @@ import { UsersService } from '../../users/users.service';
 import { AccountState } from '@prisma/client';
 
 export const ALLOW_WHEN_DELETED = 'allowWhenDeleted';
-
 export const AllowWhenDeleted = () => SetMetadata(ALLOW_WHEN_DELETED, true);
 
 @Injectable()

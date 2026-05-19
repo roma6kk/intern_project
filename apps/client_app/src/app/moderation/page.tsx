@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/entities/session';
 import {
   assignReport,
@@ -26,6 +27,7 @@ import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
 import surface from '@/shared/styles/surface.module.css';
 import animations from '@/shared/styles/animations.module.css';
 import moderationStyles from './moderation.module.css';
+import { useUnresolvedReportsBadge } from '@/shared/lib/use-unresolved-reports-badge';
 
 type AccountRef = { username: string } | null;
 type ReportItem = {
@@ -125,6 +127,9 @@ function priorityAccent(p: ReportPriority | undefined): string {
 
 export default function ModerationPage() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const highlightedReportId = searchParams.get('report');
+  const scrolledReportRef = useRef<string | null>(null);
   const [reports, setReports] = useState<ReportItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -137,6 +142,9 @@ export default function ModerationPage() {
   const [filterMine, setFilterMine] = useState(false);
 
   const canModerate = user?.role === 'MODERATOR' || user?.role === 'ADMIN';
+  const { refresh: refreshModerationBadge } = useUnresolvedReportsBadge(
+    Boolean(canModerate && user?.id),
+  );
 
   const buildParams = useCallback((): ListReportsParams => {
     const p: ListReportsParams = {};
@@ -152,12 +160,22 @@ export default function ModerationPage() {
     try {
       const data = await listReports(buildParams());
       setReports(data as ReportItem[]);
+      void refreshModerationBadge();
     } catch {
       setReports([]);
     } finally {
       setLoading(false);
     }
-  }, [buildParams]);
+  }, [buildParams, refreshModerationBadge]);
+
+  useEffect(() => {
+    if (!highlightedReportId || loading) return;
+    if (scrolledReportRef.current === highlightedReportId) return;
+    const el = document.getElementById(`report-card-${highlightedReportId}`);
+    if (!el) return;
+    scrolledReportRef.current = highlightedReportId;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [highlightedReportId, loading, reports]);
 
   useEffect(() => {
     if (!canModerate) {
@@ -421,10 +439,17 @@ export default function ModerationPage() {
                   : '—');
               const pri = report.priority ?? 'NORMAL';
 
+              const isHighlighted = highlightedReportId === report.id;
+
               return (
                 <li
                   key={report.id}
-                  className={cn(surface.card, `overflow-hidden rounded-3xl border border-border/80 border-l-4 ring-1 transition-shadow hover:shadow-md ${priorityAccent(report.priority)} ${overdue ? 'ring-rose-500/20' : ''}`)}
+                  id={`report-card-${report.id}`}
+                  className={cn(
+                    surface.card,
+                    `overflow-hidden rounded-3xl border border-border/80 border-l-4 ring-1 transition-shadow hover:shadow-md ${priorityAccent(report.priority)} ${overdue ? 'ring-rose-500/20' : ''}`,
+                    isHighlighted && 'ring-2 ring-primary/50 shadow-lg',
+                  )}
                 >
                   <div className="space-y-4 p-5">
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">

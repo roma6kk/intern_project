@@ -1,5 +1,4 @@
 import type { RecentMessagePayload } from '../contracts/assistant-api.types';
-import type { TargetUserProfileDto } from './dto/target-user-profile.dto';
 import type {
   ChatQaData,
   DialogSummaryData,
@@ -13,52 +12,25 @@ const GENERIC_TOPICS = [
   'Что недавно посмотрел(а) или прочитал(а)?',
 ];
 
-function pickFromBio(bio: string | null | undefined): string[] {
-  if (!bio?.trim()) return [];
-  const lower = bio.toLowerCase();
-  const hits: string[] = [];
-  const rules: Array<{ keys: string[]; topic: string }> = [
-    {
-      keys: ['music', 'музык', 'гитар', 'dj'],
-      topic: 'Расскажи про любимую музыку или концерты.',
-    },
-    {
-      keys: ['sport', 'спорт', 'run', 'бег', 'gym', 'трен'],
-      topic: 'Как тебе удаётся совмещать спорт и работу/учёбу?',
-    },
-    {
-      keys: ['code', 'dev', 'разраб', 'it', 'програм'],
-      topic: 'Чем сейчас занимаешься в разработке?',
-    },
-    {
-      keys: ['travel', 'путеш', 'trip'],
-      topic: 'Куда мечтаешь поехать в следующий раз?',
-    },
-    {
-      keys: ['photo', 'фото', 'camera'],
-      topic: 'Как пришёл(ла) к фотографии?',
-    },
-  ];
-  for (const r of rules) {
-    if (r.keys.some((k) => lower.includes(k))) {
-      hits.push(r.topic);
-    }
-  }
-  return hits.slice(0, 3);
-}
-
 export function fallbackTopicSuggestions(
-  profile: TargetUserProfileDto,
+  messages: RecentMessagePayload[],
 ): TopicSuggestionsData {
-  const fromBio = pickFromBio(profile.bio);
+  const texts = messages
+    .map((m) => m.content?.trim())
+    .filter((c): c is string => Boolean(c));
+  const contextual: string[] = [];
+  if (texts.length > 0) {
+    const last = texts[texts.length - 1].slice(0, 80);
+    contextual.push(`Продолжим обсуждение: «${last}»?`);
+  }
   const suggestions = [
-    ...fromBio,
-    ...GENERIC_TOPICS.filter((t) => !fromBio.includes(t)),
+    ...contextual,
+    ...GENERIC_TOPICS.filter((t) => !contextual.includes(t)),
   ].slice(0, 5);
   return {
     suggestions,
     tone: 'casual',
-    confidence: fromBio.length ? 0.35 : 0.2,
+    confidence: texts.length ? 0.35 : 0.2,
   };
 }
 

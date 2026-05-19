@@ -41,8 +41,6 @@ export class PostController {
   }
 
   @Get('feed')
-  @UseGuards(JwtAuthGuard, DeletedUserGuard)
-  @ApiBearerAuth('JWT-auth')
   getFeed(
     @CurrentUser() user: ICurrentUser,
     @Query() pagination: PaginationDto,

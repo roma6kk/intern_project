@@ -81,18 +81,11 @@ export function formatProfileBlockJson(
 
 export function buildTopicSuggestionPrompts(params: {
   requesterProfile: TargetUserProfileDto;
-  counterpartyProfile: TargetUserProfileDto;
   recentMessages: RecentMessagePayload[];
   viewer: ViewerContext;
 }): { system: string; user: string } {
-  const {
-    requesterProfile,
-    counterpartyProfile,
-    recentMessages,
-    viewer,
-  } = params;
+  const { requesterProfile, recentMessages, viewer } = params;
   const requesterJson = formatProfileBlockJson(requesterProfile);
-  const counterpartJson = formatProfileBlockJson(counterpartyProfile);
 
   const transcript =
     recentMessages.length > 0
@@ -101,7 +94,7 @@ export function buildTopicSuggestionPrompts(params: {
 
   const system = `You are a personal conversation coach for ONE user only—the assistant client (participant:self).
 
-Suggest 3-5 short conversation starter lines they can realistically send toward their counterpart described in Counterparty JSON, optionally informed by transcript.
+Suggest 3-5 short conversation starter lines they can realistically send in this chat, based on the full transcript from all participants (participant:self and participant:peer).
 
 Respond ONLY with valid JSON matching this shape:
 {"suggestions":["..."],"tone":"casual|professional|playful","confidence":0.0-1.0}
@@ -113,7 +106,7 @@ ${PERSONAL_ASSISTANT_RULE}
 
 ${USERNAME_DISPLAY_RULE}`;
 
-  const user = `Assistant client (participant:self):\n${requesterJson}\n\nCounterparty (participant:peer):\n${counterpartJson}\n\nRecent chat:\n${transcript}`;
+  const user = `Assistant client (participant:self):\n${requesterJson}\n\nRecent chat (all participants):\n${transcript}`;
   return { system, user };
 }
 

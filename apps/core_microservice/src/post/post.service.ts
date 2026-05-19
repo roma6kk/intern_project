@@ -120,6 +120,40 @@ export class PostService {
   }
 
   async getFeed(userId: string, pagination: PaginationDto) {
+    const { page = 1, limit = 10, sort = 'newest', cursor, mediaOnly = false } =
+      pagination;
+    const cacheKey = `feed:${userId}:${sort}:${mediaOnly}:${cursor ?? `p${page}`}:${limit}`;
+
+    const cached = await this.cacheManager.get<Awaited<
+      ReturnType<PostService['getFeedQueries']>
+    >>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const result = await this.getFeedQueries(userId, pagination);
+    await this.cacheManager.set(cacheKey, result, 5_000);
+    return result;
+  }
+
+  private async getFollowingIds(userId: string): Promise<string[]> {
+    const cacheKey = `following-ids:${userId}`;
+    const cached = await this.cacheManager.get<string[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const following = await this.prisma.follow.findMany({
+      where: { followerId: userId, status: 'ACCEPTED' },
+      select: { followingId: true },
+    });
+    const followingIds = following.map((f) => f.followingId);
+    followingIds.push(userId);
+    await this.cacheManager.set(cacheKey, followingIds, 30_000);
+    return followingIds;
+  }
+
+  private async getFeedQueries(userId: string, pagination: PaginationDto) {
     const {
       page = 1,
       limit = 10,
@@ -128,13 +162,11 @@ export class PostService {
       cursor,
     } = pagination;
 
-    const following = await this.prisma.follow.findMany({
-      where: { followerId: userId, status: 'ACCEPTED' },
-      select: { followingId: true },
-    });
+    this.logger.debug(
+      `getFeed userId=${userId} sort=${sort} page=${page} limit=${limit} mediaOnly=${mediaOnly} cursor=${cursor ?? 'none'}`,
+    );
 
-    const followingIds = following.map((f) => f.followingId);
-    followingIds.push(userId);
+    const followingIds = await this.getFollowingIds(userId);
 
     const whereClause: Prisma.PostWhereInput = {
       authorId: { in: followingIds },
@@ -146,6 +178,8 @@ export class PostService {
     if (mediaOnly) {
       whereClause.assets = { some: {} };
     }
+
+    this.logger.debug(`getFeed where=${JSON.stringify(whereClause)}`);
 
     if (sort === 'trending') {
       const skip = (page - 1) * limit;

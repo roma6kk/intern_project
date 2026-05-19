@@ -15,13 +15,17 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { AuthResponse } from './interfaces/IAuthResponse';
 import * as dotenv from 'dotenv';
 import { ICurrentUser } from './interfaces/ICurrentUser';
+import { TokenValidationService } from './token-validation.service';
 dotenv.config();
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   private readonly authServiceUrl = process.env.AUTH_MICROSERVICE_URL;
-  constructor(private readonly httpService: HttpService) {}
+  constructor(
+    private readonly httpService: HttpService,
+    private readonly tokenValidation: TokenValidationService,
+  ) {}
 
   async handleSignUp(signUpDto: SignUpDto): Promise<AuthResponse> {
     this.logger.log(`Proxying Sign-Up for: ${signUpDto.email}`);
@@ -78,7 +82,15 @@ export class AuthService {
     );
   }
 
+  usesLocalTokenValidation(): boolean {
+    return this.tokenValidation.canValidateLocally();
+  }
+
   async validateToken(token: string): Promise<ICurrentUser> {
+    if (this.tokenValidation.canValidateLocally()) {
+      return this.tokenValidation.validateAccessToken(token);
+    }
+
     try {
       const { data } = await firstValueFrom(
         this.httpService.post<ICurrentUser>(`${this.authServiceUrl}/validate`, {

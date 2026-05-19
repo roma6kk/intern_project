@@ -9,6 +9,10 @@ import { cn } from '@/shared/lib/cn';
 import { isVideoUrl } from '@/shared/lib/is-video-url';
 import surface from '@/shared/styles/surface.module.css';
 import animations from '@/shared/styles/animations.module.css';
+import {
+  isReportQueueNotification,
+  systemNotificationHref,
+} from '@/shared/lib/moderation-notification';
 
 interface FollowRequest {
   id: string;
@@ -235,8 +239,13 @@ function NotificationItem({
 
   const getNotificationLink = () => {
     if (n.type === 'SYSTEM') {
-      if (n.postId) return `/post/${n.postId}`;
-      return `/profile/${n.actors[0].username}`;
+      return systemNotificationHref({
+        type: n.type,
+        message: n.message,
+        itemId: n.itemId,
+        postId: n.postId,
+        actorUsername: n.actors[0]?.username,
+      });
     }
     if (n.type === 'FOLLOW' || n.type === 'FOLLOW_REQUEST') {
       return `/profile/${n.actors[0].username}`;
@@ -308,7 +317,9 @@ function NotificationItem({
             {n.message || 'System notification'}
           </p>
           <p className="text-xs text-muted-foreground">
-            From moderator @{n.actors[0].username}
+            {isReportQueueNotification({ type: n.type, message: n.message })
+              ? `От @${n.actors[0].username}`
+              : `From moderator @${n.actors[0].username}`}
           </p>
         </div>
       );

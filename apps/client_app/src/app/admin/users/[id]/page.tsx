@@ -234,7 +234,7 @@ export default function AdminUserDetailsPage() {
               }}
               className="rounded-lg bg-rose-100 px-3 py-2 text-sm font-medium text-rose-900 transition-colors hover:bg-rose-200/90"
             >
-              Suspend 7d
+              Заблокировать на 7 дней
             </button>
             <button
               type="button"
@@ -245,7 +245,7 @@ export default function AdminUserDetailsPage() {
               }}
               className="rounded-lg bg-emerald-100 px-3 py-2 text-sm font-medium text-emerald-900 transition-colors hover:bg-emerald-200/90"
             >
-              Unsuspend
+              Разблокировать
             </button>
             {isTargetAdmin ? (
               <button
@@ -307,17 +307,17 @@ export default function AdminUserDetailsPage() {
         <section>
           <div className="mb-4 flex items-center gap-2">
             <Clock className="h-5 w-5 text-muted-foreground" />
-            <h2 className="text-lg font-semibold text-foreground">Timeline</h2>
+            <h2 className="text-lg font-semibold text-foreground">История</h2>
           </div>
 
           {loading ? (
             <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-8 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin text-indigo-500" />
-              Loading history…
+              Загрузка истории…
             </div>
           ) : timeline.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border bg-muted/50/50 px-4 py-8 text-center text-sm text-muted-foreground">
-              No moderation events yet.
+              Нет событий модерации.
             </p>
           ) : (
             <ol className="relative space-y-3 border-l-2 border-border pl-6 overflow-x-hidden">
@@ -345,7 +345,7 @@ export default function AdminUserDetailsPage() {
                     <p className="text-foreground">
                       {item.reason}{' '}
                       <span className="text-muted-foreground">
-                        — {item.isActive ? 'active' : 'inactive'}
+                        — {item.isActive ? 'активно' : 'не активно'}
                       </span>
                       {item.until != null && (
                         <span className="mt-1 block text-xs text-muted-foreground">

@@ -18,17 +18,13 @@ export class AssistantController {
 
   @Post('topic-suggestions')
   @ApiOperation({
-    summary: 'AI: suggest conversation topics from counterparty profile',
+    summary: 'AI: suggest conversation topics from recent chat messages',
   })
   topicSuggestions(
     @CurrentUser() user: ICurrentUser,
     @Body() body: TopicSuggestionsBodyDto,
   ) {
-    return this.assistant.topicSuggestions(
-      user.userId,
-      body.chatId,
-      body.targetUserId,
-    );
+    return this.assistant.topicSuggestions(user.userId, body.chatId);
   }
 
   @Post('dialog-summary')
