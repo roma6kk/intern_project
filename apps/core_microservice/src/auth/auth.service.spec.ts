@@ -1,18 +1,19 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { HttpService } from '@nestjs/axios';
-import { ConfigService } from '@nestjs/config';
 import { of, throwError } from 'rxjs';
 import { AxiosResponse } from 'axios';
 import { HttpException, HttpStatus } from '@nestjs/common';
+import { TokenValidationService } from './token-validation.service';
 
 const mockHttpService = {
   post: jest.fn(),
   get: jest.fn(),
 };
 
-const mockConfigService = {
-  get: jest.fn().mockReturnValue('http://localhost:3001/internal/auth'),
+const mockTokenValidationService = {
+  canValidateLocally: jest.fn(),
+  validateAccessToken: jest.fn(),
 };
 
 describe('AuthService', () => {
@@ -24,7 +25,10 @@ describe('AuthService', () => {
       providers: [
         AuthService,
         { provide: HttpService, useValue: mockHttpService },
-        { provide: ConfigService, useValue: mockConfigService },
+        {
+          provide: TokenValidationService,
+          useValue: mockTokenValidationService,
+        },
       ],
     }).compile();
 
@@ -71,7 +75,7 @@ describe('AuthService', () => {
     it('should throw HttpException when Auth Service returns error', async () => {
       const errorResponse = {
         response: {
-          data: { message: 'Invalid credentials' },
+          data: { message: 'Неверный email или пароль' },
           status: 401,
         },
       };
@@ -79,7 +83,7 @@ describe('AuthService', () => {
       httpService.post.mockReturnValue(throwError(() => errorResponse));
 
       await expect(service.handleLogin(loginDto)).rejects.toThrow(
-        new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED),
+        new HttpException('Неверный email или пароль', HttpStatus.UNAUTHORIZED),
       );
     });
   });

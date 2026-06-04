@@ -68,6 +68,14 @@ Run production compose:
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
+Then apply database migrations (required on first deploy and after schema changes):
+
+```bash
+npm run db:migrate:docker
+```
+
+Without this step you will see Prisma errors such as `The table main.reports does not exist` or `auth.accounts does not exist`.
+
 In this setup:
 
 - Nginx is the only public entrypoint.
@@ -90,12 +98,14 @@ npm run db:migrate:deploy
 npm run db:migrate:docker
 ```
 
-Or run directly:
+This runs `core_microservice` migrations first, then baselines `auth_microservice` and `notifications_consumer_microservice` on the shared database.
+
+Or run manually:
 
 ```bash
-docker exec -it innogram-core npm run db:migrate:deploy
-docker exec -it innogram-auth npm run db:migrate:deploy
-docker exec -it innogram-consumer npm run db:migrate:deploy
+docker exec innogram-core npm run db:migrate:deploy --workspace=core_microservice
+docker exec -w /app/apps/auth_microservice innogram-auth npx prisma migrate resolve --applied 20260320130231_update
+docker exec -w /app/apps/notifications_consumer_microservice innogram-consumer npx prisma migrate resolve --applied 20260406153000_baseline
 ```
 
 `npm run db:migrate` / `db:generate` use Turbo on the host and do **not** call `docker`. If you see `sh: docker: not found`, use the Turbo commands above or install the Docker CLI and use `db:migrate:docker` / `db:generate:docker`.

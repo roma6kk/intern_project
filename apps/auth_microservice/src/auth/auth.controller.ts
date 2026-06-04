@@ -12,6 +12,7 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { AuthService } from '../services/auth.service';
+import { AUTH_ERROR_MESSAGES as E } from '../constants/error-messages';
 
 const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
@@ -26,10 +27,10 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   private mapAuthError(message: string): number {
-    if (message === 'Email not found') return 404;
-    if (message === 'Invalid reset code' || message === 'Reset code expired')
+    if (message === E.EMAIL_NOT_FOUND) return 404;
+    if (message === E.INVALID_RESET_CODE || message === E.RESET_CODE_EXPIRED)
       return 401;
-    if (message === 'Too many attempts' || message.startsWith('Try again in'))
+    if (message === E.TOO_MANY_ATTEMPTS || message.startsWith(E.TRY_AGAIN_PREFIX))
       return 429;
     return 400;
   }
@@ -76,7 +77,7 @@ export class AuthController {
         req.cookies?.refreshToken;
       if (!refreshToken) {
         res.status(400);
-        return { message: 'Refresh token required' };
+        return { message: E.REFRESH_TOKEN_REQUIRED };
       }
 
       const result = await this.authService.processRefreshToken(refreshToken);
@@ -85,7 +86,7 @@ export class AuthController {
       return result;
     } catch {
       res.status(403);
-      return { message: 'Refresh failed' };
+      return { message: E.REFRESH_FAILED };
     }
   }
 
@@ -97,7 +98,7 @@ export class AuthController {
 
       if (!accessToken) {
         res.status(400);
-        return { message: 'Access token required' };
+        return { message: E.ACCESS_TOKEN_REQUIRED };
       }
 
       return await this.authService.validateToken(accessToken);
@@ -119,10 +120,10 @@ export class AuthController {
         await this.authService.logout(refreshToken);
       }
       res.clearCookie('refreshToken');
-      return { message: 'Logged out' };
+      return { message: E.LOGGED_OUT };
     } catch {
       res.status(200);
-      return { message: 'Logged out' };
+      return { message: E.LOGGED_OUT };
     }
   }
 
@@ -147,7 +148,7 @@ export class AuthController {
       const { code } = body;
       if (!code) {
         res.status(400);
-        return { message: 'Code required' };
+        return { message: E.CODE_REQUIRED };
       }
 
       const result = await this.authService.exchangeCodeForTokens(code);
@@ -161,14 +162,14 @@ export class AuthController {
       };
       console.error('OAuth Exchange Error:', err.response?.data || err.message);
       res.status(400);
-      return { message: 'OAuth failed' };
+      return { message: E.OAUTH_FAILED };
     }
   }
 
   @Get('google/callback')
   async googleCallback(@Query('code') code: string, @Res() res: Response) {
     if (!code) {
-      return res.status(400).json({ message: 'Code required' });
+      return res.status(400).json({ message: E.CODE_REQUIRED });
     }
 
     try {
@@ -192,7 +193,7 @@ export class AuthController {
       const { email } = body;
       if (!email) {
         res.status(400);
-        return { message: 'Email required' };
+        return { message: E.EMAIL_REQUIRED };
       }
 
       return await this.authService.forgotPassword(email);
@@ -218,15 +219,15 @@ export class AuthController {
       const { email, code, newPassword } = body;
       if (!email || !code || !newPassword) {
         res.status(400);
-        return { message: 'Email, code and newPassword are required' };
+        return { message: E.RESET_FIELDS_REQUIRED };
       }
       if (typeof newPassword !== 'string' || newPassword.length < 8) {
         res.status(400);
-        return { message: 'Password must be at least 8 characters' };
+        return { message: E.PASSWORD_TOO_SHORT };
       }
       if (!/^\d{6}$/.test(String(code))) {
         res.status(400);
-        return { message: 'Reset code must contain 6 digits' };
+        return { message: E.RESET_CODE_INVALID_FORMAT };
       }
 
       return await this.authService.resetPassword({

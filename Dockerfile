@@ -15,7 +15,7 @@ RUN corepack enable
 COPY --from=builder /app/out/json/ .
 COPY --from=builder /app/out/package-lock.json ./package-lock.json
 ENV SKIP_NODE_VERSION_CHECK=1
-RUN npm install --workspaces --include-workspace-root
+RUN npm install --workspaces --include-workspace-root --include=dev
 
 COPY --from=builder /app/out/full/ .
 
@@ -45,4 +45,4 @@ COPY --from=installer --chown=appuser:nodejs /app .
 
 ENV RUN_APP_NAME=${APP_NAME}
 
-CMD ["sh", "-c", "npm run start --workspace=apps/${RUN_APP_NAME}"]
+CMD ["sh", "-c", "npm run start:prod --workspace=apps/${RUN_APP_NAME} 2>/dev/null || npm run start --workspace=apps/${RUN_APP_NAME}"]

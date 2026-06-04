@@ -48,11 +48,11 @@ export class TokenValidationService {
         this.accessSecret,
       ) as AccessTokenPayload;
     } catch {
-      throw new UnauthorizedException('Token is invalid or expired');
+      throw new UnauthorizedException('Сессия истекла, войдите снова');
     }
 
     if (!payload.userId || !payload.username || !payload.role) {
-      throw new UnauthorizedException('Token payload is invalid');
+      throw new UnauthorizedException('Недействительный токен');
     }
 
     if (payload.jti) {
@@ -62,7 +62,7 @@ export class TokenValidationService {
       }
 
       if (await this.tokenBlacklist.isBlacklisted(payload.jti)) {
-        throw new UnauthorizedException('Token is blacklisted');
+        throw new UnauthorizedException('Сессия завершена');
       }
     }
 

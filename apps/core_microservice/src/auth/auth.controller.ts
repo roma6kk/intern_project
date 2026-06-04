@@ -66,7 +66,7 @@ export class AuthController {
     const refreshTokenId = req.cookies['refreshToken'] as string | undefined;
 
     if (!refreshTokenId) {
-      throw new UnauthorizedException('Refresh token not found in cookies');
+      throw new UnauthorizedException('Токен обновления не найден');
     }
 
     const result = await this.authService.handleRefresh(refreshTokenId);
@@ -111,7 +111,7 @@ export class AuthController {
     }
 
     res.clearCookie('refreshToken', { path: '/', sameSite: 'lax' });
-    return { message: 'Logged out successfully' };
+    return { message: 'Вы вышли из аккаунта' };
   }
 
   @Post('signup')

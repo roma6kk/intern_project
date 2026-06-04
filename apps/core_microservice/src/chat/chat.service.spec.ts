@@ -187,7 +187,9 @@ describe('ChatService', () => {
         }),
       ).rejects.toThrow(BadRequestException);
 
-      expect(mockPrismaService.chatParticipant.deleteMany).not.toHaveBeenCalled();
+      expect(
+        mockPrismaService.chatParticipant.deleteMany,
+      ).not.toHaveBeenCalled();
     });
   });
 });

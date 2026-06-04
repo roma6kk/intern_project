@@ -13,3 +13,4 @@ export {
   assignReport,
   updateReportPriority,
 } from './api/reports-api';
+export { useUnresolvedReportsBadge } from './model/use-unresolved-reports-badge';

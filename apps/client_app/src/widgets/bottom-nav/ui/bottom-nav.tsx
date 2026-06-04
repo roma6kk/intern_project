@@ -10,7 +10,7 @@ import { getUserChats, lastMessageIsUnreadIncomingForUser } from '@/entities/cha
 import { currentChatIdRef } from '@/shared/lib/current-chat-id';
 import type { Chat, Message } from '@/entities/chat';
 import { cn } from '@/shared/lib/cn';
-import { useUnresolvedReportsBadge } from '@/shared/lib/use-unresolved-reports-badge';
+import { useUnresolvedReportsBadge } from '@/entities/report';
 import { useSocketNotifications } from '@/shared/lib/use-socket-notifications';
 import surface from '@/shared/styles/surface.module.css';
 import animations from '@/shared/styles/animations.module.css';

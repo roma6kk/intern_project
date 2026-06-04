@@ -31,7 +31,7 @@ export class SentryExceptionFilter implements ExceptionFilter {
 
     response.status(status).json({
       statusCode: status,
-      message: 'Internal server error',
+      message: 'Внутренняя ошибка сервера',
     });
   }
 }

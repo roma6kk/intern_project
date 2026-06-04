@@ -78,8 +78,17 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/${POSTGRES_DB:-innogram}?schema=main
       REDIS_URL: redis://redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672
-      ASSISTANT_MICROSERVICE_URL: ${ASSISTANT_MICROSERVICE_URL:-http://assistant-microservice:3003}
+      AUTH_MICROSERVICE_URL: http://auth-api:3001/internal/auth
+      ASSISTANT_MICROSERVICE_URL: http://assistant-microservice:3003
       ASSISTANT_SERVICE_SECRET: ${ASSISTANT_SERVICE_SECRET:-change_me_assistant_shared_secret}
+      FRONTEND_PUBLIC_URL: ${FRONTEND_PUBLIC_URL:-https://localhost}
+      AWS_ENDPOINT: http://minio:9000
+      AWS_PUBLIC_ENDPOINT: ${AWS_PUBLIC_ENDPOINT:-https://localhost}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-minioadmin}
+      AWS_BUCKET_NAME: ${AWS_BUCKET_NAME:-innogram-bucket}
+      AWS_USE_SIGNED_URLS: ${AWS_USE_SIGNED_URLS:-false}
       SENTRY_DSN: ${CORE_SENTRY_DSN:-${SENTRY_DSN}}
     depends_on:
       - postgres
@@ -104,6 +113,8 @@ services:
       PORT: "3001"
       DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/${POSTGRES_DB:-innogram}?schema=auth
       REDIS_URL: redis://redis:6379
+      FRONTEND_PUBLIC_URL: ${FRONTEND_PUBLIC_URL:-https://localhost}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-https://localhost/internal/auth/google/callback}
       SENTRY_DSN: ${AUTH_SENTRY_DSN:-${SENTRY_DSN}}
     depends_on:
       - postgres
@@ -124,6 +135,11 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/${POSTGRES_DB:-innogram}?schema=notifications
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM:-${SMTP_USER}}
     depends_on:
       - postgres
       - rabbitmq
@@ -167,6 +183,11 @@ services:
     environment:
       ASSISTANT_PORT: "3003"
       ASSISTANT_SERVICE_SECRET: ${ASSISTANT_SERVICE_SECRET:-change_me_assistant_shared_secret}
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_BASE_URL: ${LLM_BASE_URL}
+      LLM_MODEL: ${LLM_MODEL}
+      LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-20000}
+      LLM_JSON_MODE: ${LLM_JSON_MODE:-true}
     networks:
       - innogram_network
     restart: unless-stopped
@@ -197,7 +218,7 @@ services:
     ports:
       - "443:443"
     volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - core-api

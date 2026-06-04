@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import api from '@/shared/api';
+import api, { getApiErrorMessage } from '@/shared/api';
 import { notify } from '@/shared/lib/notify';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
@@ -32,8 +32,7 @@ export default function ForgotPasswordPage() {
       notify.success('Код отправлен на email');
       router.push('/login/reset');
     } catch (error: unknown) {
-      const err = error as { message?: string };
-      notify.error(err.message || 'Не удалось отправить код');
+      notify.error(getApiErrorMessage(error, 'Не удалось отправить код'));
     }
   };
 

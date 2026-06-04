@@ -1,8 +1,11 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import {
   AccountState,
   ModerationAction,
@@ -31,6 +34,7 @@ export class ReportsService {
     private readonly prisma: PrismaService,
     private readonly adminUsersService: AdminUsersService,
     private readonly notificationService: NotificationService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   async create(reporterId: string, dto: CreateReportDto) {
@@ -288,12 +292,15 @@ export class ReportsService {
           where: { id: report.postId },
           data: { isHidden: true },
         });
+        await this.cacheManager.del(`post:${report.postId}`);
       }
       if (report.commentId) {
-        await this.prisma.comment.update({
+        const updatedComment = await this.prisma.comment.update({
           where: { id: report.commentId },
           data: { isHidden: true },
+          select: { postId: true },
         });
+        await this.cacheManager.del(`post:${updatedComment.postId}`);
       }
     }
 
@@ -327,9 +334,14 @@ export class ReportsService {
 
     if (action === ModerationAction.DELETE) {
       if (report.commentId) {
-        await this.prisma.comment.delete({ where: { id: report.commentId } });
+        const deletedComment = await this.prisma.comment.delete({
+          where: { id: report.commentId },
+          select: { postId: true },
+        });
+        await this.cacheManager.del(`post:${deletedComment.postId}`);
       } else if (report.postId) {
         await this.prisma.post.delete({ where: { id: report.postId } });
+        await this.cacheManager.del(`post:${report.postId}`);
       }
     }
 

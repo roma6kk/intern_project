@@ -22,7 +22,7 @@ import SearchModal from '@/widgets/search-modal';
 import api from '@/shared/api';
 import type { Notification } from '@/entities/notification';
 import { useSocketNotifications } from '@/shared/lib/use-socket-notifications';
-import { useUnresolvedReportsBadge } from '@/shared/lib/use-unresolved-reports-badge';
+import { useUnresolvedReportsBadge } from '@/entities/report';
 import { useSocket } from '@/entities/session';
 import { getUserChats, lastMessageIsUnreadIncomingForUser } from '@/entities/chat';
 import { currentChatIdRef } from '@/shared/lib/current-chat-id';

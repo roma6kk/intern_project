@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
-import api from '@/shared/api';
+import api, { getApiErrorMessage } from '@/shared/api';
 import { useAuth } from '@/entities/session';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
@@ -37,8 +37,7 @@ export default function SignInForm({ onSwitch }: SignInFormProps) {
       const res = await api.post('/auth/login', data);
       login(res.data.accessToken, res.data.user);
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      notify.error(err.response?.data?.message || 'Не удалось войти');
+      notify.error(getApiErrorMessage(error, 'Не удалось войти'));
     }
   };
 

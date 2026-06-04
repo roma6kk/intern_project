@@ -3,7 +3,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import api from '@/shared/api';
+import api, { getApiErrorMessage } from '@/shared/api';
 import { useAuth } from '@/entities/session';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
@@ -37,25 +37,7 @@ export default function SignUpForm({ onSwitch }: SignUpFormProps) {
       const res = await api.post('/auth/signup', data);
       login(res.data.accessToken, res.data.user);
     } catch (error: unknown) {
-      const apiError = error as { message?: string };
-      const fallbackError = error as {
-        response?: { data?: { message?: string } | string };
-      };
-
-      let message: string | undefined;
-
-      if (apiError?.message) {
-        message = apiError.message;
-      } else if (fallbackError.response?.data) {
-        const data = fallbackError.response.data;
-        if (typeof data === 'string') {
-          message = data;
-        } else if (typeof data === 'object' && 'message' in data) {
-          message = (data as { message?: string }).message;
-        }
-      }
-
-      notify.error(message || 'Не удалось зарегистрироваться');
+      notify.error(getApiErrorMessage(error, 'Не удалось зарегистрироваться'));
     }
   };
 

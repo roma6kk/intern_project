@@ -1,13 +1,14 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import bcrypt from 'bcrypt';
-import axios from 'axios';
-import { PrismaService } from '../database/prisma.service';
-import { RedisAuthRepository } from '../repositories/redis-auth.repository';
-import { PasswordResetEventService } from './password-reset-event.service';
-import { TokenService } from './token.service';
-import { IGoogleUserResult } from './interfaces/IGoogleUserResult';
-import { IRegisterUserDto } from './interfaces/IRegisterUserDto';
+import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import bcrypt from "bcrypt";
+import axios from "axios";
+import { PrismaService } from "../database/prisma.service";
+import { RedisAuthRepository } from "../repositories/redis-auth.repository";
+import { PasswordResetEventService } from "./password-reset-event.service";
+import { TokenService } from "./token.service";
+import { IGoogleUserResult } from "./interfaces/IGoogleUserResult";
+import { IRegisterUserDto } from "./interfaces/IRegisterUserDto";
+import { AUTH_ERROR_MESSAGES as E } from "../constants/error-messages";
 
 @Injectable()
 export class AuthService {
@@ -27,8 +28,8 @@ export class AuthService {
     userId: string;
     username: string;
     email?: string | null;
-    role: 'USER' | 'MODERATOR' | 'ADMIN';
-    accountState: 'ACTIVE' | 'SUSPENDED' | 'DELETED';
+    role: "USER" | "MODERATOR" | "ADMIN";
+    accountState: "ACTIVE" | "SUSPENDED" | "DELETED";
     suspendedUntil?: string | null;
     escalationLevel?: number;
     deletedAt?: string | null;
@@ -62,7 +63,7 @@ export class AuthService {
         OR: [{ email: signUpDto.email }, { username: signUpDto.username }],
       },
     });
-    if (existing) throw new Error('User already exists');
+    if (existing) throw new Error(E.USER_ALREADY_EXISTS);
 
     const hashedPassword = await bcrypt.hash(signUpDto.password, 10);
 
@@ -87,7 +88,7 @@ export class AuthService {
         include: { account: true },
       });
 
-      if (!user.account) throw new Error('Account creation failed');
+      if (!user.account) throw new Error(E.ACCOUNT_CREATION_FAILED);
       return this.generateNewTokens({
         userId: user.id,
         username: user.account.username,
@@ -100,7 +101,7 @@ export class AuthService {
       });
     } catch (e) {
       console.error(e);
-      throw new Error('Registration failed');
+      throw new Error(E.REGISTRATION_FAILED);
     }
   }
 
@@ -110,15 +111,19 @@ export class AuthService {
       include: { user: true },
     });
 
-    if (!account || !account.passwordHash) {
-      throw new Error('Invalid credentials');
+    if (!account) {
+      throw new Error(E.INVALID_CREDENTIALS);
+    }
+
+    if (!account.passwordHash) {
+      throw new Error(E.GOOGLE_ACCOUNT_LOGIN);
     }
 
     const isValid = await bcrypt.compare(
       credentials.pass,
       account.passwordHash,
     );
-    if (!isValid) throw new Error('Invalid credentials');
+    if (!isValid) throw new Error(E.INVALID_CREDENTIALS);
 
     return this.generateNewTokens({
       userId: account.userId,
@@ -136,13 +141,13 @@ export class AuthService {
     const payload = this.tokenService.verifyRefreshToken(oldRefreshToken);
     const tokenId = payload.jti;
 
-    if (!tokenId) throw new Error('Invalid token structure');
+    if (!tokenId) throw new Error(E.INVALID_TOKEN_STRUCTURE);
 
     const storedUserId =
       await this.redisRepository.findSessionByTokenId(tokenId);
 
     if (!storedUserId || storedUserId !== payload.userId) {
-      throw new Error('Invalid or expired refresh token');
+      throw new Error(E.INVALID_OR_EXPIRED_REFRESH_TOKEN);
     }
 
     const account = await this.prisma.account.findUnique({
@@ -150,7 +155,7 @@ export class AuthService {
       include: { user: true },
     });
     if (!account) {
-      throw new Error('Account not found');
+      throw new Error(E.ACCOUNT_NOT_FOUND);
     }
     return this.generateNewTokens({
       userId: payload.userId,
@@ -172,7 +177,7 @@ export class AuthService {
         payload.jti,
       );
       if (isBlacklisted) {
-        throw new Error('Token is blacklisted');
+        throw new Error(E.TOKEN_BLACKLISTED);
       }
     }
 
@@ -222,7 +227,7 @@ export class AuthService {
           },
           profile: {
             create: {
-              firstName: profile.firstName || 'User',
+              firstName: profile.firstName || "User",
               secondName: profile.secondName,
               avatarUrl: profile.photo,
             },
@@ -231,7 +236,7 @@ export class AuthService {
         include: { account: { include: { user: true } } },
       });
 
-      if (!newUser.account) throw new Error('Account creation failed');
+      if (!newUser.account) throw new Error(E.ACCOUNT_CREATION_FAILED);
       account = newUser.account;
     }
 
@@ -261,13 +266,13 @@ export class AuthService {
     });
 
     if (!account) {
-      throw new Error('Email not found');
+      throw new Error(E.EMAIL_NOT_FOUND);
     }
 
     const cooldownTTL =
       await this.redisRepository.getPasswordResetCooldown(normalizedEmail);
     if (cooldownTTL > 0) {
-      throw new Error(`Try again in ${cooldownTTL} seconds`);
+      throw new Error(E.tryAgainIn(cooldownTTL));
     }
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -287,7 +292,7 @@ export class AuthService {
       username: account.username,
     });
 
-    return { message: 'Reset code sent' };
+    return { message: E.RESET_CODE_SENT };
   }
 
   async resetPassword(params: {
@@ -301,13 +306,13 @@ export class AuthService {
     });
 
     if (!account) {
-      throw new Error('Email not found');
+      throw new Error(E.EMAIL_NOT_FOUND);
     }
 
     const savedCode =
       await this.redisRepository.getPasswordResetCode(normalizedEmail);
     if (!savedCode) {
-      throw new Error('Reset code expired');
+      throw new Error(E.RESET_CODE_EXPIRED);
     }
 
     const attempts = await this.redisRepository.incrementPasswordResetAttempts(
@@ -316,11 +321,11 @@ export class AuthService {
     );
     if (attempts > this.maxResetAttempts) {
       await this.redisRepository.deletePasswordResetCode(normalizedEmail);
-      throw new Error('Too many attempts');
+      throw new Error(E.TOO_MANY_ATTEMPTS);
     }
 
     if (savedCode !== params.code) {
-      throw new Error('Invalid reset code');
+      throw new Error(E.INVALID_RESET_CODE);
     }
 
     const newPasswordHash = await bcrypt.hash(params.newPassword, 10);
@@ -332,21 +337,21 @@ export class AuthService {
     await this.redisRepository.deletePasswordResetCode(normalizedEmail);
     await this.redisRepository.deleteSession(account.userId);
 
-    return { message: 'Password updated successfully' };
+    return { message: E.PASSWORD_UPDATED };
   }
 
   getGoogleOAuthURL() {
-    const rootUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
+    const rootUrl = "https://accounts.google.com/o/oauth2/v2/auth";
     const options = {
-      redirect_uri: this.configService.get<string>('GOOGLE_CALLBACK_URL')!,
-      client_id: this.configService.get<string>('GOOGLE_CLIENT_ID')!,
-      access_type: 'offline',
-      response_type: 'code',
-      prompt: 'consent',
+      redirect_uri: this.configService.get<string>("GOOGLE_CALLBACK_URL")!,
+      client_id: this.configService.get<string>("GOOGLE_CLIENT_ID")!,
+      access_type: "offline",
+      response_type: "code",
+      prompt: "consent",
       scope: [
-        'https://www.googleapis.com/auth/userinfo.profile',
-        'https://www.googleapis.com/auth/userinfo.email',
-      ].join(' '),
+        "https://www.googleapis.com/auth/userinfo.profile",
+        "https://www.googleapis.com/auth/userinfo.email",
+      ].join(" "),
     };
 
     const qs = new URLSearchParams(options);
@@ -358,29 +363,29 @@ export class AuthService {
     const googleUser = await this.getGoogleUser(id_token, access_token);
 
     if (!googleUser.email) {
-      throw new Error('Google account has no email');
+      throw new Error(E.GOOGLE_NO_EMAIL);
     }
 
     return this.handleOAuthLogin({
       email: googleUser.email,
-      username: googleUser.email.split('@')[0] ?? 'user',
-      firstName: googleUser.given_name ?? 'User',
-      secondName: googleUser.family_name ?? '',
-      photo: googleUser.picture ?? '',
+      username: googleUser.email.split("@")[0] ?? "user",
+      firstName: googleUser.given_name ?? "User",
+      secondName: googleUser.family_name ?? "",
+      photo: googleUser.picture ?? "",
     });
   }
 
   private async getGoogleTokens(
     code: string,
   ): Promise<{ access_token: string; id_token: string }> {
-    const url = 'https://oauth2.googleapis.com/token';
+    const url = "https://oauth2.googleapis.com/token";
     const values = {
       code,
-      client_id: this.configService.get<string>('GOOGLE_CLIENT_ID') || '',
+      client_id: this.configService.get<string>("GOOGLE_CLIENT_ID") || "",
       client_secret:
-        this.configService.get<string>('GOOGLE_CLIENT_SECRET') || '',
-      redirect_uri: this.configService.get<string>('GOOGLE_CALLBACK_URL') || '',
-      grant_type: 'authorization_code',
+        this.configService.get<string>("GOOGLE_CLIENT_SECRET") || "",
+      redirect_uri: this.configService.get<string>("GOOGLE_CALLBACK_URL") || "",
+      grant_type: "authorization_code",
     };
 
     try {
@@ -388,15 +393,12 @@ export class AuthService {
         url,
         new URLSearchParams(values as Record<string, string>).toString(),
         {
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
         },
       );
       return res.data;
-    } catch (error) {
-      const err = error as { message?: string };
-      throw new Error(
-        `Google Token Exchange Failed: ${err.message || 'Unknown error'}`,
-      );
+    } catch {
+      throw new Error(E.GOOGLE_TOKEN_EXCHANGE_FAILED);
     }
   }
 
@@ -412,11 +414,8 @@ export class AuthService {
         },
       );
       return res.data;
-    } catch (error) {
-      const err = error as { message?: string };
-      throw new Error(
-        `Google User Info Failed: ${err.message || 'Unknown error'}`,
-      );
+    } catch {
+      throw new Error(E.GOOGLE_USER_INFO_FAILED);
     }
   }
 }

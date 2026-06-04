@@ -21,7 +21,7 @@
     "db:migrate:deploy": "npx turbo run db:migrate:deploy",
     "db:generate:docker": "docker exec innogram-core npm run db:generate && docker exec innogram-auth npm run db:generate && docker exec innogram-consumer npm run db:generate",
     "db:migrate:dev:docker": "docker exec innogram-core npm run db:migrate && docker exec innogram-auth npm run db:migrate && docker exec innogram-consumer npm run db:migrate",
-    "db:migrate:docker": "docker exec innogram-core npm run db:migrate:deploy && docker exec innogram-auth npm run db:migrate:deploy && docker exec innogram-consumer npm run db:migrate:deploy",
+    "db:migrate:docker": "node scripts/db-migrate-prod-docker.mjs",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "npx turbo run check-types"
   },

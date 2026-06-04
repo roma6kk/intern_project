@@ -244,8 +244,7 @@ export class AssistantService {
       chatId,
     )) as unknown as ChatWithMembers;
     this.assertMember(chat, requesterId);
-    const requesterUserProfile =
-      await this.loadUserProfileSnippet(requesterId);
+    const requesterUserProfile = await this.loadUserProfileSnippet(requesterId);
     const recentMessages = this.mapRecentMessages(chat);
     return this.postAssistant<AssistantEnvelope<TopicSuggestionsData>>({
       op: 'topicSuggestions',

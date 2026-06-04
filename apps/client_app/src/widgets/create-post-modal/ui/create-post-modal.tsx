@@ -92,7 +92,7 @@ export default function CreatePostModal({ isOpen, onClose }: CreatePostModalProp
       files.forEach((f) => fd.append('files', f));
       fd.append('description', caption);
       
-      await api.post('/posts', fd);
+      await api.post('/posts', fd, { timeout: 120000 });
 
       // Notify feed (and any other listeners) to refresh immediately.
       // This avoids a hard page reload after creating a post.

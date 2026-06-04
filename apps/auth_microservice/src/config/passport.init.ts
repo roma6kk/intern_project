@@ -26,7 +26,7 @@ export function initPassport(authService: AuthService): void {
 
           if (!rawEmail) {
             return done(
-              new Error('Google did not provide an email'),
+              new Error('Google не предоставил email'),
               undefined,
             );
           }

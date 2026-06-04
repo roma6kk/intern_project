@@ -1,2 +1,2 @@
-export { default } from './client';
+export { default, getApiErrorMessage } from './client';
 export type { ApiError } from './client';

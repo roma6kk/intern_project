@@ -4,6 +4,7 @@ export type Post = {
   id: string;
   description?: string;
   isArchived: boolean;
+  isHidden?: boolean;
   assets?: { id: string; url: string; type?: string }[];
   files?: { url: string; type?: string }[];
   media?: { url: string; type?: string }[];

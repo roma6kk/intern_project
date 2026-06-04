@@ -45,7 +45,7 @@ export class PostController {
     @CurrentUser() user: ICurrentUser,
     @Query() pagination: PaginationDto,
   ) {
-    return this.postService.getFeed(user.userId, pagination);
+    return this.postService.getFeed(user.userId, pagination, user.role);
   }
 
   @Get('search')
@@ -53,7 +53,7 @@ export class PostController {
     @Query() pagination: PaginationDto,
     @CurrentUser() user?: ICurrentUser,
   ) {
-    return this.postService.findAll(pagination, user?.userId);
+    return this.postService.findAll(pagination, user?.userId, user?.role);
   }
 
   @Get()
@@ -61,7 +61,7 @@ export class PostController {
     @Query() pagination: PaginationDto,
     @CurrentUser() user?: ICurrentUser,
   ) {
-    return this.postService.findAll(pagination, user?.userId);
+    return this.postService.findAll(pagination, user?.userId, user?.role);
   }
 
   @Get(':id')

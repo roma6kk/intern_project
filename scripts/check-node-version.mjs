@@ -6,9 +6,6 @@ if (process.env.SKIP_NODE_VERSION_CHECK === "1") {
 
 const major = Number(process.versions.node.split(".")[0]);
 
-// Prisma (engines) в этом проекте стабильно работает только на Node 20+,
-// а на Node 24 возникает ошибка вида: "Cannot find module '@prisma/engines'".
-// Чтобы не тратить время на отладку локально, блокируем неподдерживаемые версии.
 if (Number.isFinite(major) && major >= 24) {
   console.error(
     [

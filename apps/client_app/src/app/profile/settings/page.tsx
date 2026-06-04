@@ -127,12 +127,10 @@ const SettingsPage = () => {
           },
         });
       }
-
-      // Keep `useAuth()` context in sync so other components (feed/post/comment)
-      // immediately show the updated avatar.
+      
       await refreshUser();
 
-      setSuccess('Profile updated successfully!');
+      setSuccess('Профиль успешно обновлен!');
       setTimeout(() => {
         router.push('/profile/me');
       }, 1500);

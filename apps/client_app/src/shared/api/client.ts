@@ -11,33 +11,84 @@ export interface ApiError {
   code?: string;
 }
 
+function extractResponseMessage(data: unknown): string | undefined {
+  if (!data) return undefined;
+  if (typeof data === 'string') return data;
+
+  if (typeof data === 'object' && data !== null) {
+    const record = data as Record<string, unknown>;
+    const message = record.message;
+
+    if (typeof message === 'string') return message;
+    if (Array.isArray(message)) return message.map(String).join(', ');
+    if (typeof message === 'object' && message !== null) {
+      return extractResponseMessage(message);
+    }
+  }
+
+  return undefined;
+}
+
+export function getApiErrorMessage(error: unknown, fallback = 'Произошла ошибка'): string {
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = (error as ApiError).message;
+    if (typeof message === 'string' && message.length > 0) {
+      return message;
+    }
+  }
+
+  if (error && typeof error === 'object' && 'response' in error) {
+    const response = (error as AxiosError).response;
+    return extractResponseMessage(response?.data) || fallback;
+  }
+
+  return fallback;
+}
+
+const AUTH_PATHS_WITHOUT_REFRESH = [
+  '/auth/login',
+  '/auth/signup',
+  '/auth/register',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+];
+
+function shouldSkipTokenRefresh(url?: string): boolean {
+  if (!url) return false;
+  return AUTH_PATHS_WITHOUT_REFRESH.some((path) => url.includes(path));
+}
+
 class ApiErrorHandler {
   static handle(error: AxiosError): ApiError {
     if (!error.response) {
       return {
         message: error.code === 'ECONNABORTED' ? 'Превышено время ожидания' : 'Ошибка сети',
-        code: error.code
+        code: error.code,
       };
     }
 
     const status = error.response.status;
-    const data = error.response.data as { message?: string };
+    const serverMessage = extractResponseMessage(error.response.data);
 
     switch (status) {
       case 400:
-        return { message: data?.message || 'Неверный запрос', status };
+        return { message: serverMessage || 'Неверный запрос', status };
+      case 401:
+        return { message: serverMessage || 'Неверные учётные данные', status };
       case 403:
-        return { message: 'Доступ запрещен', status };
+        return { message: serverMessage || 'Доступ запрещен', status };
       case 404:
-        return { message: 'Ресурс не найден', status };
+        return { message: serverMessage || 'Ресурс не найден', status };
+      case 413:
+        return { message: serverMessage || 'Файл слишком большой для загрузки', status };
       case 422:
-        return { message: data?.message || 'Ошибка валидации', status };
+        return { message: serverMessage || 'Ошибка валидации', status };
       case 429:
-        return { message: 'Слишком много запросов', status };
+        return { message: serverMessage || 'Слишком много запросов', status };
       case 500:
-        return { message: 'Внутренняя ошибка сервера', status };
+        return { message: serverMessage || 'Внутренняя ошибка сервера', status };
       default:
-        return { message: data?.message || 'Произошла ошибка', status };
+        return { message: serverMessage || 'Произошла ошибка', status };
     }
   }
 }
@@ -83,7 +134,12 @@ api.interceptors.response.use(
       return Promise.reject(ApiErrorHandler.handle(error));
     }
 
-    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !shouldSkipTokenRefresh(originalRequest.url)
+    ) {
       originalRequest._retry = true;
 
       try {

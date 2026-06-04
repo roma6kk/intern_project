@@ -688,6 +688,12 @@ export function PostCard({
                 Этот пост в архиве и виден только вам.
             </div>
         )}
+
+        {post.isHidden && (
+          <div className="mt-1 mb-3 inline-flex items-center rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
+            Скрыт
+          </div>
+        )}
   
         {post.assets && post.assets.length > 0 && (
           <div 

@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/entities/session';
 import {
   assignReport,
   listReports,
   updateReport,
   updateReportPriority,
+  useUnresolvedReportsBadge,
   type ListReportsParams,
   type ModerationAction,
   type ReportPriority,
@@ -27,8 +28,6 @@ import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
 import surface from '@/shared/styles/surface.module.css';
 import animations from '@/shared/styles/animations.module.css';
 import moderationStyles from './moderation.module.css';
-import { useUnresolvedReportsBadge } from '@/shared/lib/use-unresolved-reports-badge';
-
 type AccountRef = { username: string } | null;
 type ReportItem = {
   id: string;
@@ -125,7 +124,7 @@ function priorityAccent(p: ReportPriority | undefined): string {
   }
 }
 
-export default function ModerationPage() {
+function ModerationPageContent() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const highlightedReportId = searchParams.get('report');
@@ -561,6 +560,11 @@ export default function ModerationPage() {
                       <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         {report.commentId ? 'Комментарий' : 'Пост'}
                       </div>
+                      {(report.comment?.isHidden || report.post?.isHidden) && (
+                        <div className="mt-2 inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700">
+                          Скрыт
+                        </div>
+                      )}
                       <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">
                         {contentPreview(report)}
                       </p>
@@ -634,5 +638,22 @@ export default function ModerationPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ModerationPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center p-4">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            Загрузка…
+          </div>
+        </div>
+      }
+    >
+      <ModerationPageContent />
+    </Suspense>
   );
 }

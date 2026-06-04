@@ -65,13 +65,17 @@ export class PostService {
     files?: Array<Express.Multer.File>,
   ) {
     try {
-      const assetUrls: string[] = [];
+      const newAssets: Array<{ url: string; type: 'IMAGE' | 'VIDEO' }> = [];
       if (files && files.length > 0) {
-        const uploadPromises = files.map((file) =>
-          this.filesService.uploadFile(file),
+        const uploaded = await Promise.all(
+          files.map(async (file) => ({
+            url: await this.filesService.uploadFile(file),
+            type: file.mimetype?.startsWith('video/')
+              ? ('VIDEO' as const)
+              : ('IMAGE' as const),
+          })),
         );
-        const urls = await Promise.all(uploadPromises);
-        assetUrls.push(...urls);
+        newAssets.push(...uploaded);
       }
 
       const newPost = await this.prisma.post.create({
@@ -79,10 +83,7 @@ export class PostService {
           description: createPostDto.description,
           authorId: userId,
           assets: {
-            create: assetUrls.map((url) => ({
-              url,
-              type: 'IMAGE',
-            })),
+            create: newAssets,
           },
         },
         include: {
@@ -119,19 +120,29 @@ export class PostService {
     }
   }
 
-  async getFeed(userId: string, pagination: PaginationDto) {
-    const { page = 1, limit = 10, sort = 'newest', cursor, mediaOnly = false } =
-      pagination;
+  async getFeed(
+    userId: string,
+    pagination: PaginationDto,
+    viewerRole?: ICurrentUser['role'],
+  ) {
+    const {
+      page = 1,
+      limit = 10,
+      sort = 'newest',
+      cursor,
+      mediaOnly = false,
+    } = pagination;
     const cacheKey = `feed:${userId}:${sort}:${mediaOnly}:${cursor ?? `p${page}`}:${limit}`;
 
-    const cached = await this.cacheManager.get<Awaited<
-      ReturnType<PostService['getFeedQueries']>
-    >>(cacheKey);
+    const cached =
+      await this.cacheManager.get<
+        Awaited<ReturnType<PostService['getFeedQueries']>>
+      >(cacheKey);
     if (cached) {
       return cached;
     }
 
-    const result = await this.getFeedQueries(userId, pagination);
+    const result = await this.getFeedQueries(userId, pagination, viewerRole);
     await this.cacheManager.set(cacheKey, result, 5_000);
     return result;
   }
@@ -153,7 +164,11 @@ export class PostService {
     return followingIds;
   }
 
-  private async getFeedQueries(userId: string, pagination: PaginationDto) {
+  private async getFeedQueries(
+    userId: string,
+    pagination: PaginationDto,
+    viewerRole?: ICurrentUser['role'],
+  ) {
     const {
       page = 1,
       limit = 10,
@@ -171,9 +186,11 @@ export class PostService {
     const whereClause: Prisma.PostWhereInput = {
       authorId: { in: followingIds },
       isArchived: false,
-      isHidden: false,
       author: { deletedAt: null },
     };
+    if (!this.isPrivilegedRole(viewerRole)) {
+      whereClause.isHidden = false;
+    }
 
     if (mediaOnly) {
       whereClause.assets = { some: {} };
@@ -295,7 +312,11 @@ export class PostService {
     };
   }
 
-  async findAll(pagination: PaginationDto, userId?: string) {
+  async findAll(
+    pagination: PaginationDto,
+    userId?: string,
+    viewerRole?: ICurrentUser['role'],
+  ) {
     const {
       limit = 10,
       search,
@@ -316,7 +337,9 @@ export class PostService {
     } else if (includeArchived && userId && authorId && authorId !== userId) {
       whereClause.isArchived = false;
     }
-    whereClause.isHidden = false;
+    if (!this.isPrivilegedRole(viewerRole)) {
+      whereClause.isHidden = false;
+    }
 
     if (authorId) {
       whereClause.authorId = authorId;
@@ -501,6 +524,9 @@ export class PostService {
       ) {
         throw new NotFoundException('Post not found');
       }
+      if (cachedPost.isHidden && !this.isPrivilegedRole(viewerRole)) {
+        throw new NotFoundException('Post not found');
+      }
       await this.ensurePrivatePostVisibility(cachedPost, viewerId, viewerRole);
       this.logger.log(`Cache hit for post ${id}`);
       return this.withReadableAssetUrls(cachedPost);
@@ -511,7 +537,7 @@ export class PostService {
     const post = await this.prisma.post.findFirst({
       where: {
         id,
-        isHidden: false,
+        ...(this.isPrivilegedRole(viewerRole) ? {} : { isHidden: false }),
         author: { deletedAt: null },
       },
       include: {
@@ -560,7 +586,7 @@ export class PostService {
 
     await this.ensurePrivatePostVisibility(post, viewerId, viewerRole);
 
-    if (post.author.profile?.isPrivate) {
+    if (post.author.profile?.isPrivate || post.isHidden) {
       // Do not cache private-author posts globally (visibility is user-dependent).
       return this.withReadableAssetUrls(post);
     }
@@ -836,6 +862,10 @@ export class PostService {
     if (!acceptedFollow) {
       throw new NotFoundException('Post not found');
     }
+  }
+
+  private isPrivilegedRole(role?: ICurrentUser['role']): boolean {
+    return role === 'MODERATOR' || role === 'ADMIN';
   }
 
   private async withReadableAssetUrls<T>(data: T): Promise<T> {

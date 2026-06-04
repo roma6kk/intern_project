@@ -13,6 +13,7 @@ interface Asset {
 interface Post {
   id: string;
   description: string;
+  isHidden?: boolean;
   assets: Asset[];
   _count: {
     likes: number;
@@ -99,6 +100,12 @@ export default function PostsGrid({ posts, router }: PostsGridProps) {
                   <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 2v8h10V6H5z" clipRule="evenodd" />
                   <path d="M1 6a1 1 0 011-1h1v2H2v8h8v1a1 1 0 01-1 1H2a1 1 0 01-1-1V6z" />
                 </svg>
+              </div>
+            )}
+
+            {post.isHidden && (
+              <div className="absolute bottom-2 left-2 rounded-full bg-red-600/90 px-2 py-0.5 text-[10px] font-semibold text-white">
+                Скрыт
               </div>
             )}
 

@@ -63,7 +63,7 @@ export class AuthService {
         .post<AuthResponse>(`${this.authServiceUrl}/refresh`, { refreshToken })
         .pipe(
           catchError(() => {
-            throw new UnauthorizedException('Refresh failed');
+            throw new UnauthorizedException('Не удалось обновить сессию');
           }),
         ),
     );
@@ -99,7 +99,7 @@ export class AuthService {
       );
       return data;
     } catch {
-      throw new UnauthorizedException('Token validation failed');
+      throw new UnauthorizedException('Не удалось проверить токен');
     }
   }
 
@@ -181,8 +181,19 @@ export class AuthService {
 
   private handleAxiosError(error: AxiosError) {
     const status = error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR;
-    const message = error.response?.data || 'Auth Service Unavailable';
-    this.logger.error(`Auth Service Error: ${JSON.stringify(message)}`);
+    const data = error.response?.data;
+    let message = 'Сервис авторизации недоступен';
+
+    if (typeof data === 'string') {
+      message = data;
+    } else if (typeof data === 'object' && data !== null && 'message' in data) {
+      const serverMessage = (data as { message?: string | string[] }).message;
+      message = Array.isArray(serverMessage)
+        ? serverMessage.join(', ')
+        : serverMessage || message;
+    }
+
+    this.logger.error(`Auth Service Error: ${JSON.stringify(data)}`);
 
     throw new HttpException(message, status);
   }
